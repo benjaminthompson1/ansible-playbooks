@@ -33,16 +33,16 @@
 #  Transfer cics-egui-CSD.txt to z/OS LPAR
 ###############################################################################
 
-    - name: Copy cics-egui-CDS.txt to z/OS LPAR.
-      copy: 
-        src: cics-egui-CSD.txt
-        dest: "/S0W1/tmp/cics-egui-CSD.txt"
-      register: copy_result
-
-    - name: Response from Copy cics-egui-CSD.txt to z/OS LPAR.
-      debug:
-        msg: "{{ copy_result }}"
-        verbosity: 1       
+#    - name: Copy cics-egui-CDS.txt to z/OS LPAR.
+#      copy: 
+#        src: cics-egui-CSD.txt
+#        dest: "/S0W1/tmp/cics-egui-CSD.txt"
+#      register: copy_result
+#
+#    - name: Response from Copy cics-egui-CSD.txt to z/OS LPAR.
+#      debug:
+#        msg: "{{ copy_result }}"
+#        verbosity: 1       
 
 ###############################################################################
 # Usage: 
@@ -51,10 +51,9 @@
 
     - name: Convert CSD JCL file to IBM-1047 and submit the job.
       zos_job_submit:
-        src: "/tmp/cics-egui-CSD.txt"
-        location: USS
+        src: cics-egui-CSD.txt
+        location: LOCAL
         wait: true
-        temp_file: "/tmp/ed.jcl"
         encoding:
           from: ISO8859-1
           to: IBM-1047
