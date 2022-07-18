@@ -298,7 +298,7 @@
     - name: Convert CSD JCL file to IBM-1047 and submit the job.
       zos_job_submit:
         src: "/S0W1/tmp/cics-egui-CSD.txt"
-        location: USS
+        location: LOCAL
         wait: true
         encoding:
           from: UTF-8
