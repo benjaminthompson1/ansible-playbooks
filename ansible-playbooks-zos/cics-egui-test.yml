@@ -45,7 +45,7 @@
 #        verbosity: 1       
 
     - name: Community command with ls
-      command: ls -la /tmp/cics-egui-CSD.txt
+      command: ls -la /tmp/*
       register: result
 
     - name: Response
@@ -59,12 +59,12 @@
 
     - name: Convert CSD JCL file to IBM-1047 and submit the job.
       zos_job_submit:
-        src: "/tmp/cics-egui-CSD.txt"
+        src: "/tmp/xbt.jcl"
         location: USS
         wait: true
-        encoding:
-          from: ISO8859-1
-          to: IBM-1047
+#        encoding:
+#          from: ISO8859-1
+#          to: IBM-1047
       register: zos_job_submit_result       
 
     - name: DEBUG(-v) Response from Convert CSD JCL file to IBM-1047 and submit the job.
@@ -73,7 +73,7 @@
         verbosity: 1
 
     - name: Community command with ls
-      command: ls -la /tmp/cics-egui-CSD.txt
+      command: ls -la /tmp/*
       register: result
 
     - name: Response
