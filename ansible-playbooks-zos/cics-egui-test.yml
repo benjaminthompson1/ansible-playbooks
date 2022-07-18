@@ -33,16 +33,16 @@
 #  Transfer cics-egui-CSD.txt to z/OS LPAR
 ###############################################################################
 
-    - name: Copy cics-egui-CDS.txt to z/OS LPAR.
-      copy: 
-        src: cics-egui-CSD.txt
-        dest: "/tmp/cics-egui-CSD.txt"
-      register: copy_result
-
-    - name: Response from Copy cics-egui-CSD.txt to z/OS LPAR.
-      debug:
-        msg: "{{ copy_result }}"
-        verbosity: 1       
+#    - name: Copy cics-egui-CDS.txt to z/OS LPAR.
+#      copy: 
+#        src: cics-egui-CSD.txt
+#        dest: "/tmp/cics-egui-CSD.txt"
+#      register: copy_result
+#
+#    - name: Response from Copy cics-egui-CSD.txt to z/OS LPAR.
+#      debug:
+#        msg: "{{ copy_result }}"
+#        verbosity: 1       
 
     - name: Community command with ls
       command: ls -la /tmp/cics-egui-CSD.txt
@@ -57,20 +57,20 @@
 #  Convert cics-egui-CSD.txt to IBM-1047 and submit the job
 ###############################################################################
 
-#    - name: Convert CSD JCL file to IBM-1047 and submit the job.
-#      zos_job_submit:
-#        src: "/tmp/cics-egui-CSD.txt"
-#        location: USS
-#        wait: true
-#        encoding:
-#          from: ISO8859-1
-#          to: IBM-1047
-#      register: zos_job_submit_result       
-#
-#    - name: DEBUG(-v) Response from Convert CSD JCL file to IBM-1047 and submit the job.
-#      debug:
-#        msg: "{{ zos_job_submit_result }} with verbosity 1"
-#        verbosity: 1
+    - name: Convert CSD JCL file to IBM-1047 and submit the job.
+      zos_job_submit:
+        src: "/tmp/cics-egui-CSD.txt"
+        location: USS
+        wait: true
+        encoding:
+          from: ISO8859-1
+          to: IBM-1047
+      register: zos_job_submit_result       
+
+    - name: DEBUG(-v) Response from Convert CSD JCL file to IBM-1047 and submit the job.
+      debug:
+        msg: "{{ zos_job_submit_result }} with verbosity 1"
+        verbosity: 1
 
     - name: Community command with ls
       command: ls -la /tmp/cics-egui-CSD.txt
