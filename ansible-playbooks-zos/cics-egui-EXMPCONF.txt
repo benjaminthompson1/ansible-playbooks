@@ -1,0 +1,4 @@
+EXMP-CONF VSAM N DFH0XCMN DFH0XSDS DFH0XVDS DFH0XSOD DFH0XWOD DFH0XSSM
+OUTBNDURL http://myserver:80/exampleApp/dispatchOrder                 
+VSAM-NAME EXMPCAT                                                     
+WS-SERVER myserver:99999                                              

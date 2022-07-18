@@ -1,0 +1,241 @@
+###############################################################################
+# Usage:
+#  ansible-playbook -i <inventory> <playbook>
+#
+# Example:
+#  ansible-playbook -i inventory base_COBOL.yml
+#  ansible-playbook -i inventory base_COBOL.yml -v
+###############################################################################
+---
+- hosts: s0w1 
+  collections:
+    - ibm.ibm_zos_core
+  gather_facts: no
+
+  vars:
+    adcd_ver: Z25A
+
+  environment: "{{ environment_vars }}"
+
+  tasks:
+    - name: Ping using zos_ping
+      zos_ping:
+      register: zos_ping_result
+
+    - name: Response from zos_ping
+      debug:
+        msg: "{{ zos_ping_result }}"
+
+###############################################################################
+# Usage:
+#  Copy IGY630.SIGYPROC(IGYQC) to USER.{{ adcd_ver }}.PROCLIB(IGYQC)
+#  Copy IGY630.SIGYPROC(IGYQCB) to USER.{{ adcd_ver }}.PROCLIB(IGYQCB)
+#  Copy IGY630.SIGYPROC(IGYQCBG) to USER.{{ adcd_ver }}.PROCLIB(IGYQCBG)
+###############################################################################
+
+    - name: Copy IGYQC from IGY630 to USER; replace if it already exists.
+      zos_copy:
+        src: IGY630.SIGYPROC(IGYQC)
+        dest: USER.{{ adcd_ver }}.PROCLIB(IGYQC)
+        remote_src: true
+      register: zos_copy_result
+
+    - name: DEBUG(-v) Response from Copy IGYQC from IGY630 to USER; replace if it already exists.
+      debug:
+        msg: "{{ zos_copy_result }} with verbosity 1"
+        verbosity: 1
+
+    - name: Copy IGYQCB from IGY630 to USER; replace if it already exists.
+      zos_copy:
+        src: IGY630.SIGYPROC(IGYQCB)
+        dest: USER.{{ adcd_ver }}.PROCLIB(IGYQCB)
+        remote_src: true
+      register: zos_copy_result
+
+    - name: DEBUG(-v) Response from Copy IGYQCB from IGY630 to USER; replace if it already exists.
+      debug:
+        msg: "{{ zos_copy_result }} with verbosity 1"
+        verbosity: 1
+
+    - name: Copy IGYQCBG from IGY630 to USER; replace if it already exists.
+      zos_copy:
+        src: IGY630.SIGYPROC(IGYQCBG)
+        dest: USER.{{ adcd_ver }}.PROCLIB(IGYQCBG)
+        remote_src: true
+      register: zos_copy_result
+
+    - name: DEBUG(-v) Response from Copy IGYQCBG from IGY630 to USER; replace if it already exists.
+      debug:
+        msg: "{{ zos_copy_result }} with verbosity 1"
+        verbosity: 1
+
+###############################################################################
+# Usage:
+#  Update PROC USER.{{ adcd_ver }}.PROCLIB(IGYQC)
+###############################################################################
+
+    - name: Update LIBPRF1 parameter.
+      zos_lineinfile:
+        src: USER.{{ adcd_ver }}.PROCLIB(IGYQC)
+        regexp: "^//             LIBPRF1=&LIBPRFX"
+        line: "//             LIBPRF1=&LIBPRFX,"
+      register: zos_lineinfile_result
+
+    - name: DEBUG(-v) Response from Update LIBPRF1 parameter.
+      debug:
+        msg: "{{ zos_lineinfile_result }} with verbosity 1"
+        verbosity: 1
+        
+    - name: Add CPARM parameter.
+      zos_lineinfile:
+        src: USER.{{ adcd_ver }}.PROCLIB(IGYQC)
+        insertafter: "^//             LIBPRF1=&LIBPRFX,"
+        line: "//             CPARM=''"
+      register: zos_lineinfile_result
+
+    - name: DEBUG(-v) Response from Add CPARM parameter.
+      debug:
+        msg: "{{ zos_lineinfile_result }} with verbosity 1"
+        verbosity: 1
+
+    - name: Add CPARM parameter to COBOL STEP.
+      zos_lineinfile:
+        src: USER.{{ adcd_ver }}.PROCLIB(IGYQC)
+        regexp: "^//COBOL  EXEC PGM=IGYCRCTL,REGION=0M"
+        line: "//COBOL  EXEC PGM=IGYCRCTL,REGION=0M,PARM='&CPARM'"
+      register: zos_lineinfile_result
+
+    - name: DEBUG(-v) Response from Add CPARM parameter to COBOL STEP.
+      debug:
+        msg: "{{ zos_lineinfile_result }} with verbosity 1"
+        verbosity: 1
+
+###############################################################################
+# Usage:
+#  Update PROC USER.{{ adcd_ver }}.PROCLIB(IGYQCB)
+###############################################################################
+
+    - name: Alter PGMLIB parameter.
+      zos_lineinfile:
+        src: USER.{{ adcd_ver }}.PROCLIB(IGYQCB)
+        regexp: "^//             PGMLIB='&&GOSET',GOPGM=GO"
+        line: "//             PGMLIB='&&GOSET',"
+      register: zos_lineinfile_result
+
+    - name: DEBUG(-v) Response from Alter PGMLIB parameter.
+      debug:
+        msg: "{{ zos_lineinfile_result }} with verbosity 1"
+        verbosity: 1
+        
+    - name: Add CPARM parameter.
+      zos_lineinfile:
+        src: USER.{{ adcd_ver }}.PROCLIB(IGYQCB)
+        insertafter: "^//             PGMLIB='&&GOSET',"
+        line: "//             CPARM='',"
+      register: zos_lineinfile_result
+
+    - name: DEBUG(-v) Response from Add CPARM parameter.
+      debug:
+        msg: "{{ zos_lineinfile_result }} with verbosity 1"
+        verbosity: 1
+
+    - name: Add GOPGM parameter.
+      zos_lineinfile:
+        src: USER.{{ adcd_ver }}.PROCLIB(IGYQCB)
+        insertafter: "^//             CPARM='',"
+        line: "//             GOPGM=GO"
+      register: zos_lineinfile_result
+
+    - name: DEBUG(-v) Response from Add GOPGM parameter.
+      debug:
+        msg: "{{ zos_lineinfile_result }} with verbosity 1"
+        verbosity: 1
+
+    - name: Add CPARM parameter to COBOL STEP.
+      zos_lineinfile:
+        src: USER.{{ adcd_ver }}.PROCLIB(IGYQCB)
+        regexp: "^//COBOL  EXEC PGM=IGYCRCTL,REGION=0M"
+        line: "//COBOL  EXEC PGM=IGYCRCTL,REGION=0M,PARM='&CPARM'"
+      register: zos_lineinfile_result
+
+    - name: DEBUG(-v) Response from Add CPARM parameter to COBOL STEP.
+      debug:
+        msg: "{{ zos_lineinfile_result }} with verbosity 1"
+        verbosity: 1
+      
+###############################################################################
+# Usage:
+#  Update PROC USER.{{ adcd_ver }}.PROCLIB(IGYQCBG)
+###############################################################################
+        
+    - name: Add CPARM parameter.
+      zos_lineinfile:
+        src: USER.{{ adcd_ver }}.PROCLIB(IGYQCBG)
+        insertafter: "^//             LIBPRF1=&LIBPRFX,"
+        line: "//             CPARM='',"
+      register: zos_lineinfile_result
+
+    - name: DEBUG(-v) Response from Add CPARM parameter.
+      debug:
+        msg: "{{ zos_lineinfile_result }} with verbosity 1"
+        verbosity: 1
+
+    - name: Add GPARM parameter.
+      zos_lineinfile:
+        src: USER.{{ adcd_ver }}.PROCLIB(IGYQCBG)
+        insertafter: "^//             BPARM='LIST=NOIMP',"
+        line: "//             GPARM='',"
+      register: zos_lineinfile_result
+
+    - name: DEBUG(-v) Response from Add GPARM parameter.
+      debug:
+        msg: "{{ zos_lineinfile_result }} with verbosity 1"
+        verbosity: 1
+
+    - name: Add CPARM parameter to COBOL STEP.
+      zos_lineinfile:
+        src: USER.{{ adcd_ver }}.PROCLIB(IGYQCBG)
+        regexp: "^//COBOL  EXEC PGM=IGYCRCTL,REGION=0M"
+        line: "//COBOL  EXEC PGM=IGYCRCTL,REGION=0M,PARM='&CPARM'"
+      register: zos_lineinfile_result
+
+    - name: DEBUG(-v) Response from Add CPARM parameter to COBOL STEP.
+      debug:
+        msg: "{{ zos_lineinfile_result }} with verbosity 1"
+        verbosity: 1
+
+    - name: Add GPARM parameter to GO STEP.
+      zos_lineinfile:
+        src: USER.{{ adcd_ver }}.PROCLIB(IGYQCBG)
+        regexp: "^//       REGION=0M"
+        line: "//       REGION=0M,PARM='&GPARM'"
+      register: zos_lineinfile_result
+
+    - name: DEBUG(-v) Response from Add GPARM parameter to GO STEP.
+      debug:
+        msg: "{{ zos_lineinfile_result }} with verbosity 1"
+        verbosity: 1
+
+    - name: Add ISM330.SEQAMOD to STEPLIB in GO STEP.
+      zos_lineinfile:
+        src: USER.{{ adcd_ver }}.PROCLIB(IGYQCBG)
+        insertbefore: "^//STEPLIB  DD  DSNAME=&LIBPRF1..SCEERUN2,DISP=SHR"
+        line: "//STEPLIB  DD  DSNAME=ISM330.SEQAMOD,DISP=SHR"
+      register: zos_lineinfile_result
+
+    - name: DEBUG(-v) Response from Add ISM330.SEQAMOD to STEPLIB in GO STEP.
+      debug:
+        msg: "{{ zos_lineinfile_result }} with verbosity 1"
+        verbosity: 1
+
+    - name: Alter STEPLIB in GO STEP.
+      zos_lineinfile:
+        src: USER.{{ adcd_ver }}.PROCLIB(IGYQCBG)
+        regexp: "^//STEPLIB  DD  DSNAME=&LIBPRF1..SCEERUN2,DISP=SHR"
+        line: "//         DD  DSNAME=&LIBPRF1..SCEERUN2,DISP=SHR"
+      register: zos_lineinfile_result
+
+    - name: DEBUG(-v) Response from Alter STEPLIB in GO STEP.
+      debug:
+        msg: "{{ zos_lineinfile_result }} with verbosity 1"
+        verbosity: 1

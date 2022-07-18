@@ -1,0 +1,250 @@
+###############################################################################
+# Copyright (c) IBM Corporation 2020
+###############################################################################
+
+###############################################################################
+# This sample playbook demonstrates using various modules included in the
+# Red Hat Ansible Certified Content for IBM Z core collection.
+#
+# Usage:
+#  ansible-playbook -i <inventory> <playbook>
+#
+# Example:
+#  ansible-playbook -i inventory zos-collection-sample.yaml
+#
+###############################################################################
+#
+---
+- hosts: s0w1 
+  collections:
+    - ibm.ibm_zos_core
+  gather_facts: no
+  environment: "{{ environment_vars }}"
+
+  vars:
+    - name: instance_info_json_path #will store instance json information globally thru the playbook
+
+  tasks:
+
+    - debug: 
+        msg: "Provision instance of {{ lookup('env', 'zmf_template') }} on {{ lookup('env', 'zmf_targetHost') }}"
+
+    - include_role:
+        name: provision_software_service
+      vars:
+        cpm_template_name: "{{ lookup('env', 'zmf_template') }}"   # The value for property cpm_template_name which identifies the template (software service) user wants to provision with Cloud Provisioning & Management
+        domain_name: "default" # The value for property domain_name which identifies CP&M domain in which specified template is defined
+        tenant_name: "default" # The value for optional property tenant_name which identifies CP&M tenant that is associated with the zmf_user that is provisioning the template
+        systems_nicknames: "{{ lookup('env', 'zmf_targetHost') }}" # The value for optional property systems_nicknames which identifies on which system the software instance will be provisioned
+        instance_record_dir: /etc/ansible
+
+#    - debug: 
+#        msg: "Instance JSON: {{ instance_info_json_path }}"
+#
+
+#    - name: Extract Instance Id simple 
+#      set_fact:
+#            instanceJsonPath: "{{ instance_info_json_path }}"
+
+#    - debug: 
+#        msg: "instanceJsonPath: {{ instanceJsonPath }}"
+
+    - name: Extract Instance Id 
+      set_fact:
+           instanceId: "{{ instance_info_json_path | regex_search(regexp, '\\1') | first }}"
+      vars:
+           regexp: '[A-Za-z0-9\/\-_+]+_([A-Za-z0-9]+).json'
+
+    - name: Name of instance provisioned
+      debug:
+        msg: "instanceId:  {{ instanceId }}"
+        
+# Provision data for zOffice app 
+
+#    - name: rexx
+#      zOfficeProvData:
+#           cicsProvName: cd54000
+#      register: result
+
+#    - debug:
+#        msg: "result: {{ result.instanceId }}"
+
+#    - name: xx
+#      set_fact: 
+#          instanceId: "CD54001"
+#           instanceId2: "{{ result.instanceId }}"
+
+#    - debug:
+#        msg: "instanceId:  {{ instanceId }}"
+
+#    - name: zz
+#      set_fact:
+#          instanceId: "{{ (result | from_json).result.instanceId }}"
+#           instanceId: "{{ instanceId | regex_search('^(.*[\\\_])(.*?)(?=\.)') }}"
+#           instanceId: "{{ result.stdout | regex_search('Instance\srecord\ssaved\sat:\s[A-Za-z0-9\/\-_+]+_([A-Za-z0-9]+).json', '\\1) | first }}"
+#           instanceId: "CD54000"
+#           instanceId: "{{ result.instanceId | regex_search(regexp, '\\1') | first }}"
+#            instanceId3: "{{ instance_info_json_path | regex_search(regexp3, '\\1') | first }}"
+#      vars:
+#           regexp3: 'Instance\srecord\ssaved\sat:\s[A-Za-z0-9\/\-_+]+_([A-Za-z0-9]+).json'
+
+    - name: Delete zOffice VSAM datasets in case they exist
+      zos_tso_command:
+           commands:
+               - delete 'ZCXPRV1.EXMPLAPP.EXMPCAT.{{instanceId}}' Purge Cluster
+               - delete 'ZCXPRV1.EXMPLAPP.EXMPCONF.{{instanceId}}' Purge Cluster
+      ignore_errors: true        
+
+    - name: Define zOffice VSAM datasets for this instance 
+      zos_tso_command:
+           commands:
+               - DEFINE CLUSTER (NAME('ZCXPRV1.EXMPLAPP.EXMPCAT.{{instanceId}}') TRK(1 1) KEYS(4 0) RECORDSIZE(80,80) SHAREOPTIONS(2 3) VOLUME(BH5ST5) INDEXED ) DATA (NAME('ZCXPRV1.EXMPLAPP.EXMPCAT.{{instanceId}}.DATA')) INDEX (NAME('ZCXPRV1.EXMPLAPP.EXMPCAT.{{instanceId}}.INDEX') ) 
+               - DEFINE CLUSTER (NAME('ZCXPRV1.EXMPLAPP.EXMPCONF.{{instanceId}}') TRK(1 1) KEYS(4 0) RECORDSIZE(80,80) SHAREOPTIONS(2 3) VOLUME(BH5ST5) INDEXED ) DATA (NAME('ZCXPRV1.EXMPLAPP.EXMPCONF.{{instanceId}}.DATA')) INDEX (NAME('ZCXPRV1.EXMPLAPP.EXMPCONF.{{instanceId}}.INDEX') )
+
+    - name: Prime zOffice EXMPCAT VSAM file 
+      zos_tso_command: 
+           commands: 
+               - alloc dd(infile) da('ZCXPRV1.ZOFFICE.INDATA')  SHR
+               - alloc dd(outfile) DA('ZCXPRV1.EXMPLAPP.EXMPCAT.{{instanceId}}') SHR 
+               - repro ifile(INFILE) ofile(OUTFILE)
+      register: result
+
+#    - name: tso result
+#      debug: 
+#          msg: "result:  {{ result.output[2].content | to_yaml }}"
+
+    - name: "Result copy into zOffice EXMPCAT VSAM file "
+      debug:
+        msg: "TSO RC: {{ item.rc | to_yaml }} Msg: {{ item.content | to_yaml }} "
+      loop: "{{result.output }}"
+
+    - name: Copy data into zOffice EXMPCONF VSAM file
+      zos_tso_command:
+           commands:
+               - alloc dd(infile) da('ZCXPRV1.ZOFFICE.DATA.EXMPCONF')  SHR
+               - alloc dd(outfile) DA('ZCXPRV1.EXMPLAPP.EXMPCONF.{{instanceId}}') SHR
+               - repro ifile(INFILE) ofile(OUTFILE)
+      register: confResult
+
+#    - name: Prime zOffice EXMPCONF result 
+#      debug:
+#          msg: "result:  {{ confResult.output[2].content | to_yaml }}"
+
+    - name: "Prime EXMPCONF result"
+      debug:
+#        msg: "tso msg: {{ item.rc }} {{ item.content }} "
+        msg: "TSO RC: {{ item.rc | to_yaml }} Msg: {{ item.content | to_yaml }} "
+      loop: "{{confResult.output }}"
+ 
+#   For each CICS instance, need to customise generic CSD definitions to have
+#   instance name in VSAM file names, and then install that into the CICS region
+ 
+    - name: Copy generic zOffice CSD data to z/OS LPAR
+      copy: 
+        src: zOfficeCsdDefn.txt
+        dest: "/tmp/zOfficeCsdDefn.{{instanceId}}.txt"
+
+    - name: Set Instance name in zOffice CSD input data
+      replace: 
+        path: "/tmp/zOfficeCsdDefn.{{instanceId}}.txt"
+        regexp: "cicsProvName"
+        replace: "{{ instanceId }}"
+
+#    - name: Convert CSD data from ASCII to EBCDIC
+#      zos_encode: 
+#        src: "/tmp/zOfficeCsdDefn.{{instanceId}}.txt"
+#        dest: /tmp/csdInputE.txt
+#        from_encoding: ISO8859-1
+#        to_encoding: IBM-1047
+
+    - name: Alloc a dataset which will contain CSD input
+      zos_data_set: 
+          name: 'zcxprv1.{{instanceId}}.csd.input'
+          type: seq
+          state: present
+          replace: true
+          record_length: 80
+          format: FB
+          size: 1TRK
+
+#    - name: Convert CSD data from ASCII to EBCDIC
+#      zos_encode:
+#        src: "/tmp/zOfficeCsdDefn.{{instanceId}}.txt"
+#        dest: 'zcxprv1.cd54000.csd.input'
+#        from_encoding: ISO8859-1
+#        to_encoding: IBM-1047
+
+    - name: Copy updated zOffice CSD defintions to dataset 
+      zos_tso_command:
+           commands:
+#               - cp  /tmp/csdInputE.txt  "//'zcxprv1.cd54000.csd.input'" 
+               - alloc dd(infile) path('/tmp/zOfficeCsdDefn.{{instanceId}}.txt') 
+               - alloc dd(outfile) dsn('zcxprv1.{{instanceId}}.csd.input') SHR
+               - OCOPY INDD(INFile) OUTDD(OUTFile) TEXT CONVERT((BPXFX311)) TO1047  
+      register: copyResult
+
+    - name: Copy custom CSD input to dataset result
+      debug:
+        msg: "TSO RC: {{ item.rc | to_yaml }} Msg: {{ item.content | to_yaml }} "
+      loop: "{{copyResult.output }}"
+
+##    - name: zz
+##      command: 
+##          cmd: cat "//'ZCXPRV1.CD54001.CSD.INPUT'"
+#          cmd: cat "//'CICSUSER.V54.{{instanceId}}.DFHCSD'"
+##      register: zzOutput
+
+##    - debug:
+##        msg: "{{zzOutput.stdout}}"
+
+    - name: Alloc a dataset to collect CSD sysprint
+      zos_data_set:
+          name: 'zcxprv1.{{instanceId}}.csd.sysprint'
+          type: seq
+          state: present
+          replace: true
+          record_length: 80
+          format: FB
+          size: 2TRK
+
+    - name: Update CICS CSD
+      zos_tso_command:
+           commands:
+               - alloc dd(DFHCSD) da('CICSUSER.V54.{{instanceId}}.DFHCSD') SHR
+#               - alloc dd(SYSIN) path('/tmp/csdInputE.txt') SHR
+               - alloc dd(SYSIN) da('zcxprv1.{{instanceId}}.csd.input') SHR
+#               - alloc dd(SYSIN2) da('ZCXPRV1.ZOFFICE.CSD') SHR
+#               - alloc dd(SYSPRINT) da(*)
+               - alloc dd(SYSPRINT) da('zcxprv1.{{instanceId}}.csd.sysprint') SHR	
+               - call 'CICSTS54.CICS.SDFHLOAD(DFHCSDUP)'
+      register: csdOutput
+      failed_when: csdOutput.output[0].rc != 0 or csdOutput.output[1].rc != 0 or csdOutput.output[2].rc != 0 or csdOutput.output[3].rc > 4
+
+    - name: CICS CSD update result
+      debug: 
+        msg: "TSO RC: {{ item.rc | to_yaml }} Msg: {{ item.content | to_yaml }} "
+      loop: "{{csdOutput.output }}"
+
+    - name: CICS CSD Message
+      debug: 
+        msg: "{{csdOutput.msg | to_yaml }}"
+
+    - name: List DFHCSDUP SysPrint 
+      command:
+          cmd: cat "//'ZCXPRV1.CD54001.CSD.SYSPRINT'"
+      register: CsdUpOutput
+
+    - name: DFHCSDUP Sysprint
+      debug:
+        msg: "{{CsdUpOutput.stdout | to_yaml }}"
+
+    - name: Install zOffice CICS Defintions
+      zos_operator: 
+         cmd: 'f {{ instanceId }},ceda install g(zoffice)'
+      register: cedaResult
+
+    - name: CICS CEDA Install result
+      debug: 
+        msg: "CEDA install: {{ cedaResult | to_yaml }} "
+
+

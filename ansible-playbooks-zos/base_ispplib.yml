@@ -1,0 +1,44 @@
+###############################################################################
+# Usage:
+#  ansible-playbook -i <inventory> <playbook>
+#
+# Example:
+#  ansible-playbook -i inventory base_ispplib.yml
+#  ansible-playbook -i inventory base_ispplib.yml -v
+###############################################################################
+---
+- hosts: s0w1 
+  collections:
+    - ibm.ibm_zos_core
+  gather_facts: no
+
+  vars:
+    adcd_ver: Z25A
+
+  environment: "{{ environment_vars }}"
+
+  tasks:
+    - name: Ping using zos_ping
+      zos_ping:
+      register: zos_ping_result
+
+    - name: Response from zos_ping
+      debug:
+        msg: "{{ zos_ping_result }}"
+
+###############################################################################
+# Usage:
+#  Copy ADCD.{{ adcd_ver }}.DBC.ISPPLIB(IBMPRODS) to USER.{{ adcd_ver }}.ISPPLIB(IBMPRODS)
+###############################################################################
+
+    - name: Copy IBMPRODS from ADCD to USER; replace if it already exists.
+      zos_copy:
+        src: ADCD.{{ adcd_ver }}.DBC.ISPPLIB(IBMPRODS)
+        dest: USER.{{ adcd_ver }}.ISPPLIB(IBMPRODS)
+        remote_src: true
+      register: zos_copy_result
+
+    - name: DEBUG(-v) Response from Copy IBMPRODS from ADCD to USER.
+      debug:
+        msg: "{{ zos_copy_result }} with verbosity 1"
+        verbosity: 1

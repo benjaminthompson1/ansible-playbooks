@@ -1,0 +1,17 @@
+###############################################################################
+# Usage:
+#  ansible-playbook -i <inventory> <playbook>
+#
+# Example:
+#  ansible-playbook -i inventory backup_volumes.yml
+#  ansible-playbook -i inventory backup_volumes.yml -v
+###############################################################################
+---
+- hosts: linux
+  tasks:
+    - name: Archive z25a volumes
+      archive:
+        path: /home/ibmsys1/volumes-z25a
+        dest: "/home/ibmsys1/volumes-backup/volumes-z25a-{{ansible_date_time.date.replace('-','')}}.zip"
+        format: zip
+

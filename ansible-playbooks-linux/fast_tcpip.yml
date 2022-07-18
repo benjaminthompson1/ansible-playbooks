@@ -1,0 +1,32 @@
+###############################################################################
+# Usage:
+#  ansible-playbook -i <inventory> <playbook>
+#
+# Example:
+#  ansible-playbook -i inventory fast_tcpip.yml
+#  ansible-playbook -i inventory fast_tcpip.yml -v
+###############################################################################
+---
+- hosts: linux
+  become: yes
+  tasks:
+
+###############################################################################
+# Usage:
+#  Alter RHEL setting to improve zPD networking 
+###############################################################################
+  
+    - name: Disable RX checksumming offload
+      command: ethtool -K eno1 rx off
+
+    - name: Disable TCP segmentation offload
+      command: ethtool -K eno1 tso off
+
+    - name: Disable generic segmentation offload
+      command: ethtool -K eno1 gso off
+
+    - name: Disable generic RX offload
+      command: ethtool -K eno1 gro off
+
+    - name: Disable large RX offload
+      command: ethtool -K eno1 lro off
