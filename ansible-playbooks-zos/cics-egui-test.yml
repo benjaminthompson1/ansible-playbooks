@@ -55,7 +55,7 @@
         location: USS
         wait: true
         encoding:
-          from: UTF-8
+          from: ISO8859-1
           to: IBM-1047
       register: zos_job_submit_result       
 
