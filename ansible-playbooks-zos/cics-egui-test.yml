@@ -45,7 +45,7 @@
 #        verbosity: 1       
 
     - name: Community command with ls
-      command: ls -la /tmp/*
+      command: ls -la /tmp/xbt.jcl
       register: result
 
     - name: Response
@@ -73,7 +73,7 @@
         verbosity: 1
 
     - name: Community command with ls
-      command: ls -la /tmp/*
+      command: ls -la /tmp/xbt.jcl
       register: result
 
     - name: Response
