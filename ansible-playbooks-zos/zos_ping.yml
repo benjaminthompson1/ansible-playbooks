@@ -10,7 +10,7 @@
 #  ansible-playbook -i inventory zos_ping.yaml -e "enable_debug=yes"
 ###############################################################################
 ---
-- hosts: s0w1
+- hosts: neale_s0w1
   collections:
     - ibm.ibm_zos_core
   gather_facts: no
@@ -20,7 +20,6 @@
 
   tasks:
 
-    #
     # ##########################################################################
     # zos_ping , note the connection ibm.ibm_zos_core.zos_ssh
     # ##########################################################################
