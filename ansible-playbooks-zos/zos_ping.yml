@@ -23,6 +23,9 @@
     # ##########################################################################
     # zos_ping , note the connection ibm.ibm_zos_core.zos_ssh
     # ##########################################################################
+
+    # spacer
+    
     - name: Ping using zos_ping
       zos_ping:
       register: zos_ping_result
