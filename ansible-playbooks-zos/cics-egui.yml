@@ -292,18 +292,16 @@
 
 ###############################################################################
 # Usage: 
-#  Convert cics-egui-CSD.txt to IBM-1047 and submit the job
+#  submit CICS system definition for zOffice
 ###############################################################################
-
-    - name: Convert CSD JCL file to IBM-1047 and submit the job.
+     
+    - name: Submit long running PDS job, and wait for the job to finish
       zos_job_submit:
-        src: "/S0W1/tmp/cics-egui-CSD.txt"
-        location: USS
+        src: IBMUSER.GIT.JCL.CNTL(CICSCSD)
+        location: DATA_SET
         wait: true
-        encoding:
-          from: UTF-8
-          to: IBM-1047
-      register: zos_job_submit_result       
+        wait_time_s: 60
+      register: zos_job_submit_result 
 
     - name: DEBUG(-v) Response from Convert CSD JCL file to IBM-1047 and submit the job.
       debug:
