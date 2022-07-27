@@ -7,7 +7,7 @@
 #  ansible-playbook -i inventory cics_egui.yml -v
 ###############################################################################
 ---
-- hosts: s0w1 
+- hosts: ben_s0w1 
   collections:
     - ibm.ibm_zos_core
   gather_facts: no
