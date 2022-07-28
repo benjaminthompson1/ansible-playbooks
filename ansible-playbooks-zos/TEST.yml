@@ -1,0 +1,58 @@
+###############################################################################
+# Usage:
+#  ansible-playbook -i <inventory> <playbook>
+#
+# Example:
+#  ansible-playbook -i inventory base_auto_mount.yml
+#  ansible-playbook -i inventory base_auto_mount.yml -v
+###############################################################################
+---
+- hosts: ben_s0w1 
+  collections:
+    - ibm.ibm_zos_core
+  gather_facts: no
+
+  vars:
+    adcd_ver: Z25A
+
+  environment: "{{ environment_vars }}"
+
+  tasks:
+    - name: Ping using zos_ping
+      zos_ping:
+      register: zos_ping_result
+
+    - name: Response from zos_ping
+      debug:
+        msg: "{{ zos_ping_result }}"
+
+    - name: Touch file /etc/delete.me.
+      file:
+        path: /tmp/delete.me
+        state: touch
+      register: file_result
+
+    - name: DEBUG(-v) Response from Touch file /etc/delete.me.
+      debug:
+        msg: "{{ file_result }} with verbosity 1"
+        verbosity: 1
+
+    - name: Add directory and MapName file.
+      zos_blockinfile:
+        src: /tmp/delete.me
+        marker: "/* {mark} ANSIBLE MANAGED BLOCK"
+        block: |
+          /u                /etc/u.map
+      register: zos_blockinfile_result
+
+    - name: DEBUG(-v) Response from Add directory and MapName file.
+      debug:
+        msg: "{{ zos_blockinfile_result }} with verbosity 1"
+        verbosity: 1
+
+    - name: 
+      lineinfile:
+        dest: /tmp/xyz.txt
+        line: "somestuff 1"
+        line: "other text"
+        state: present
