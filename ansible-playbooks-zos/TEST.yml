@@ -26,40 +26,51 @@
       debug:
         msg: "{{ zos_ping_result }}"
 
-    - name: Touch file /etc/delete.me.
+###############################################################################
+# Usage:
+#  Create empty file /etc/auto.master 
+#  /u directory is to be configured, along with the MapName file.
+###############################################################################
+
+    - name: Touch file /etc/auto.master.
       file:
-        path: /tmp/delete.me
+        path: /tmp/auto.master
         state: touch
       register: file_result
 
-    - name: DEBUG(-v) Response from Touch file /etc/delete.me.
+    - name: DEBUG(-v) Response from Touch file /etc/auto.master.
       debug:
         msg: "{{ file_result }} with verbosity 1"
         verbosity: 1
 
-    - name: Add directory and MapName file.
-      zos_blockinfile:
-        src: /tmp/delete.me
-        marker: "/* {mark} ANSIBLE MANAGED BLOCK"
-        block: |
-          /u                /etc/u.map
-      register: zos_blockinfile_result
+    - name: text file test
+      shell: |
+         echo "/u                /etc/u.map" > /tmp/auto.master
+      register: zos_shell
 
     - name: DEBUG(-v) Response from Add directory and MapName file.
       debug:
-        msg: "{{ zos_blockinfile_result }} with verbosity 1"
+        msg: "{{ zos_shell }} with verbosity 1"
+        verbosity: 1
+
+###############################################################################
+# Usage:
+#   Create empty file /etc/u.map
+#   ZFS attributes related to /u directory  
+###############################################################################
+
+    - name: Touch file /etc/u.map.
+      file:
+        path: /tmp/u.map
+        state: touch
+      register: file_result
+
+    - name: DEBUG(-v) Response from Touch file /etc/u.map.
+      debug:
+        msg: "{{ file_result }} with verbosity 1"
         verbosity: 1
 
     - name: text file test
       shell: |
-         echo "Hi there" > /tmp/zz.txt
-         cat /tmp/zz.txt
-      register: omResult
-
-    - name: "test: STDOUT"
-      debug:
-         msg: "{{ omResult.stdout_lines }}"
-
-    - name: "test: STDERR"
-      debug:
-         msg: "{{ omResult.stderr_lines }}"
+         echo "name                             */ntype                             ZFS/nfilesystem                       <uc_name>.&SYSNAME..ZFS/nmode                             rdwr/nduration                         30/ndelay                            10/nallocany space(1,1) cyl unit(disk) pathperm(775) euid ucat/u" > /tmp/u.map
+      register: zos_shell

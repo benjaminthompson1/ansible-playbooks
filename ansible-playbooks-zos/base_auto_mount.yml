@@ -79,17 +79,14 @@
         msg: "{{ file_result }} with verbosity 1"
         verbosity: 1
 
-    - name: Add directory and MapName file.
-      zos_blockinfile:
-        src: /etc/auto.master
-        marker: "/* {mark} ANSIBLE MANAGED BLOCK"
-        block: |
-          /u                /etc/u.map
-      register: zos_blockinfile_result
+    - name: text file test
+      shell: |
+         echo "/u                /etc/u.map" > /etc/auto.master
+      register: zos_shell
 
     - name: DEBUG(-v) Response from Add directory and MapName file.
       debug:
-        msg: "{{ zos_blockinfile_result }} with verbosity 1"
+        msg: "{{ zos_shell }} with verbosity 1"
         verbosity: 1
 
 ###############################################################################
@@ -107,6 +104,16 @@
     - name: DEBUG(-v) Response from Touch file /etc/u.map.
       debug:
         msg: "{{ file_result }} with verbosity 1"
+        verbosity: 1
+
+    - name: text file test
+      shell: |
+         echo "name                             */ntype                             ZFS/nfilesystem                       <uc_name>.&SYSNAME..ZFS/nmode                             rdwr/nduration                         30/ndelay                            10/nallocany space(1,1) cyl unit(disk) pathperm(775) euid ucat/u" > /etc/u.map
+      register: zos_shell
+
+    - name: DEBUG(-v) Response from Add directory and MapName file.
+      debug:
+        msg: "{{ zos_shell }} with verbosity 1"
         verbosity: 1
 
     - name: Add ZFS attributes.
