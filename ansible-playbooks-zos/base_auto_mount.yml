@@ -68,18 +68,7 @@
 #  /u directory is to be configured, along with the MapName file.
 ###############################################################################
 
-    - name: Touch file /etc/auto.master.
-      file:
-        path: /etc/auto.master
-        state: touch
-      register: file_result
-
-    - name: DEBUG(-v) Response from Touch file /etc/auto.master.
-      debug:
-        msg: "{{ file_result }} with verbosity 1"
-        verbosity: 1
-
-    - name: text file test
+    - name: Add directory and MapName file.
       shell: |
          echo "/u                /etc/u.map" > /etc/auto.master
       register: zos_shell
@@ -95,43 +84,19 @@
 #   ZFS attributes related to /u directory  
 ###############################################################################
 
-    - name: Touch file /etc/u.map.
-      file:
-        path: /etc/u.map
-        state: touch
-      register: file_result
-
-    - name: DEBUG(-v) Response from Touch file /etc/u.map.
-      debug:
-        msg: "{{ file_result }} with verbosity 1"
-        verbosity: 1
-
-    - name: text file test
-      shell: |
-         echo "name                             */ntype                             ZFS/nfilesystem                       <uc_name>.&SYSNAME..ZFS/nmode                             rdwr/nduration                         30/ndelay                            10/nallocany space(1,1) cyl unit(disk) pathperm(775) euid ucat/u" > /etc/u.map
-      register: zos_shell
-
-    - name: DEBUG(-v) Response from Add directory and MapName file.
-      debug:
-        msg: "{{ zos_shell }} with verbosity 1"
-        verbosity: 1
-
     - name: Add ZFS attributes.
-      zos_blockinfile:
-        src: /etc/u.map
-        marker: "* {mark} ANSIBLE MANAGED BLOCK"
-        block: |
-          name                             *
-          type                             ZFS
-          filesystem                       <uc_name>.&SYSNAME..ZFS
-          mode                             rdwr
-          duration                         30
-          delay                            10
-          allocany space(1,1) cyl unit(disk) pathperm(775) euid ucat
-      register: zos_blockinfile_result
+      shell: |
+         echo "name                             *" > /etc/u.map
+         echo "type                             ZFS" >> /etc/u.map
+         echo "filesystem                       <uc_name>.&SYSNAME..ZFS" >> /etc/u.map
+         echo "mode                             rdwr" >> /etc/u.map
+         echo "duration                         30" >> /etc/u.map
+         echo "delay                            10" >> /etc/u.map
+         echo "allocany space(1,1) cyl unit(disk) pathperm(775) euid ucat/u" >> /etc/u.map         
+      register: zos_shell
 
     - name: DEBUG(-v) Response from Add ZFS attributes.
       debug:
-        msg: "{{ zos_blockinfile_result }} with verbosity 1"
+        msg: "{{ zos_shell }} with verbosity 1"
         verbosity: 1
 
