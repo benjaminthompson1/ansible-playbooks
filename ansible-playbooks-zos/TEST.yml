@@ -55,4 +55,5 @@
         dest: /tmp/xyz.txt
         line: "somestuff 1"
         line: "other text"
+        create: yes
         state: present
