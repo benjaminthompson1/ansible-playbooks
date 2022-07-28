@@ -50,10 +50,16 @@
         msg: "{{ zos_blockinfile_result }} with verbosity 1"
         verbosity: 1
 
-    - name: 
-      lineinfile:
-        dest: /tmp/xyz.txt
-        line: "somestuff 1"
-        line: "other text"
-        create: yes
-        state: present
+    - name: text file test
+      shell: |
+         echo "Hi there" > /tmp/zz.txt
+         cat /tmp/zz.txt
+      register: omResult
+
+    - name: "test: STDOUT"
+      debug:
+         msg: "{{ omResult.stdout_lines }}"
+
+    - name: "test: STDERR"
+      debug:
+         msg: "{{ omResult.stderr_lines }}"
