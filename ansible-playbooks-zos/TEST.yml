@@ -51,12 +51,12 @@
     - name: text file test
       shell: |
          echo "cat > /tmp/u.map << EOF
-              name                             *
-              type                             ZFS
-              filesystem                       <uc_name>.&SYSNAME..ZFS
-              mode                             rdwr
-              duration                         30
-              delay                            10
-              allocany space(1,1) cyl unit(disk) pathperm(775) euid ucat/u
-              EOF"             
+               name                             *
+               type                             ZFS
+               filesystem                       <uc_name>.&SYSNAME..ZFS
+               mode                             rdwr
+               duration                         30
+               delay                            10
+               allocany space(1,1) cyl unit(disk) pathperm(775) euid ucat/u
+               EOF"             
       register: zos_shell
