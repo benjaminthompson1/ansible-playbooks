@@ -65,6 +65,42 @@
 
 ###############################################################################
 # Usage:
+#  Submit DCOLLECT and wait for the job to finish zCDP
+###############################################################################
+
+    - name: Submit DCOLLECT and wait for the job to finish.
+      zos_job_submit:
+        src: "{{ cntl_hlq }}(DCOLLECT)"
+        location: DATA_SET
+        wait: true
+        wait_time_s: 120
+      register: zos_job_submit_result
+
+    - name: DEBUG(-v) Response Submit DCOLLECT and wait for the job to finish.
+      debug:
+        msg: "{{ zos_job_submit_result }} with verbosity 1"
+        verbosity: 1
+
+###############################################################################
+# Usage:
+#  Submit HBOJBDC2 and wait for the job to finish ZCDP
+###############################################################################
+
+    - name: Submit HBOJBDC2 and wait for the job to finish.
+      zos_job_submit:
+        src: "{{ cntl_hlq }}(HBOJBDC2)"
+        location: DATA_SET
+        wait: true
+        wait_time_s: 120
+      register: zos_job_submit_result
+
+    - name: DEBUG(-v) Response Submit HBOJBDC2 and wait for the job to finish.
+      debug:
+        msg: "{{ zos_job_submit_result }} with verbosity 1"
+        verbosity: 1
+
+###############################################################################
+# Usage:
 #  JES2 Purge output data sets are more than 21 days
 ###############################################################################
 
