@@ -7,7 +7,7 @@
 #  ansible-playbook -i inventory z25a_housekeeping.yml -v
 ###############################################################################
 ---
-- hosts: s0w1 
+- hosts: ben_s0w1 
   collections:
     - ibm.ibm_zos_core
   gather_facts: no
@@ -59,6 +59,42 @@
       register: zos_job_submit_result
 
     - name: DEBUG(-v) Response Submit DSSDFRAG and wait for the job to finish.
+      debug:
+        msg: "{{ zos_job_submit_result }} with verbosity 1"
+        verbosity: 1
+
+###############################################################################
+# Usage:
+#  Submit DCOLLECT and wait for the job to finish zCDP
+###############################################################################
+
+    - name: Submit DCOLLECT and wait for the job to finish.
+      zos_job_submit:
+        src: "{{ cntl_hlq }}(DCOLLECT)"
+        location: DATA_SET
+        wait: true
+        wait_time_s: 120
+      register: zos_job_submit_result
+
+    - name: DEBUG(-v) Response Submit DCOLLECT and wait for the job to finish.
+      debug:
+        msg: "{{ zos_job_submit_result }} with verbosity 1"
+        verbosity: 1
+
+###############################################################################
+# Usage:
+#  Submit HBOJBDC2 and wait for the job to finish ZCDP
+###############################################################################
+
+    - name: Submit HBOJBDC2 and wait for the job to finish.
+      zos_job_submit:
+        src: "{{ cntl_hlq }}(HBOJBDC2)"
+        location: DATA_SET
+        wait: true
+        wait_time_s: 120
+      register: zos_job_submit_result
+
+    - name: DEBUG(-v) Response Submit HBOJBDC2 and wait for the job to finish.
       debug:
         msg: "{{ zos_job_submit_result }} with verbosity 1"
         verbosity: 1
