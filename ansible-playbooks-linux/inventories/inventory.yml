@@ -4,5 +4,5 @@ linux_systems:
     linux:
       ansible_host: localhost
       ansible_user: ibmsys1
-      ansible_password: ibmsys1
+      ansible_password: S1ng@p0re
 
