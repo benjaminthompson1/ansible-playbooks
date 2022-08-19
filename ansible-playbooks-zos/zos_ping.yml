@@ -1,7 +1,7 @@
 ###############################################################################
 # Usage:
 #  ansible-playbook -i <inventory> <playbook>
-#
+#  
 # Example:
 #  ansible-playbook -i inventory zos_ping.yaml
 #  ansible-playbook -i inventory zos_ping.yaml -v
