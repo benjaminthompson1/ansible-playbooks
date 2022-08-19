@@ -7,7 +7,7 @@
 #  ansible-playbook -i inventory backup_volumes.yml -v
 ###############################################################################
 ---
-- hosts: linux
+- hosts: rhel
   tasks:
     - name: Archive z25a volumes
       archive:

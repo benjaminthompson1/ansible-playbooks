@@ -7,7 +7,7 @@
 #  ansible-playbook -i inventory create_volumes.yml -v
 ###############################################################################
 ---
-- hosts: linux
+- hosts: rhel
   tasks:
     - name: Create user0a volume 3390-27
       command: alcckd /home/ibmsys1/volumes-z25a/user0a -d3390-27
