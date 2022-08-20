@@ -116,3 +116,16 @@
         msg: "{{ zos_operator_result }} with verbosity 1"
         verbosity: 1
 
+###############################################################################
+# Usage:
+#  Delete zWIC files older than than 5 days
+###############################################################################
+
+    - name: Delete zWIC files older than 5 days.
+        shell: "find /global/wic/S0W1 -type f -mtime +5 -delete"
+      register: shell_result
+
+    - name: DEBUG(-v) Response Delete zWIC files older than 5 days.
+      debug:
+        msg: "{{ shell_result }} with verbosity 1"
+        verbosity: 1

@@ -313,16 +313,16 @@
 #  Dataset clean-up
 ###############################################################################
 
-    # - name: Dataset clean-up.
-      # zos_tso_command:
-           # commands:
-               # - delete '{{ high_level_qualifier }}.EXMPCAT.INPUT' 
-               # - delete '{{ high_level_qualifier }}.EXMPCONF.INPUT'
-               # - delete '{{ high_level_qualifier }}.IDCAMS.OUTPUTD' 
-      # ignore_errors: true   
-      # register: zos_tso_command_result  
+    - name: Dataset clean-up.
+      zos_tso_command:
+           commands:
+               - delete '{{ high_level_qualifier }}.EXMPCAT.INPUT' 
+               - delete '{{ high_level_qualifier }}.EXMPCONF.INPUT'
+               - delete '{{ high_level_qualifier }}.IDCAMS.OUTPUTD' 
+      ignore_errors: true   
+      register: zos_tso_command_result  
 
-    # - name: DEBUG(-v) Response from Dataset clean-up.
-      # debug:
-        # msg: "{{ zos_tso_command_result }} with verbosity 1"
-        # verbosity: 1   
+    - name: DEBUG(-v) Response from Dataset clean-up.
+      debug:
+        msg: "{{ zos_tso_command_result }} with verbosity 1"
+        verbosity: 1   
