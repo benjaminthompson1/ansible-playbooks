@@ -122,7 +122,7 @@
 ###############################################################################
 
     - name: Delete zWIC files older than 5 days.
-      shell: "find /global/wic/S0W1 -type f -mtime +5 -exec rm {} \;"
+      shell: "find /global/wic/S0W1 -type f -mtime +5 -exec rm '{}' +"
       register: shell_result
 
     - name: DEBUG(-v) Response Delete zWIC files older than 5 days.
