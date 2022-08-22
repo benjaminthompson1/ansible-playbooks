@@ -1,0 +1,47 @@
+###############################################################################
+# Usage:
+#  ansible-playbook -i <inventory> <playbook>
+#
+# Example:
+#  ansible-playbook -i inventory base_jobcard.yml
+#  ansible-playbook -i inventory base_jobcard.yml -v
+###############################################################################
+---
+- hosts: s0w1 
+  collections:
+    - ibm.ibm_zos_core
+  gather_facts: no
+
+  vars:
+    adcd_ver: Z24C
+
+  environment: "{{ environment_vars }}"
+
+  tasks:
+    - name: Ping using zos_ping
+      zos_ping:
+      register: zos_ping_result
+
+    - name: Response from zos_ping
+      debug:
+        msg: "{{ zos_ping_result }}"
+
+###############################################################################
+# Usage:
+#  Copy ADCD.{{ adcd_ver }}.DBC.ISPPLIB(IBMPRODS) to USER.{{ adcd_ver }}.ISPPLIB(IBMPRODS)
+###############################################################################
+
+    - name: Copy ISPFPROC to ISPFPRDC; replace if it already exists.
+      zos_copy:
+        src: USER.{{ adcd_ver }}.PROCLIB(ISPFPROC)
+        dest: USER.{{ adcd_ver }}.PROCLIB(ISPFPRDC)
+        remote_src: true
+      register: zos_copy_result
+
+    - name: DEBUG(-v) Response from Copy ISPFPROC to ISPFPRDC.
+      debug:
+        msg: "{{ zos_copy_result }} with verbosity 1"
+        verbosity: 1
+
+
+
