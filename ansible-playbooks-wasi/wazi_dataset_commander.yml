@@ -31,17 +31,17 @@
 #  Copy ISPFPROC to ISPFPRDC; replace if it already exists
 ###############################################################################
 
-    - name: Copy ISPFPROC to ISPFPRDC; replace if it already exists.
-      zos_copy:
-        src: ADCD.{{ adcd_ver }}.PROCLIB(ISPFPROC)
-        dest: USER.{{ adcd_ver }}.PROCLIB(ISPFPRDC)
-        remote_src: true
-      register: zos_copy_result
+#    - name: Copy ISPFPROC to ISPFPRDC; replace if it already exists.
+#      zos_copy:
+#        src: ADCD.{{ adcd_ver }}.PROCLIB(ISPFPROC)
+#        dest: USER.{{ adcd_ver }}.PROCLIB(ISPFPRDC)
+#        remote_src: true
+#      register: zos_copy_result
 
-    - name: DEBUG(-v) Response from Copy ISPFPROC to ISPFPRDC.
-      debug:
-        msg: "{{ zos_copy_result }} with verbosity 1"
-        verbosity: 1
+#    - name: DEBUG(-v) Response from Copy ISPFPROC to ISPFPRDC.
+#      debug:
+#        msg: "{{ zos_copy_result }} with verbosity 1"
+#        verbosity: 1
 
 ###############################################################################
 # Usage:
