@@ -3,8 +3,8 @@
 #  ansible-playbook -i <inventory> <playbook>
 #
 # Example:
-#  ansible-playbook -i inventory base_jobcard.yml
-#  ansible-playbook -i inventory base_jobcard.yml -v
+#  ansible-playbook -i inventory wasi_dataset_commander.yml
+#  ansible-playbook -i inventory wasi_dataset_commander.yml -v
 ###############################################################################
 ---
 - hosts: s0w1 
@@ -28,12 +28,12 @@
 
 ###############################################################################
 # Usage:
-#  Copy ADCD.{{ adcd_ver }}.DBC.ISPPLIB(IBMPRODS) to USER.{{ adcd_ver }}.ISPPLIB(IBMPRODS)
+#  Copy ISPFPROC to ISPFPRDC; replace if it already exists
 ###############################################################################
 
     - name: Copy ISPFPROC to ISPFPRDC; replace if it already exists.
       zos_copy:
-        src: USER.{{ adcd_ver }}.PROCLIB(ISPFPROC)
+        src: ADCD.{{ adcd_ver }}.PROCLIB(ISPFPROC)
         dest: USER.{{ adcd_ver }}.PROCLIB(ISPFPRDC)
         remote_src: true
       register: zos_copy_result
@@ -43,5 +43,23 @@
         msg: "{{ zos_copy_result }} with verbosity 1"
         verbosity: 1
 
+###############################################################################
+# Usage:
+#  Insert STEPLIB DD in ISPFPRDS
+###############################################################################
 
+    - name: Insert STEPLIB DD in ISPFPRDS.
+      zos_blockinfile:
+        src: USER.{{ adcd_ver }}.PARMLIB(ISPFPRDC)
+        marker: "/* {mark} ANSIBLE MANAGED BLOCK */"
+        insertafter: "//             PARM='%ISPFCL'"
+        block: |
+          //STEPLIB  DD  DISP=SHR,DSN=IQI910.SIQILPA 
+          //         DD  DISP=SHR,DSN=IQI910.SIQILOAD
+      register: zos_blockinfile_result
+
+    - name: DEBUG(-v) Response from Insert STEPLIB DD in ISPFPRDS.
+      debug:
+        msg: "{{ zos_blockinfile_result }} with verbosity 1"
+        verbosity: 1
 
