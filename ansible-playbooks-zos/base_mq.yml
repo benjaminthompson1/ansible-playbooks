@@ -60,6 +60,21 @@
 
 ###############################################################################
 # Usage:
+#  Operator command to stop QMGR CSQ9
+###############################################################################
+
+    - name: Stop QMGR CSQ9.
+      zos_operator:
+        cmd: "%CSQ9 STOP QMGR"
+      register: zos_operator_result
+
+    - name: DEBUG(-v) Response from Stop QMGR CSQ9.
+      debug:
+        msg: "{{ zos_operator_result }} with verbosity 1"
+        verbosity: 1
+
+###############################################################################
+# Usage:
 #  Submit CSQ4ZPRM and wait for the job to finish
 ###############################################################################
 
@@ -94,3 +109,27 @@
         msg: "{{ zos_lineinfile_result }} with verbosity 1"
         verbosity: 1
       
+###############################################################################
+# Usage:
+#  Operator command to start QMGR and CHINIT for CSQ9
+###############################################################################
+
+    - name: Star QMGR CSQ9.
+      zos_operator:
+        cmd: "%CSQ9 START QMGR"
+      register: zos_operator_result
+
+    - name: DEBUG(-v) Response from Start QMGR CSQ9.
+      debug:
+        msg: "{{ zos_operator_result }} with verbosity 1"
+        verbosity: 1
+
+    - name: Star CHINIT CSQ9.
+      zos_operator:
+        cmd: "%CSQ9 START CHINIT"
+      register: zos_operator_result
+
+    - name: DEBUG(-v) Response from Start CHINIT CSQ9.
+      debug:
+        msg: "{{ zos_operator_result }} with verbosity 1"
+        verbosity: 1
