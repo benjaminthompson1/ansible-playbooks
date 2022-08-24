@@ -1,0 +1,95 @@
+###############################################################################
+# Usage:
+#  ansible-playbook -i <inventory> <playbook>
+#
+# Example:
+#  ansible-playbook -i inventory base_mq.yml
+#  ansible-playbook -i inventory base_mq.yml -v
+###############################################################################
+---
+- hosts: ben_s0w1 
+  collections:
+    - ibm.ibm_zos_core
+  gather_facts: no
+
+  vars:
+    mq_ver: CSQ920
+
+  environment: "{{ environment_vars }}"
+
+  tasks:
+    - name: Ping using zos_ping
+      zos_ping:
+      register: zos_ping_result
+
+    - name: Response from zos_ping
+      debug:
+        msg: "{{ zos_ping_result }}"
+
+###############################################################################
+# Usage:
+#  Alter the following parameters in CSQ4ZPRM
+#  SMFACCT=YES
+#  SMFSTAT=YES 
+###############################################################################
+
+    - name: Update CSQ4ZPRM to SMFACCT=YES.
+      zos_lineinfile:
+        src: {{ mq_ver }}.SVSC.CUSTOM.INSTALL(CSQ4ZPRM)
+        regexp: '^               SMFACCT=NO,'
+        line: '               SMFACCT=YES,          GATHER SMF ACCOUNTING             X'
+      register: zos_lineinfile_result
+
+    - name: DEBUG(-v) Response from Update CSQ4ZPRM to SMFACCT=YES.
+      debug:
+        msg: "{{ zos_lineinfile_result }} with verbosity 1"
+        verbosity: 1
+
+    - name: Update CSQ4ZPRM to SMFSTAT=YES.
+      zos_lineinfile:
+        src: {{ mq_ver }}.SVSC.CUSTOM.INSTALL(CSQ4ZPRM)
+        regexp: '^               SMFSTAT=NO,'
+        line: '               SMFSTAT=YES,          GATHER SMF STATS                  X'
+      register: zos_lineinfile_result
+
+    - name: DEBUG(-v) Response from Update CSQ4ZPRM to SMFSTAT=YES.
+      debug:
+        msg: "{{ zos_lineinfile_result }} with verbosity 1"
+        verbosity: 1
+
+###############################################################################
+# Usage:
+#  Submit CSQ4ZPRM and wait for the job to finish
+###############################################################################
+
+    - name: Submit CSQ4ZPRM and wait for the job to finish.
+      zos_job_submit:
+        src: "{{ mq_ver }}.SVSC.CUSTOM.INSTALL(CSQ4ZPRM)"
+        location: DATA_SET
+        wait: true
+        wait_time_s: 120
+      register: zos_job_submit_result
+
+    - name: DEBUG(-v) Response Submit CSQ4ZPRM and wait for the job to finish.
+      debug:
+        msg: "{{ zos_job_submit_result }} with verbosity 1"
+        verbosity: 1
+
+###############################################################################
+# Usage:
+#  Alter the following parameters in CSQ4INYG
+#  PSMODE( ENABLED )
+###############################################################################
+
+    - name: Update CSQ4ZPRM to PSMODE( ENABLED ).
+      zos_lineinfile:
+        src: {{ mq_ver }}.CSQ9.SCSQPROC(CSQ4INYG)
+        regexp: '^         PSMODE'
+        line: '         PSMODE( ENABLED ) +'
+      register: zos_lineinfile_result
+
+    - name: DEBUG(-v) Response from Update CSQ4ZPRM to PSMODE( ENABLED ).
+      debug:
+        msg: "{{ zos_lineinfile_result }} with verbosity 1"
+        verbosity: 1
+      
