@@ -36,7 +36,7 @@
 
     - name: Update CSQ4ZPRM to SMFACCT=YES.
       zos_lineinfile:
-        src: {{ mq_CSQ4ZPRM }}
+        src: "{{ mq_CSQ4ZPRM }}"
         regexp: '^               SMFACCT=NO,'
         line: '               SMFACCT=YES,          GATHER SMF ACCOUNTING             X'
       register: zos_lineinfile_result
@@ -48,7 +48,7 @@
 
     - name: Update CSQ4ZPRM to SMFSTAT=YES.
       zos_lineinfile:
-        src: {{ mq_CSQ4ZPRM }}
+        src: "{{ mq_CSQ4ZPRM }}"
         regexp: '^               SMFSTAT=NO,'
         line: '               SMFSTAT=YES,          GATHER SMF STATS                  X'
       register: zos_lineinfile_result
@@ -65,7 +65,7 @@
 
     - name: Submit CSQ4ZPRM and wait for the job to finish.
       zos_job_submit:
-        src: {{ mq_CSQ4ZPRM }}
+        src: "{{ mq_CSQ4ZPRM }}"
         location: DATA_SET
         wait: true
         wait_time_s: 120
@@ -84,7 +84,7 @@
 
     - name: Update CSQ4ZPRM to PSMODE( ENABLED ).
       zos_lineinfile:
-        src: {{ mq_CSQ4INYG }}
+        src: "{{ mq_CSQ4INYG }}"
         regexp: '^         PSMODE'
         line: '         PSMODE( ENABLED ) +'
       register: zos_lineinfile_result
