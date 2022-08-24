@@ -276,22 +276,6 @@
 
 ###############################################################################
 # Usage: 
-#  Transfer cics-egui-CSD.txt to z/OS LPAR
-###############################################################################
-
-    - name: Copy cics-egui-CDS.txt to z/OS LPAR.
-      copy: 
-        src: cics-egui-CSD.txt
-        dest: "/S0W1/tmp/cics-egui-CSD.txt"
-      register: copy_result
-
-    - name: Response from Copy cics-egui-CSD.txt to z/OS LPAR.
-      debug:
-        msg: "{{ copy_result }}"
-        verbosity: 1       
-
-###############################################################################
-# Usage: 
 #  submit CICS system definition for zOffice
 ###############################################################################
      
