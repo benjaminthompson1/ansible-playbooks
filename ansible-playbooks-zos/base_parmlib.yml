@@ -286,3 +286,21 @@
       debug:
         msg: "{{ zos_lineinfile_result }} with verbosity 1"
         verbosity: 1
+
+###############################################################################
+# Usage:
+#  Copy ADCD.{{ adcd_ver }}.PARMLIB(IEFSSNDB) to USER.{{ adcd_ver }}.PARMLIB(IEFSSNDB)
+#  Needed for Omegamon implementation 
+###############################################################################
+
+    - name: Copy IEFSSNDB from ADCD to USER; replace if it already exists.
+      zos_copy:
+        src: ADCD.{{ adcd_ver }}.PARMLIB(IEFSSNDB)
+        dest: USER.{{ adcd_ver }}.PARMLIB(IEFSSNDB)
+        remote_src: true
+      register: zos_copy_result
+
+    - name: DEBUG(-v) Response from Copy IEFSSNDB from ADCD to USER.
+      debug:
+        msg: "{{ zos_copy_result }} with verbosity 1"
+        verbosity: 1
