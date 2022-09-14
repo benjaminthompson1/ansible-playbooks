@@ -1,0 +1,52 @@
+###############################################################################
+# Usage:
+#  ansible-playbook -i <inventory> <playbook>
+#
+# Example:
+#  ansible-playbook -i inventory zos_ping.yaml
+#  ansible-playbook -i inventory zos_ping.yaml -v
+#  ansible-playbook -i inventory zos_ping.yaml -vv
+#  ansible-playbook -i inventory zos_ping.yaml -e "boolean_debug=true"
+#  ansible-playbook -i inventory zos_ping.yaml -e "enable_debug=yes"
+###############################################################################
+---
+- hosts: s0w1
+  collections:
+    - ibm.ibm_zos_core
+  gather_facts: no
+  vars:
+    boolean_debug: none
+    enable_debug: none
+
+  tasks:
+
+    # ##########################################################################
+    # zos_ping , note the connection ibm.ibm_zos_core.zos_ssh
+    # ##########################################################################
+    - name: Ping using zos_ping
+      zos_ping:
+      register: zos_ping_result
+
+    - name: Response from zos_ping
+      debug:
+        msg: "{{ zos_ping_result }}" 
+
+    - name: Response from zos_ping
+      debug:
+        msg: "{{ zos_ping_result }} with verbosity 1"
+        verbosity: 1
+
+    - name: Response from zos_ping
+      debug:
+        msg: "{{ zos_ping_result }} with verbosity 2"
+        verbosity: 2
+
+    - name: Response from zos_ping
+      debug:
+        msg: "{{ zos_ping_result }} with boolean_debug = {{ boolean_debug }}"
+      when: boolean_debug is defined and (boolean_debug | bool)
+
+    - name: Response from zos_ping
+      debug:
+        msg: "{{ zos_ping_result }} with boolean_debug = {{ enable_debug }} "
+      when: enable_debug is defined and enable_debug == "yes"
