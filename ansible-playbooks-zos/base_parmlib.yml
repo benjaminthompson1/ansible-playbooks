@@ -304,3 +304,21 @@
       debug:
         msg: "{{ zos_copy_result }} with verbosity 1"
         verbosity: 1
+
+###############################################################################
+# Usage:
+#  Copy ADCD.{{ adcd_ver }}.PARMLIB(IEASYM00) to USER.{{ adcd_ver }}.PARMLIB(IEASYM00)
+#  Needed for Omegamon implementation 
+###############################################################################
+
+    - name: Copy IEASYM00 from ADCD to USER; replace if it already exists.
+      zos_copy:
+        src: ADCD.{{ adcd_ver }}.PARMLIB(IEASYM00)
+        dest: USER.{{ adcd_ver }}.PARMLIB(IEASYM00)
+        remote_src: true
+      register: zos_copy_result
+
+    - name: DEBUG(-v) Response from Copy IEASYM00 from ADCD to USER.
+      debug:
+        msg: "{{ zos_copy_result }} with verbosity 1"
+        verbosity: 1
