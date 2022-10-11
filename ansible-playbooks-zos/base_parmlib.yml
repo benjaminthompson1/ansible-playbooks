@@ -322,3 +322,21 @@
       debug:
         msg: "{{ zos_copy_result }} with verbosity 1"
         verbosity: 1
+
+###############################################################################
+# Usage:
+#  Copy ADCD.{{ adcd_ver }}.PARMLIB(IZUPRMAS) to USER.{{ adcd_ver }}.PARMLIB(IZUPRMAS)
+#  zOSMF PARMLIB IZUPRMAS - needed for new certificate and keyring 
+###############################################################################
+
+    - name: Copy IZUPRMAS from ADCD to USER; replace if it already exists.
+      zos_copy:
+        src: ADCD.{{ adcd_ver }}.PARMLIB(IZUPRMAS)
+        dest: USER.{{ adcd_ver }}.PARMLIB(IZUPRMAS)
+        remote_src: true
+      register: zos_copy_result
+
+    - name: DEBUG(-v) Response from Copy IZUPRMAS from ADCD to USER.
+      debug:
+        msg: "{{ zos_copy_result }} with verbosity 1"
+        verbosity: 1
