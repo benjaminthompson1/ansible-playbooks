@@ -28,62 +28,6 @@
 
 ###############################################################################
 # Usage:
-#  Copy ADCD.{{ adcd_ver }}.PARMLIB(VATLSTDB) to USER.{{ adcd_ver }}.PARMLIB(VATLSTDB)
-#  Alter VATLSTDB to use WORK* volumes
-#  Copy ADCD.{{ adcd_ver }}.PARMLIB(VATLST00) to USER.{{ adcd_ver }}.PARMLIB(VATLST00)
-#  Alter VATLST00 to use WORK* volumes
-###############################################################################
-
-    - name: Copy VATLSTDB from ADCD to USER; replace if it already exists.
-      zos_copy:
-        src: ADCD.{{ adcd_ver }}.PARMLIB(VATLSTDB)
-        dest: USER.{{ adcd_ver }}.PARMLIB(VATLSTDB)
-        remote_src: true
-      register: zos_copy_result
-
-    - name: DEBUG(-v) Response from Copy VATLSTDB from ADCD to USER.
-      debug:
-        msg: "{{ zos_copy_result }} with verbosity 1"
-        verbosity: 1
-
-    - name: Add WORK* Esoteric Devices VATLSTDB.
-      zos_lineinfile:
-        src: USER.{{ adcd_ver }}.PARMLIB(VATLSTDB)
-        insertbefore: EOF
-        line: 'WORK* ,0,0,3390    ,Y'
-      register: zos_lineinfile_result
-
-    - name: DEBUG(-v) Response from Add WORK* Esoteric Devices VATLSTDB.
-      debug:
-        msg: "{{ zos_lineinfile_result }} with verbosity 1"
-        verbosity: 1
-
-    - name: Copy VATLST00 from ADCD to USER; replace if it already exists.
-      zos_copy:
-        src: ADCD.{{ adcd_ver }}.PARMLIB(VATLST00)
-        dest: USER.{{ adcd_ver }}.PARMLIB(VATLST00)
-        remote_src: true
-      register: zos_copy_result
-
-    - name: DEBUG(-v) Response from Copy VATLST00 from ADCD to USER.
-      debug:
-        msg: "{{ zos_copy_result }} with verbosity 1"
-        verbosity: 1
-
-    - name: Add WORK* Esoteric Devices to VATLST00.
-      zos_lineinfile:
-        src: USER.{{ adcd_ver }}.PARMLIB(VATLST00)
-        insertbefore: EOF
-        line: 'WORK* ,0,0,3390    ,Y'
-      register: zos_lineinfile_result
-
-    - name: DEBUG(-v) Response from Add WORK* Esoteric Devices to VATLST00.
-      debug:
-        msg: "{{ zos_lineinfile_result }} with verbosity 1"
-        verbosity: 1
-
-###############################################################################
-# Usage:
 #  Copy ADCD.{{ adcd_ver }}.PARMLIB(CLOCK00) to USER.{{ adcd_ver }}.PARMLIB(CLOCK00)
 #  Alter CLOCK00 to use Canberra Time
 ###############################################################################
