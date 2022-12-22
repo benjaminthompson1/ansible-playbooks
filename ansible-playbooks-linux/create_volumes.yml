@@ -10,19 +10,19 @@
 - hosts: rhel
   tasks:
     - name: Create user0a volume 3390-27
-      command: alcckd /home/ibmsys1/volumes-z25a/user0a -d3390-27
+      command: alcckd /home/ibmsys1/volumes-z25c/user0a -d3390-27
 
     - name: Create user0b volume 3390-27
-      command: alcckd /home/ibmsys1/volumes-z25a/user0b -d3390-27
+      command: alcckd /home/ibmsys1/volumes-z25c/user0b -d3390-27
 
     - name: Create user0c volume 3390-27
-      command: alcckd /home/ibmsys1/volumes-z25a/user0c -d3390-27
+      command: alcckd /home/ibmsys1/volumes-z25c/user0c -d3390-27
 
     - name: Create user0d volume 3390-27
-      command: alcckd /home/ibmsys1/volumes-z25a/user0d -d3390-27
+      command: alcckd /home/ibmsys1/volumes-z25c/user0d -d3390-27
 
     - name: Create a5zcx2 volume 3390-27
-      command: alcckd /home/ibmsys1/volumes-z25a/a5zcx2 -d3390-27
+      command: alcckd /home/ibmsys1/volumes-z25c/a5zcx2 -d3390-27
 
     - name: Create work0a volume 3390-9
-      command: alcckd /home/ibmsys1/volumes-z25a/work0a -d3390-9
+      command: alcckd /home/ibmsys1/volumes-z25c/work0a -d3390-9
