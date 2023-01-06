@@ -1,11 +1,11 @@
-PYZ: "/usr/lpp/IBM/cyp/v3r9/pyz"
+PYZ: "/usr/lpp/IBM/cyp/v3r10/pyz"
 ZOAU: "/usr/lpp/IBM/zoautil"
 
 ################################################################################
 # Do not configure, variable substituion will correctly set the
 # variable`ansible_python_interpreter`
 ################################################################################
-ansible_python_interpreter: "{{ PYZ }}/bin/python3.9"
+ansible_python_interpreter: "{{ PYZ }}/bin/python3.10"
 
 ################################################################################
 # Enviroment variables for all z/OS managed nodes (target) that do not need
