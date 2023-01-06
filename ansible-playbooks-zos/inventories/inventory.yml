@@ -4,7 +4,9 @@ zsystems:
     ben_s0w1:
       ansible_host: 10.1.1.2
       ansible_user: ibmuser
-      ansible_ssh_private_key_file: ~/.ssh/z25a
+      ansible_password: sys1
+      ansible_port: 65522
+#     ansible_ssh_private_key_file: ~/.ssh/z25a
 
     neale_s0w1:
       ansible_host: 192.168.1.191
