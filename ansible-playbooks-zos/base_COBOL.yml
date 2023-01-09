@@ -48,7 +48,7 @@
 
     - name: Copy IGYQCB from IGY630 to USER; replace if it already exists.
       zos_copy:
-        src: {{ cobol_hlq }}.SIGYPROC(IGYQCB)
+        src: "{{ cobol_hlq }}.SIGYPROC(IGYQCB)"
         dest: USER.{{ adcd_ver }}.PROCLIB(IGYQCB)
         remote_src: true
       register: zos_copy_result
@@ -60,7 +60,7 @@
 
     - name: Copy IGYQCBG from IGY630 to USER; replace if it already exists.
       zos_copy:
-        src: {{ cobol_hlq }}.SIGYPROC(IGYQCBG)
+        src: "{{ cobol_hlq }}.SIGYPROC(IGYQCBG)"
         dest: USER.{{ adcd_ver }}.PROCLIB(IGYQCBG)
         remote_src: true
       register: zos_copy_result
