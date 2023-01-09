@@ -207,6 +207,31 @@
         msg: "{{ zos_lineinfile_result }} with verbosity 1"
         verbosity: 1
 
+    - name: Comment out S IMS15RL1.
+      zos_lineinfile:
+        src: USER.{{ adcd_ver }}.PARMLIB(VTAMALL)
+        regexp: '^S IMS15RL1'
+        line: '/* S IMS15RL1 */'
+      register: zos_lineinfile_result
+
+    - name: DEBUG(-v) Response from Comment out S IMS15RL1.
+      debug:
+        msg: "{{ zos_lineinfile_result }} with verbosity 1"
+        verbosity: 1
+
+    - name: Comment out S IMS15CR1.
+      zos_lineinfile:
+        src: USER.{{ adcd_ver }}.PARMLIB(VTAMALL)
+        regexp: '^S IMS15CR1'
+        line: '/* S IMS15CR1 */'
+      register: zos_lineinfile_result
+
+    - name: DEBUG(-v) Response from Comment out S IMS15CR1.
+      debug:
+        msg: "{{ zos_lineinfile_result }} with verbosity 1"
+        verbosity: 1
+
+
 ###############################################################################
 # Usage:
 #  Copy ADCD.{{ adcd_ver }}.PARMLIB(SHUTALL) to USER.{{ adcd_ver }}.PARMLIB(SHUTALL)
@@ -233,30 +258,6 @@
       register: zos_lineinfile_result
 
     - name: DEBUG(-v) Response from Add P FTPD to SHUTALL.
-      debug:
-        msg: "{{ zos_lineinfile_result }} with verbosity 1"
-        verbosity: 1
-
-    - name: Comment out S IMS15RL1.
-      zos_lineinfile:
-        src: USER.{{ adcd_ver }}.PARMLIB(IEASYSAL)
-        regexp: '^S IMS15RL1'
-        line: '/* S IMS15RL1 */'
-      register: zos_lineinfile_result
-
-    - name: DEBUG(-v) Response from Comment out S IMS15RL1.
-      debug:
-        msg: "{{ zos_lineinfile_result }} with verbosity 1"
-        verbosity: 1
-
-    - name: Comment out S IMS15CR1.
-      zos_lineinfile:
-        src: USER.{{ adcd_ver }}.PARMLIB(IEASYSAL)
-        regexp: '^S IMS15CR1'
-        line: '/* S IMS15CR1 */'
-      register: zos_lineinfile_result
-
-    - name: DEBUG(-v) Response from Comment out S IMS15CR1.
       debug:
         msg: "{{ zos_lineinfile_result }} with verbosity 1"
         verbosity: 1
