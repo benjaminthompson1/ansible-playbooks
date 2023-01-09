@@ -256,7 +256,7 @@
         line: '/* S IMS15CR1 */'
       register: zos_lineinfile_result
 
-    - name: DEBUG(-v) Response from Comment out S IMS15RL1.
+    - name: DEBUG(-v) Response from Comment out S IMS15CR1.
       debug:
         msg: "{{ zos_lineinfile_result }} with verbosity 1"
         verbosity: 1
