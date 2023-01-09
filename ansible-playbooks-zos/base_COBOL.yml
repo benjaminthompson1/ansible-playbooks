@@ -13,7 +13,8 @@
   gather_facts: no
 
   vars:
-    adcd_ver: Z25A
+    adcd_ver: Z25C
+    cobol_hlq: IGY640
 
   environment: "{{ environment_vars }}"
 
@@ -28,14 +29,14 @@
 
 ###############################################################################
 # Usage:
-#  Copy IGY630.SIGYPROC(IGYQC) to USER.{{ adcd_ver }}.PROCLIB(IGYQC)
-#  Copy IGY630.SIGYPROC(IGYQCB) to USER.{{ adcd_ver }}.PROCLIB(IGYQCB)
-#  Copy IGY630.SIGYPROC(IGYQCBG) to USER.{{ adcd_ver }}.PROCLIB(IGYQCBG)
+#  Copy {{ cobol_hlq }}.SIGYPROC(IGYQC) to USER.{{ adcd_ver }}.PROCLIB(IGYQC)
+#  Copy {{ cobol_hlq }}.SIGYPROC(IGYQCB) to USER.{{ adcd_ver }}.PROCLIB(IGYQCB)
+#  Copy {{ cobol_hlq }}.SIGYPROC(IGYQCBG) to USER.{{ adcd_ver }}.PROCLIB(IGYQCBG)
 ###############################################################################
 
     - name: Copy IGYQC from IGY630 to USER; replace if it already exists.
       zos_copy:
-        src: IGY630.SIGYPROC(IGYQC)
+        src: {{ cobol_hlq }}.SIGYPROC(IGYQC)
         dest: USER.{{ adcd_ver }}.PROCLIB(IGYQC)
         remote_src: true
       register: zos_copy_result
@@ -47,7 +48,7 @@
 
     - name: Copy IGYQCB from IGY630 to USER; replace if it already exists.
       zos_copy:
-        src: IGY630.SIGYPROC(IGYQCB)
+        src: {{ cobol_hlq }}.SIGYPROC(IGYQCB)
         dest: USER.{{ adcd_ver }}.PROCLIB(IGYQCB)
         remote_src: true
       register: zos_copy_result
@@ -59,7 +60,7 @@
 
     - name: Copy IGYQCBG from IGY630 to USER; replace if it already exists.
       zos_copy:
-        src: IGY630.SIGYPROC(IGYQCBG)
+        src: {{ cobol_hlq }}.SIGYPROC(IGYQCBG)
         dest: USER.{{ adcd_ver }}.PROCLIB(IGYQCBG)
         remote_src: true
       register: zos_copy_result
