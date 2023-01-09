@@ -13,8 +13,8 @@
   gather_facts: no
 
   vars:
-    adcd_ver: Z25A
-    ckpt_volume: A5SYS1
+    adcd_ver: Z25C
+    ckpt_volume: C5SYS1
 
   environment: "{{ environment_vars }}"
 
