@@ -13,7 +13,7 @@
   gather_facts: no
 
   vars:
-    adcd_ver: Z25A
+    adcd_ver: Z25C
 
   environment: "{{ environment_vars }}"
 
@@ -28,12 +28,12 @@
 
 ###############################################################################
 # Usage:
-#  Copy ADCD.{{ adcd_ver }}.DBC.ISPPLIB(IBMPRODS) to USER.{{ adcd_ver }}.ISPPLIB(IBMPRODS)
+#  Copy ADCD.{{ adcd_ver }}.DBC.ISPPLIB(IBMPRODS) to USER.{{ adcd_ver }}.ISPPLIB(IBMPRODS) Db2 V13
 ###############################################################################
 
     - name: Copy IBMPRODS from ADCD to USER; replace if it already exists.
       zos_copy:
-        src: ADCD.{{ adcd_ver }}.DBC.ISPPLIB(IBMPRODS)
+        src: ADCD.{{ adcd_ver }}.DBD.ISPPLIB(IBMPRODS)
         dest: USER.{{ adcd_ver }}.ISPPLIB(IBMPRODS)
         remote_src: true
       register: zos_copy_result
