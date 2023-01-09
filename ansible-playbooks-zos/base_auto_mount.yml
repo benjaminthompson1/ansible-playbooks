@@ -88,7 +88,7 @@
       shell: |
          echo "name                             *" > /etc/u.map
          echo "type                             ZFS" >> /etc/u.map
-         echo "filesystem                       <uc_name>.&SYSNAME..ZFS" >> /etc/u.map
+         echo "filesystem                       OMVS.<uc_name>.&SYSNAME..ZFS" >> /etc/u.map
          echo "mode                             rdwr" >> /etc/u.map
          echo "duration                         30" >> /etc/u.map
          echo "delay                            10" >> /etc/u.map
@@ -100,3 +100,19 @@
         msg: "{{ zos_shell }} with verbosity 1"
         verbosity: 1
 
+###############################################################################
+# Usage:
+#  Define catalog ALIAS OMVS
+###############################################################################
+
+    - name: Define alias OMVS.
+      zos_tso_command:
+        commands:
+          - DEFINE ALIAS (NAME('OVMS') RELATE('USERCAT.{{ adcd_ver }}.USER'))
+      ignore_errors: true
+      register: zos_tso_command_result
+
+    - name: DEBUG(-v) Response from Define alias OMVS.
+      debug:
+        msg: "{{ zos_tso_command_result }} with verbosity 1"
+        verbosity: 1
