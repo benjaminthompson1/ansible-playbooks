@@ -13,7 +13,7 @@
   gather_facts: no
 
   vars:
-    adcd_ver: Z25A
+    adcd_ver: Z25C
 
   environment: "{{ environment_vars }}"
 
@@ -88,13 +88,13 @@
 
 ###############################################################################
 # Usage:
-#  Copy ADCD.{{ adcd_ver }}.PROCLIB(DBSPROCC) to USER.{{ adcd_ver }}.PROCLIB(DBSPROCC)
+#  Copy ADCD.{{ adcd_ver }}.PROCLIB(DBSPROCD) to USER.{{ adcd_ver }}.PROCLIB(DBSPROCD)
 ###############################################################################
 
     - name: Copy DBSPROCC from ADCD to USER; replace if it already exists.
       zos_copy:
-        src: ADCD.{{ adcd_ver }}.PROCLIB(DBSPROCC)
-        dest: USER.{{ adcd_ver }}.PROCLIB(DBSPROCC)
+        src: ADCD.{{ adcd_ver }}.PROCLIB(DBSPROCD)
+        dest: USER.{{ adcd_ver }}.PROCLIB(DBSPROCD)
         remote_src: true
       register: zos_copy_result
 
