@@ -108,7 +108,7 @@
 
     - name: Insert new dataset in DBSPROCD SYSEXEC DD.
       zos_lineinfile:
-        src: USER.{{ adcd_ver }}.PROCLIB(DBSPROCC)
+        src: USER.{{ adcd_ver }}.PROCLIB(DBSPROCD)
         insertafter: '^//SYSEXEC'
         line: '//         DD  DISP=SHR,DSN=USER.&SYSVER..SYSEXEC'
       register: zos_lineinfile_result
