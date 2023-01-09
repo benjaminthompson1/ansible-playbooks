@@ -36,7 +36,7 @@
 
     - name: Copy IGYQC from IGY630 to USER; replace if it already exists.
       zos_copy:
-        src: {{ cobol_hlq }}.SIGYPROC(IGYQC)
+        src: "{{ cobol_hlq }}.SIGYPROC(IGYQC)"
         dest: USER.{{ adcd_ver }}.PROCLIB(IGYQC)
         remote_src: true
       register: zos_copy_result
