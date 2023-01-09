@@ -31,6 +31,30 @@
 #  Update USER.{{ adcd_ver }}.PROCLIB(DBSPROCD) with dataset commander libraries
 ###############################################################################
 
+    - name: Add STEPLIB IQI910.SIQILPA.
+      zos_lineinfile:
+        src: USER.{{ adcd_ver }}.PROCLIB(DBSPROCD)
+        insertbefore: '^//SYSUADS'
+        line: '//STEPLIB  DD  DISP=SHR,DSN=IQI910.SIQILPA'
+      register: zos_lineinfile_result
+
+    - name: DEBUG(-v) Response from Add STEPLIB IQI910.SIQILPA.
+      debug:
+        msg: "{{ zos_lineinfile_result }} with verbosity 1"
+        verbosity: 1 
+
+    - name: Add STEPLIB IQI910.SIQILOAD.
+      zos_lineinfile:
+        src: USER.{{ adcd_ver }}.PROCLIB(DBSPROCD)
+        insertafter: '^//STEPLIB'
+        line: '//         DD  DISP=SHR,DSN=IQI910.SIQILOAD'
+      register: zos_lineinfile_result
+
+    - name: DEBUG(-v) Response from Add STEPLIB IQI910.SIQILOAD.
+      debug:
+        msg: "{{ zos_lineinfile_result }} with verbosity 1"
+        verbosity: 1 
+
     - name: Add ISPLLIB IQI910.SIQILOAD.
       zos_lineinfile:
         src: USER.{{ adcd_ver }}.PROCLIB(DBSPROCD)
@@ -115,6 +139,54 @@
         msg: "{{ zos_lineinfile_result }} with verbosity 1"
         verbosity: 1 
 
+    - name: Add IQIUT04 DD.
+      zos_lineinfile:
+        src: USER.{{ adcd_ver }}.PROCLIB(DBSPROCD)
+        insertafter: '^//IQITLIB'
+        line: '//IQIUT04  DD  DISP=NEW,UNIT=VIO,SPACE=(3,1), '
+      register: zos_lineinfile_result
+
+    - name: DEBUG(-v) Response from Add IQIUT04 DD.
+      debug:
+        msg: "{{ zos_lineinfile_result }} with verbosity 1"
+        verbosity: 1 
+
+    - name: Add IQIUT03 DD.
+      zos_lineinfile:
+        src: USER.{{ adcd_ver }}.PROCLIB(DBSPROCD)
+        insertafter: '^//IQITLIB'
+        line: '//IQIUT03  DD  DISP=NEW,UNIT=VIO,SPACE=(3,1), '
+      register: zos_lineinfile_result
+
+    - name: DEBUG(-v) Response from Add IQIUT03 DD.
+      debug:
+        msg: "{{ zos_lineinfile_result }} with verbosity 1"
+        verbosity: 1 
+
+    - name: Add IQIUTOT DD.
+      zos_lineinfile:
+        src: USER.{{ adcd_ver }}.PROCLIB(DBSPROCD)
+        insertafter: '^//IQITLIB'
+        line: '//IQIUTOT  DD  DISP=NEW,UNIT=SYSALLDA, '
+      register: zos_lineinfile_result
+
+    - name: DEBUG(-v) Response from Add IQIUTOT DD.
+      debug:
+        msg: "{{ zos_lineinfile_result }} with verbosity 1"
+        verbosity: 1 
+
+    - name: Add IQIUTOT DD.
+      zos_lineinfile:
+        src: USER.{{ adcd_ver }}.PROCLIB(DBSPROCD)
+        insertafter: '^//IQIUTOT'
+        line: '//         SPACE=(CYL,(2,2)),RECFM=FBA,LRECL=121,BLKSIZE=4840'
+      register: zos_lineinfile_result
+
+    - name: DEBUG(-v) Response from Add IQIUTOT DD.
+      debug:
+        msg: "{{ zos_lineinfile_result }} with verbosity 1"
+        verbosity: 1 
+
     - name: Add IQIUTIN DD.
       zos_lineinfile:
         src: USER.{{ adcd_ver }}.PROCLIB(DBSPROCD)
@@ -138,3 +210,4 @@
       debug:
         msg: "{{ zos_lineinfile_result }} with verbosity 1"
         verbosity: 1 
+
