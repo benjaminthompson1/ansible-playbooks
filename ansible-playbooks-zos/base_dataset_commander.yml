@@ -66,3 +66,75 @@
       debug:
         msg: "{{ zos_lineinfile_result }} with verbosity 1"
         verbosity: 1 
+
+    - name: Add ISPMLIB IQI910.SIQIMLIB.
+      zos_lineinfile:
+        src: USER.{{ adcd_ver }}.PROCLIB(DBSPROCD)
+        insertafter: '^//ISPMLIB'
+        line: '//         DD  DISP=SHR,DSN=IQI910.SIQIMLIB'
+      register: zos_lineinfile_result
+
+    - name: DEBUG(-v) Response from Add ISPMLIB IQI910.SIQIMLIB.
+      debug:
+        msg: "{{ zos_lineinfile_result }} with verbosity 1"
+        verbosity: 1 
+
+    - name: Add ISPPLIB IQI910.SIQIPLIB.
+      zos_lineinfile:
+        src: USER.{{ adcd_ver }}.PROCLIB(DBSPROCD)
+        insertafter: '^//ISPPLIB'
+        line: '//         DD  DISP=SHR,DSN=IQI910.SIQIPLIB'
+      register: zos_lineinfile_result
+
+    - name: DEBUG(-v) Response from Add ISPPLIB IQI910.SIQIPLIB.
+      debug:
+        msg: "{{ zos_lineinfile_result }} with verbosity 1"
+        verbosity: 1 
+
+    - name: Add ISPSLIB IQI910.SIQISLIB.
+      zos_lineinfile:
+        src: USER.{{ adcd_ver }}.PROCLIB(DBSPROCD)
+        insertafter: '^//ISPSLIB'
+        line: '//         DD  DISP=SHR,DSN=IQI910.SIQISLIB'
+      register: zos_lineinfile_result
+
+    - name: DEBUG(-v) Response from Add ISPSLIB IQI910.SIQISLIB.
+      debug:
+        msg: "{{ zos_lineinfile_result }} with verbosity 1"
+        verbosity: 1 
+
+    - name: Add IQITLIB DD.
+      zos_lineinfile:
+        src: USER.{{ adcd_ver }}.PROCLIB(DBSPROCD)
+        insertafter: '^//SDSFMENU'
+        line: '//IQITLIB  DD  DISP=SHR,DSN=IQI910.SIQITLIB'
+      register: zos_lineinfile_result
+
+    - name: DEBUG(-v) Response from Add IQITLIB DD.
+      debug:
+        msg: "{{ zos_lineinfile_result }} with verbosity 1"
+        verbosity: 1 
+
+    - name: Add IQIUTIN DD.
+      zos_lineinfile:
+        src: USER.{{ adcd_ver }}.PROCLIB(DBSPROCD)
+        insertafter: '^//IQITLIB'
+        line: '//IQIUTIN  DD  DISP=NEW,UNIT=VIO,'
+      register: zos_lineinfile_result
+
+    - name: DEBUG(-v) Response from Add IQIUTIN DD.
+      debug:
+        msg: "{{ zos_lineinfile_result }} with verbosity 1"
+        verbosity: 1 
+
+    - name: Add IQIUTIN DD.
+      zos_lineinfile:
+        src: USER.{{ adcd_ver }}.PROCLIB(DBSPROCD)
+        insertafter: '^//IQIUTIN'
+        line: '//         SPACE=(CYL,(1,1)),RECFM=FB,LRECL=80,BLKSIZE=4000'
+      register: zos_lineinfile_result
+
+    - name: DEBUG(-v) Response from Add IQIUTIN DD.
+      debug:
+        msg: "{{ zos_lineinfile_result }} with verbosity 1"
+        verbosity: 1 
