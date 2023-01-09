@@ -65,12 +65,12 @@
 ###############################################################################
 # Usage:
 #  Create empty file /etc/auto.master 
-#  /u directory is to be configured, along with the MapName file.
+#  /u/automount directory is to be configured, along with the MapName file.
 ###############################################################################
 
     - name: Add directory and MapName file.
       shell: |
-         echo "/u                /etc/u.map" > /etc/auto.master
+         echo "/u/automount      /etc/u.map" > /etc/auto.master
       register: zos_shell
 
     - name: DEBUG(-v) Response from Add directory and MapName file.
