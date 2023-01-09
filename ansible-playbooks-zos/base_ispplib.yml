@@ -28,7 +28,7 @@
 
 ###############################################################################
 # Usage:
-#  Copy ADCD.{{ adcd_ver }}.DBC.ISPPLIB(IBMPRODS) to USER.{{ adcd_ver }}.ISPPLIB(IBMPRODS) Db2 V13
+#  Copy ADCD.{{ adcd_ver }}.DBD.ISPPLIB(IBMPRODS) to USER.{{ adcd_ver }}.ISPPLIB(IBMPRODS) Db2 V13
 ###############################################################################
 
     - name: Copy IBMPRODS from ADCD to USER; replace if it already exists.
