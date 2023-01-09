@@ -85,6 +85,12 @@
                 MODE(READ)
                 NOAUTOMOVE
                 MOUNTPOINT('/usr/lpp/IBM/cyp')
+          /* IBM Python V3.9 */
+          MOUNT FILESYSTEM('CYP390.ZFS')
+                TYPE(ZFS)
+                MODE(READ)
+                NOAUTOMOVE
+                MOUNTPOINT('/usr/lpp/IBM/cyp/v3r9/')
           /* SMPE ZFS */ 
           MOUNT FILESYSTEM('SMPE.SMPNTS.ZFS')
                 TYPE(ZFS)
