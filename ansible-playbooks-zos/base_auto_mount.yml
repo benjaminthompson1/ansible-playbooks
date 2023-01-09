@@ -13,7 +13,7 @@
   gather_facts: no
 
   vars:
-    adcd_ver: Z25A
+    adcd_ver: Z25C
 
   environment: "{{ environment_vars }}"
 
