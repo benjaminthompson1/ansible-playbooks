@@ -1,0 +1,68 @@
+###############################################################################
+# Usage:
+#  ansible-playbook -i <inventory> <playbook>
+#
+# Example:
+#  ansible-playbook -i inventory base_dataset_commander.yml
+#  ansible-playbook -i inventory base_dataset_commander.yml -v
+###############################################################################
+---
+- hosts: ben_s0w1 
+  collections:
+    - ibm.ibm_zos_core
+  gather_facts: no
+
+  vars:
+    adcd_ver: Z25C
+
+  environment: "{{ environment_vars }}"
+
+  tasks:
+    - name: Ping using zos_ping
+      zos_ping:
+      register: zos_ping_result
+
+    - name: Response from zos_ping
+      debug:
+        msg: "{{ zos_ping_result }}"
+
+###############################################################################
+# Usage:
+#  Update USER.{{ adcd_ver }}.PROCLIB(DBSPROCD) with dataset commander libraries
+###############################################################################
+
+    - name: Add ISPLLIB IQI910.SIQILOAD.
+      zos_lineinfile:
+        src: USER.{{ adcd_ver }}.PROCLIB(DBSPROCD)
+        insertafter: '^//ISPLLIB'
+        line: '//         DD  DISP=SHR,DSN=IQI910.SIQILOAD'
+      register: zos_lineinfile_result
+
+    - name: DEBUG(-v) Response from Add ISPLLIB IQI910.SIQILOAD.
+      debug:
+        msg: "{{ zos_lineinfile_result }} with verbosity 1"
+        verbosity: 1 
+
+    - name: Add ISPLLIB IQI910.SIQILPA.
+      zos_lineinfile:
+        src: USER.{{ adcd_ver }}.PROCLIB(DBSPROCD)
+        insertafter: '^//ISPLLIB'
+        line: '//         DD  DISP=SHR,DSN=IQI910.SIQILPA'
+      register: zos_lineinfile_result
+
+    - name: DEBUG(-v) Response from Add ISPLLIB IQI910.SIQILPA.
+      debug:
+        msg: "{{ zos_lineinfile_result }} with verbosity 1"
+        verbosity: 1
+    
+    - name: Add SYSPROC IQI910.SIQICLIB.
+      zos_lineinfile:
+        src: USER.{{ adcd_ver }}.PROCLIB(DBSPROCD)
+        insertafter: '^//SYSPROC'
+        line: '//         DD  DISP=SHR,DSN=IQI910.SIQICLIB'
+      register: zos_lineinfile_result
+
+    - name: DEBUG(-v) Response from Add SYSPROC IQI910.SIQICLIB.
+      debug:
+        msg: "{{ zos_lineinfile_result }} with verbosity 1"
+        verbosity: 1 
