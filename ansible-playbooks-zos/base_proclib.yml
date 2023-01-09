@@ -88,23 +88,6 @@
 
 ###############################################################################
 # Usage:
-#  Copy ADCD.{{ adcd_ver }}.PROCLIB(DBSPROCC) to USER.{{ adcd_ver }}.PROCLIB(DBSPROCC) Db2 V12
-###############################################################################
-
-    - name: Copy DBSPROCC from ADCD to USER; replace if it already exists.
-      zos_copy:
-        src: ADCD.{{ adcd_ver }}.PROCLIB(DBSPROCC)
-        dest: USER.{{ adcd_ver }}.PROCLIB(DBSPROCC)
-        remote_src: true
-      register: zos_copy_result
-
-    - name: DEBUG(-v) Response from Copy DBSPROCC from ADCD to USER.
-      debug:
-        msg: "{{ zos_copy_result }} with verbosity 1"
-        verbosity: 1
-
-###############################################################################
-# Usage:
 #  Copy ADCD.{{ adcd_ver }}.PROCLIB(DBSPROCD) to USER.{{ adcd_ver }}.PROCLIB(DBSPROCD) Db2 V13
 ###############################################################################
 
