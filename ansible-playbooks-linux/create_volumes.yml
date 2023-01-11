@@ -21,7 +21,7 @@
     - name: Create user0d volume 3390-27
       command: alcckd /home/ibmsys1/volumes-z25c/user0d -d3390-27
 
-    - name: Create a5zcx2 volume 3390-27
+    - name: Create c5zcx2 volume 3390-27
       command: alcckd /home/ibmsys1/volumes-z25c/a5zcx2 -d3390-27
 
     - name: Create work0a volume 3390-9
