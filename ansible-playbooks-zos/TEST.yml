@@ -71,7 +71,7 @@
 #  Create Load the file into the VSAM EXMPCAT file
 ###############################################################################
    
-    - name: Load file into VSAM dataset
+    - name: Load file into VSAM EMPCAT file 
       zos_vsam:
         data_set: "{{ high_level_qualifier }}.EXMPLAPP.EXMPCAT"
         file: "/tmp/cics-egui-EXMPCAT.txt"
