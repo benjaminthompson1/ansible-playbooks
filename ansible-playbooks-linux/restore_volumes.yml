@@ -16,7 +16,7 @@
 
   tasks:
     - name: Restore the directory
-      ansible.posix.file:
+      ansible.posix.archive:
         path: "{{ backup_file }}"
         dest: "{{ dest_dir }}"
         state: unarchive
