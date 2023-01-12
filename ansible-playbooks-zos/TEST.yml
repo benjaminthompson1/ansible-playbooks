@@ -1,0 +1,78 @@
+###############################################################################
+# Usage:
+#  ansible-playbook -i <inventory> <playbook>
+#
+# Example:
+#  ansible-playbook -i inventory cics_egui.yml
+#  ansible-playbook -i inventory cics_egui.yml -v
+###############################################################################
+---
+- hosts: ben_s0w1 
+  collections:
+    - ibm.ibm_zos_core
+  gather_facts: no
+
+  vars:
+    adcd_ver: Z24C
+    high_level_qualifier: IBMUSER
+    cics_high_level_qualifier: DFH560
+
+  environment: "{{ environment_vars }}"
+
+  tasks:
+    - name: Ping using zos_ping
+      zos_ping:
+      register: zos_ping_result
+
+    - name: Response from zos_ping
+      debug:
+        msg: "{{ zos_ping_result }}"
+
+###############################################################################
+# Usage: 
+#  Transfer cics-egui-EXMPCAT.txt to z/OS LPAR
+###############################################################################
+
+    - name: Copy cics-egui-EXMPCAT.txt to z/OS LPAR.
+      copy: 
+        src: cics-egui-EXMPCAT.txt
+        dest: "/tmp/cics-egui-EXMPCAT.txt"
+      register: copy_result
+
+    - name: Response from Copy cics-egui-EXMPCAT.txt to z/OS LPAR.
+      debug:
+        msg: "{{ copy_result }}"
+        verbosity: 1        
+
+###############################################################################
+# Usage: 
+#  Create VSAM EXMPCAT file
+###############################################################################
+
+    - name: Create EXMPCAT VSAM file.
+      zos_data_set:
+        name: "{{ high_level_qualifier }}.EXMPLAPP.EXMPCAT"
+        type: ksds
+        space_primary: 1
+        space_secondary: 1
+        space_type: trk
+        key_length: 4
+        key_offset: 0
+        replace: yes
+      register: zos_data_set_result
+
+    - name: Response from Create EXMPCAT VSAM file.
+      debug:
+        msg: "{{ zos_data_set_result }}"
+        verbosity: 1
+
+###############################################################################
+# Usage: 
+#  Create Load the file into the VSAM EXMPCAT file
+###############################################################################
+   
+    - name: Load file into VSAM dataset
+      zos_vsam:
+        data_set: "{{ high_level_qualifier }}.EXMPLAPP.EXMPCAT"
+        file: "/tmp/cics-egui-EXMPCAT.txt"
+        type: load
