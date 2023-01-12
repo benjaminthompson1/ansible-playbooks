@@ -8,10 +8,14 @@
 ###############################################################################
 ---
 - hosts: rhel
+
+  vars:
+    src_dir: "/home/ibmsys1/volumes-z25c"
+
   tasks:
     - name: Archive z25c volumes
       archive:
-        path: /home/ibmsys1/volumes-z25c
+        path: "{{ src_dir }}"
         dest: "/home/ibmsys1/volumes-backup/volumes-z25c-{{ansible_date_time.date.replace('-','')}}.zip"
         format: zip
 

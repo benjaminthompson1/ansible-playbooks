@@ -10,14 +10,13 @@
 - hosts: rhel
 
   vars:
-#   backup_file: "/home/ibmsys1/volumes-z25c/volumes-z25c-20230111.zip"
-    backup_file: "/home/ibmsys1/transfers-zPDT/volumes-z25c-20230111.zip"
-    dest_dir: "/home/ibmsys1/volumes-z25c"
+    backup_file: "/home/ibmsys1/volumes-z25c/volumes-z25c-20230111.zip"
+#   dest_dir: "/home/ibmsys1/volumes-z25c"
+    dest_dir: "/home/ibmsys1/transfers-zPDT"
 
   tasks:
-    - name: Restore the directory
-      ansible.posix.archive:
-        path: "{{ backup_file }}"
+    - name: Unarchive z25c volumes
+      unarchive:
+        src: "{{ backup_file }}"
         dest: "{{ dest_dir }}"
-        state: unarchive
-        remote_src: true
+
