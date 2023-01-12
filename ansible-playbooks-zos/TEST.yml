@@ -66,24 +66,17 @@
         msg: "{{ zos_data_set_result }}"
         verbosity: 1
 
-    - name: Load file into VSAM EMPCAT file.
-      zos_vsam:
-        data_set: "{{ high_level_qualifier }}.EXMPLAPP.EXMPCAT"  
-        file: "/tmp/cics-egui-EXMPCAT.txt"
-        type: load
-      register: zos_vsam_set_result    
-
-    - name: Load file into VSAM EMPCAT file.
-      debug:
-        msg: "{{ zos_vsam_set_result }}"
-        verbosity: 1    
 ###############################################################################
 # Usage: 
-#  Create Load the file into the VSAM EXMPCAT file
+#  Copy the file into the VSAM EXMPCAT file
 ###############################################################################
-#   
-#    - name: Load file into VSAM EMPCAT file 
-#      zos_vsam:
-#        data_set: "{{ high_level_qualifier }}.EXMPLAPP.EXMPCAT"
-#        file: "/tmp/cics-egui-EXMPCAT.txt"
-#        type: load
+ 
+    - name: Copy the file into the VSAM EXMPCAT file
+      zos_tso_command:
+        command: "IDCAMS REPRO INFILE(/tmp/cics-egui-EXMPCAT.txt) OUTFILE({{ high_level_qualifier }}.EXMPLAPP.EXMPCAT)"
+      register: zos_tso_command_set_result
+
+    - name: Response from Create EXMPCAT VSAM file.
+      debug:
+        msg: "{{ zos_tso_command_set_result }}"
+        verbosity: 1
