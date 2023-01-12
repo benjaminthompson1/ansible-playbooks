@@ -10,7 +10,7 @@
 - hosts: rhel
 
   vars:
-    backup_file: "/home/ibmsys1/volumes-z25c/volumes-z25c-20230111.zip"
+    backup_file: "/home/ibmsys1/volumes-backup/volumes-z25c-20230111.zip"
 #   dest_dir: "/home/ibmsys1/volumes-z25c"
     dest_dir: "/home/ibmsys1/transfers-zPDT"
 
