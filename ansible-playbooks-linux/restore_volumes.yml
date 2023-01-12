@@ -1,0 +1,24 @@
+###############################################################################
+# Usage:
+#  ansible-playbook -i <inventory> <playbook>
+#
+# Example:
+#  ansible-playbook -i inventory restore_volumes.yml
+#  ansible-playbook -i inventory restore_volumes.yml -v
+###############################################################################
+---
+- hosts: rhel
+
+  vars:
+#   backup_file: "/home/ibmsys1/volumes-z25c/volumes-z25c-20230111.zip"
+    backup_file: "/home/ibmsys1/transfers-zPDT/volumes-z25c-20230111.zip"
+    dest_dir: "/home/ibmsys1/volumes-z25c"
+
+ tasks:
+  - name: Restore the directory
+    ansible.posix.file:
+      path: "{{ backup_file }}"
+      dest: "{{ dest_dir }}"
+      state: unarchive
+      remote_src: true
+
