@@ -71,15 +71,16 @@
 #  Copy the file into the VSAM EXMPCAT file
 ###############################################################################
  
-    - name: Copy OMVS file into VSAM dataset
+    - name: Copy OMVS file into VSAM dataset.
       zos_tso_command:
-        command: "ALLOC F(INPUT) DA('/tmp/cics-egui-EXMPCAT.txt') SHR"
-        command: "ALLOC F(OUTPUT) DA('{{ high_level_qualifier }}.EXMPLAPP.EXMPCAT') SHR"
-        command: "EXECIO * DISKR F(INPUT) (STEM INPUT. FINIS)"
-        command: "EXECIO * DISKW F(OUTPUT) (STEM INPUT. FINIS)"
+        commands:
+        - "ALLOC F(INPUT) DA('{{ high_level_qualifier }}.EXMPLAPP.EXMPCAT') SHR"
+        - "ALLOC F(OUTPUT) DA('{{ high_level_qualifier }}.EXMPLAPP.EXMPCAT') SHR"
+        - "EXECIO * DISKR F(INPUT) (STEM INPUT. FINIS)"
+        - "REPRO INFILE(INPUT) OUTFILE(OUTPUT) -"
       register: zos_tso_command_set_result
 
-    - name: Response from Create EXMPCAT VSAM file.
+    - name: Response from Copy OMVS file into VSAM dataset.
       debug:
         msg: "{{ zos_tso_command_set_result }}"
         verbosity: 1
