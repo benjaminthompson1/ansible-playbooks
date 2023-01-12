@@ -66,6 +66,17 @@
         msg: "{{ zos_data_set_result }}"
         verbosity: 1
 
+    - name: Load file into VSAM EMPCAT file.
+      zos_vsam:
+        data_set: "{{ high_level_qualifier }}.EXMPLAPP.EXMPCAT"  
+        file: "/tmp/cics-egui-EXMPCAT.txt"
+        type: load
+      register: zos_vsam_set_result    
+
+    - name: Load file into VSAM EMPCAT file.
+      debug:
+        msg: "{{ zos_vsam_set_result }}"
+        verbosity: 1    
 ###############################################################################
 # Usage: 
 #  Create Load the file into the VSAM EXMPCAT file
