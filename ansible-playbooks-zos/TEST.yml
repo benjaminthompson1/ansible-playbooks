@@ -74,7 +74,7 @@
     - name: Copy OMVS file into VSAM dataset.
       zos_tso_command:
         commands:
-        - "ALLOC F(INPUT) DA('/tmp/cics-egui-EXMPCAT.txt') SHR"
+        - "ALLOC F(INPUT) DA('/S0W1/tmp/cics-egui-EXMPCAT.txt') SHR"
         - "ALLOC F(OUTPUT) DA('{{ high_level_qualifier }}.EXMPLAPP.EXMPCAT') SHR"
         - "EXECIO * DISKR F(INPUT) (STEM INPUT. FINIS)"
         - "REPRO INFILE(INPUT) OUTFILE(OUTPUT) -"
