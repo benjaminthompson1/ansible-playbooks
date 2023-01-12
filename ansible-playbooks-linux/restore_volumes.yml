@@ -15,10 +15,9 @@
     dest_dir: "/home/ibmsys1/volumes-z25c"
 
   tasks:
-  - name: Restore the directory
-    ansible.posix.file:
-      path: "{{ backup_file }}"
-      dest: "{{ dest_dir }}"
-      state: unarchive
-      remote_src: true
-
+    - name: Restore the directory
+      ansible.posix.file:
+        path: "{{ backup_file }}"
+        dest: "{{ dest_dir }}"
+        state: unarchive
+        remote_src: true
