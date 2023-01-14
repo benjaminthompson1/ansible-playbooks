@@ -92,7 +92,7 @@
          echo "mode                             rdwr" >> /etc/u.map
          echo "duration                         30" >> /etc/u.map
          echo "delay                            10" >> /etc/u.map
-         echo "allocany space(1,1) cyl unit(disk) pathperm(775) euid ucat/u" >> /etc/u.map         
+         echo "allocany space(1,1) cyl unit(disk) pathperm(775) euid ucat" >> /etc/u.map         
       register: zos_shell
 
     - name: DEBUG(-v) Response from Add ZFS attributes.
