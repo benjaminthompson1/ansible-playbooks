@@ -139,7 +139,7 @@
       zos_lineinfile:
         src: USER.{{ adcd_ver }}.PARMLIB(IEASYSAL)
         insertafter: '^VIODSN='
-        line: 'LFAREA=(1M=(15%,0%),NOPROMPT), Z/OS LARGE FRAME SUPPORT'
+        line: 'LFAREA=(1M=(25%,0%),NOPROMPT), Z/OS LARGE FRAME SUPPORT'
       register: zos_lineinfile_result
 
     - name: DEBUG(-v) Response from Add IEASYSAL LFAREA parm.
