@@ -35,7 +35,7 @@
 
     - name: Submit DFH$ECA to create catalog data set and wait for the job to finish.
       zos_job_submit:
-        src: IBMUSER.GIT.JCL.CNTL(DFH\\$ECA)
+        src: "IBMUSER.GIT.JCL.CNTL(DFH$ECA)"
         location: DATA_SET
         wait: true
         wait_time_s: 60
@@ -48,7 +48,7 @@
 
     - name: Submit DFH$CNF to create configuration data set and wait for the job to finish.
       zos_job_submit:
-        src: IBMUSER.GIT.JCL.CNTL(DFH$ECNF)
+        src: "IBMUSER.GIT.JCL.CNTL(DFH$ECNF)"
         location: DATA_SET
         wait: true
         wait_time_s: 60
