@@ -27,251 +27,36 @@
     - name: Response from zos_ping
       debug:
         msg: "{{ zos_ping_result }}"
-
-###############################################################################
-# Usage: 
-#  Transfer cics-egui-EXMPCAT.txt to z/OS LPAR
-###############################################################################
-
-    - name: Copy cics-egui-EXMPCAT.txt to z/OS LPAR.
-      copy: 
-        src: cics-egui-EXMPCAT.txt
-        dest: "/tmp/cics-egui-EXMPCAT.txt"
-      register: copy_result
-
-    - name: Response from Copy cics-egui-EXMPCAT.txt to z/OS LPAR.
-      debug:
-        msg: "{{ copy_result }}"
-        verbosity: 1        
-
-###############################################################################
-# Usage: 
-#  Create sequential INPUT dataset
-###############################################################################
-
-    - name: Create INPUT dataset for EXMPCAT VSAM dataset.
-      zos_data_set:
-        name: "{{ high_level_qualifier }}.EXMPCAT.INPUT"
-        type: seq
-        space_primary: 1
-        space_secondary: 1
-        space_type: trk
-        record_format: fb
-        record_length: 80
-        replace: yes
-      register: zos_data_set_result
-
-    - name: Response from Create INPUT dataset for EXMPCAT VSAM dataset.
-      debug:
-        msg: "{{ zos_data_set_result }}"
-        verbosity: 1
-
-###############################################################################
-# Usage: 
-#  Copy cics-egui-EXMPCAT.txt to sequential INPUT dataset and convert encoding
-###############################################################################
-
-    - name: Copy cics-egui-EXMPCAT.txt to INPUT dataset and convert encoding.
-      zos_copy:
-        src: "/tmp/cics-egui-EXMPCAT.txt"
-        dest: "{{ high_level_qualifier }}.EXMPCAT.INPUT"
-        remote_src: true        
-        encoding:
-         from: UTF-8
-         to: IBM-1047       
-      register: zos_copy_result       
-
-    - name: DEBUG(-v) Response from Copy cics-egui-EXMPCAT.txt to INPUT dataset and convert encoding.
-      debug:
-        msg: "{{ zos_copy_result }} with verbosity 1"
-        verbosity: 1
-
-###############################################################################
-# Usage: 
-#  Create VSAM EXMPCAT file
-###############################################################################
-
-    - name: Create EXMPCAT VSAM file.
-      zos_data_set:
-        name: "{{ high_level_qualifier }}.EXMPLAPP.EXMPCAT"
-        type: ksds
-        space_primary: 1
-        space_secondary: 1
-        space_type: trk
-        key_length: 4
-        key_offset: 0
-        replace: yes
-      register: zos_data_set_result
-
-    - name: Response from Create EXMPCAT VSAM file.
-      debug:
-        msg: "{{ zos_data_set_result }}"
-        verbosity: 1
-
-###############################################################################
-# Usage: 
-#  Create IDCAMS SYSPRINT dataset
-###############################################################################
-
-    - name: Create IDCAMS SYSPRINT dataset.
-      zos_data_set:
-        name: "{{ high_level_qualifier }}.IDCAMS.OUTPUTD"
-        type: seq
-        space_primary: 1
-        space_secondary: 1
-        space_type: trk
-        record_format: vb
-        record_length: 134
-        replace: yes
-      register: zos_data_set_result
-
-    - name: Response from IDCAMS SYSPRINT dataset.
-      debug:
-        msg: "{{ zos_data_set_result }}"
-        verbosity: 1
-
-###############################################################################
-# Usage: 
-#  REPRO INPUT dataset to VSAM EXMPCAT file
-###############################################################################
-       
-    - name: IDCAMS REPRO EXMPCAT VSAM file.
-      zos_mvs_raw: 
-        program_name: idcams
-        auth: true
-        dds:
-          - dd_data_set:
-              dd_name: INDATA
-              data_set_name: "{{ high_level_qualifier }}.EXMPCAT.INPUT"
-              disposition: shr
-          - dd_data_set:
-              dd_name: OUTDATA
-              data_set_name: "{{ high_level_qualifier }}.EXMPLAPP.EXMPCAT"
-              disposition: shr
-          - dd_data_set:
-              dd_name: SYSPRINT
-              data_set_name: "{{ high_level_qualifier }}.IDCAMS.OUTPUTD"
-              disposition: shr
-          - dd_input:
-              dd_name: sysin
-              content: " REPRO INFILE(INDATA) OUTFILE(OUTDATA)"
-      register: zos_mvs_raw_result       
-
-    - name: DEBUG(-v) Response from IDCAMS REPRO EXMPCAT VSAM file.
-      debug:
-        msg: "{{ zos_mvs_raw_result }} with verbosity 1"
-        verbosity: 1
-
-###############################################################################
-# Usage: 
-#  Transfer cics-egui-EXMPCONF.txt to z/OS LPAR
-###############################################################################
-
-    - name: Copy cics-egui-EXMPCONF.txt to z/OS LPAR.
-      copy: 
-        src: cics-egui-EXMPCONF.txt
-        dest: "/tmp/cics-egui-EXMPCONF.txt"
-      register: copy_result
-
-    - name: Response from Copy cics-egui-EXMPCONF.txt to z/OS LPAR.
-      debug:
-        msg: "{{ copy_result }}"
-        verbosity: 1   
-
-###############################################################################
-# Usage: 
-#  Create sequential INPUT dataset
-###############################################################################
-
-    - name: Create INPUT dataset for EXMPCONF VSAM dataset.
-      zos_data_set:
-        name: "{{ high_level_qualifier }}.EXMPCONF.INPUT"
-        type: seq
-        space_primary: 1
-        space_secondary: 1
-        space_type: trk
-        record_format: fb
-        record_length: 80
-        replace: yes
-      register: zos_data_set_result
-
-    - name: Response from Create INPUT dataset for EXMPCONF VSAM dataset.
-      debug:
-        msg: "{{ zos_data_set_result }}"
-        verbosity: 1
-
-###############################################################################
-# Usage: 
-#  Copy cics-egui-EXMPCONF.txt to sequential INPUT dataset and convert encoding
-###############################################################################
-
-    - name: Copy cics-egui-EXMPCONF.txt to INPUT dataset and convert encoding.
-      zos_copy:
-        src: "/tmp/cics-egui-EXMPCONF.txt"
-        dest: "{{ high_level_qualifier }}.EXMPCONF.INPUT"
-        remote_src: true        
-        encoding:
-         from: UTF-8
-         to: IBM-1047       
-      register: zos_copy_result       
-
-    - name: DEBUG(-v) Response from Copy cics-egui-EXMPCONF.txt to INPUT dataset and convert encoding.
-      debug:
-        msg: "{{ zos_copy_result }} with verbosity 1"
-        verbosity: 1
-
-###############################################################################
-# Usage: 
-#  Create VSAM EXMPCONF file
-###############################################################################
-
-    - name: Create EXMPCONF VSAM file.
-      zos_data_set:
-        name: "{{ high_level_qualifier }}.EXMPLAPP.EXMPCONF"
-        type: ksds
-        space_primary: 1
-        space_secondary: 1
-        space_type: trk
-        key_length: 4
-        key_offset: 0
-        replace: yes
-      register: zos_data_set_result
-
-    - name: Response from Create EXMPCONF VSAM file.
-      debug:
-        msg: "{{ zos_data_set_result }}"
-        verbosity: 1
         
 ###############################################################################
 # Usage: 
-#  REPRO INPUT dataset to VSAM EXMPCONF file
+#  Creating and defining the VSAM data sets.
 ###############################################################################
 
-    - name: IDCAMS REPRO EXMPCONF VSAM file.
-      zos_mvs_raw: 
-        program_name: idcams
-        auth: true
-        dds:
-          - dd_data_set:
-              dd_name: INDATA
-              data_set_name: "{{ high_level_qualifier }}.EXMPCONF.INPUT"
-              disposition: shr
-          - dd_data_set:
-              dd_name: OUTDATA
-              data_set_name: "{{ high_level_qualifier }}.EXMPLAPP.EXMPCONF"
-              disposition: shr
-          - dd_data_set:
-              dd_name: SYSPRINT
-              data_set_name: "{{ high_level_qualifier }}.IDCAMS.OUTPUTD"
-              disposition: shr
-          - dd_input:
-              dd_name: sysin
-              content: " REPRO INFILE(INDATA) OUTFILE(OUTDATA)"
-      register: zos_mvs_raw_result       
+    - name: Submit DFH$ECA to create catalog data set and wait for the job to finish.
+      zos_job_submit:
+        src: IBMUSER.GIT.JCL.CNTL(DFH$ECA)
+        location: DATA_SET
+        wait: true
+        wait_time_s: 60
+      register: zos_job_submit_result 
 
-    - name: DEBUG(-v) Response from IDCAMS REPRO EXMPCONF VSAM file.
+    - name: DEBUG(-v) Response from Submit DFH$ECA to create catalog data set and wait for the job to finish.
       debug:
-        msg: "{{ zos_mvs_raw_result }} with verbosity 1"
+        msg: "{{ zos_job_submit_result }} with verbosity 1"
+        verbosity: 1
+
+    - name: Submit DFH$CNF to create configuration data set and wait for the job to finish.
+      zos_job_submit:
+        src: IBMUSER.GIT.JCL.CNTL(DFH$ECNF)
+        location: DATA_SET
+        wait: true
+        wait_time_s: 60
+      register: zos_job_submit_result 
+
+    - name: DEBUG(-v) Response from Submit DFH$CNF to create configuration data set and wait for the job to finish.
+      debug:
+        msg: "{{ zos_job_submit_result }} with verbosity 1"
         verbosity: 1
 
 ###############################################################################
@@ -279,7 +64,7 @@
 #  submit CICS system definition for zOffice
 ###############################################################################
      
-    - name: Submit long running PDS job, and wait for the job to finish
+    - name: Submit CICSCSD to create definition for zOffice and wait for the job to finish.
       zos_job_submit:
         src: IBMUSER.GIT.JCL.CNTL(CICSCSD)
         location: DATA_SET
@@ -287,26 +72,7 @@
         wait_time_s: 60
       register: zos_job_submit_result 
 
-    - name: DEBUG(-v) Response from Convert CSD JCL file to IBM-1047 and submit the job.
+    - name: DEBUG(-v) Response from Submit CICSCSD to create definition for zOffice and wait for the job to finish.
       debug:
         msg: "{{ zos_job_submit_result }} with verbosity 1"
         verbosity: 1
-
-###############################################################################
-# Usage: 
-#  Dataset clean-up
-###############################################################################
-
-    - name: Dataset clean-up.
-      zos_tso_command:
-           commands:
-               - delete '{{ high_level_qualifier }}.EXMPCAT.INPUT' 
-               - delete '{{ high_level_qualifier }}.EXMPCONF.INPUT'
-               - delete '{{ high_level_qualifier }}.IDCAMS.OUTPUTD' 
-      ignore_errors: true   
-      register: zos_tso_command_result  
-
-    - name: DEBUG(-v) Response from Dataset clean-up.
-      debug:
-        msg: "{{ zos_tso_command_result }} with verbosity 1"
-        verbosity: 1   
