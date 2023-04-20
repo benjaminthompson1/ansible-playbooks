@@ -1,0 +1,26 @@
+###############################################################################
+# Usage:
+#  ansible-playbook -i <inventory> <playbook>
+#
+# Example:
+#  ansible-playbook -i inventory fast_tcpip.yml
+#  ansible-playbook -i inventory fast_tcpip.yml -v
+###############################################################################
+---
+- hosts: p52
+  become: yes
+  tasks:
+
+    - name: Start MQ Docker container
+      docker_container:
+        name: QM1
+        image: icr.io/ibm-messaging/mq:latest
+        state: started
+        published_ports:
+          - "1414:1414"
+          - "9444:9443"
+        volumes:
+          - "qm1-data:/mnt/mqm"
+        env:
+          LICENSE: "accept"
+          MQ_APP_PASSWORD: "passw0rd"
