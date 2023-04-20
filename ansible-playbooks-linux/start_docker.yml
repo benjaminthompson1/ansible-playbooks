@@ -8,7 +8,6 @@
 ###############################################################################
 ---
 - hosts: p52
-  become: yes
   tasks:
 
     - name: Start MQ Docker container
