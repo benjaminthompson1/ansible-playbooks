@@ -97,3 +97,22 @@
       debug:
         msg: "{{ zos_operator_result }} with verbosity 1"
         verbosity: 1
+
+###############################################################################
+# Usage:
+#  Find and delete zWIC files grater than 30 days
+###############################################################################
+
+    - name: Find files older than 30 days
+      find:
+        paths: /global/zwic
+        age: 30d
+        recurse: yes
+      register: old_files
+    
+    - name: Delete old files
+      file:
+        path: "{{ item.path }}"
+        state: absent
+      with_items: "{{ old_files.files }}"
+
