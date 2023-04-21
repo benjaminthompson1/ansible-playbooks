@@ -23,7 +23,6 @@
         env:
           LICENSE: "accept"
           MQ_APP_PASSWORD: "passw0rd"
-        remove_on_exit: true
 
     - name: Start Jenkins Docker container
       docker_container:
@@ -35,4 +34,3 @@
           - "50000:50000"
         volumes:
           - "jenkins-data:/var/jenkins_home"
-        remove_on_exit: true
