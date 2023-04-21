@@ -30,3 +30,5 @@
         name: jenkins
         state: absent
 
+    - name: Stop dockerManageZdap script
+      shell: "/home/ibmsys1/docker-compose/bin/dockerManageZdap.sh down"
