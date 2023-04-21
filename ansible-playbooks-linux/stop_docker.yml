@@ -1,0 +1,32 @@
+###############################################################################
+# Usage:
+#  ansible-playbook -i <inventory> <playbook>
+#
+# Example:
+#  ansible-playbook -i inventory start_docker.yml
+#  ansible-playbook -i inventory start_docker.yml -v
+###############################################################################
+---
+- hosts: p52
+  tasks:
+
+    - name: Stop MQ Docker container
+      docker_container:
+        name: QM1
+        state: stopped
+
+    - name: Remove MQ Docker container
+      docker_container:
+        name: QM1
+        state: absent
+
+    - name: Stop Jenkins Docker container
+      docker_container:
+        name: jenkins
+        state: stopped
+
+    - name: Remove Jenkins Docker container
+      docker_container:
+        name: jenkins
+        state: absent
+

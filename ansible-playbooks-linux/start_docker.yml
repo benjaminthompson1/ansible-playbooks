@@ -3,8 +3,8 @@
 #  ansible-playbook -i <inventory> <playbook>
 #
 # Example:
-#  ansible-playbook -i inventory fast_tcpip.yml
-#  ansible-playbook -i inventory fast_tcpip.yml -v
+#  ansible-playbook -i inventory start_docker.yml
+#  ansible-playbook -i inventory start_docker.yml -v
 ###############################################################################
 ---
 - hosts: p52
