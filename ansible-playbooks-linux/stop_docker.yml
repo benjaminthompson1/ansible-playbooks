@@ -3,8 +3,8 @@
 #  ansible-playbook -i <inventory> <playbook>
 #
 # Example:
-#  ansible-playbook -i inventory start_docker.yml
-#  ansible-playbook -i inventory start_docker.yml -v
+#  ansible-playbook -i inventory stop_docker.yml
+#  ansible-playbook -i inventory stop_docker.yml -v
 ###############################################################################
 ---
 - hosts: p52
@@ -30,5 +30,5 @@
         name: jenkins
         state: absent
 
-    - name: Stop dockerManageZdap script
-      shell: "/home/ibmsys1/docker-compose/bin/dockerManageZdap.sh down"
+#    - name: Stop dockerManageZdap script
+#      shell: "/home/ibmsys1/docker-compose/bin/dockerManageZdap.sh down"
