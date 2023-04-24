@@ -1,0 +1,57 @@
+###############################################################################
+# Playbook: stop_containers_and_services.yml
+#
+# Purpose:
+#  This playbook stops and removes specified Docker containers (MQ and Jenkins)
+#  and stops services (dockerManageZdap and UCD server) on target hosts.
+#
+# Usage:
+#  ansible-playbook -i <inventory> <playbook>
+#
+# Required Variables:
+#  - vault.yml: an Ansible Vault encrypted file containing the sudo password
+#               for the target hosts (variable: ansible_become_password).
+#
+# Example:
+#  ansible-playbook -i inventory stop_containers_and_services.yml --ask-vault-pass
+#  ansible-playbook -i inventory stop_containers_and_services.yml -v --ask-vault-pass
+###############################################################################
+---
+- hosts: p52
+  vars_files:
+    - vault.yml
+  tasks:
+    - name: Stop and remove MQ Docker container
+      docker_container:
+        name: QM1
+        state: "{{ item }}"
+      loop:
+        - stopped
+        - absent
+
+    - name: Stop and remove Jenkins Docker container
+      docker_container:
+        name: jenkins
+        state: "{{ item }}"
+      loop:
+        - stopped
+        - absent
+
+    - name: Stop dockerManageZdap script
+      ansible.builtin.command:
+        cmd: "/home/ibmsys1/docker-compose/bin/dockerManageZdap.sh down"
+      register: docker_manage_result
+
+    - name: Display dockerManageZdap script result
+      debug:
+        var: docker_manage_result.stdout_lines
+
+    - name: Stop UCD server
+      ansible.builtin.command:
+        cmd: "/opt/ucd/server/bin/server stop"
+      become: yes
+      register: ucd_server_result
+
+    - name: Display UCD server stop result
+      debug:
+        var: ucd_server_result.stdout_lines

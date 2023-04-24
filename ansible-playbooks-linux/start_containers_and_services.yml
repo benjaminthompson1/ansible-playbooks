@@ -1,17 +1,26 @@
 ###############################################################################
+# Playbook: start_containers_and_services.yml
+#
+# Purpose:
+#  This playbook starts specified Docker containers (MQ and Jenkins)
+#  and starts services (dockerManageZdap and UCD server) on target hosts.
+#
 # Usage:
 #  ansible-playbook -i <inventory> <playbook>
 #
+# Required Variables:
+#  - vault.yml: an Ansible Vault encrypted file containing the sudo password
+#               for the target hosts (variable: ansible_become_password).
+#
 # Example:
-#  ansible-playbook -i inventory start_docker.yml
-#  ansible-playbook -i inventory start_docker.yml -v
+#  ansible-playbook -i inventory start_containers_and_services.yml --ask-vault-pass
+#  ansible-playbook -i inventory start_containers_and_services.yml -v --ask-vault-pass
 ###############################################################################
 ---
 - hosts: p52
   vars_files:
     - vault.yml
   tasks:
-
     - name: Start MQ Docker container
       docker_container:
         name: QM1
@@ -37,21 +46,21 @@
         volumes:
           - "jenkins-data:/var/jenkins_home"
 
-    - name: Execute command to start dockerManageZdap script
+    - name: Start dockerManageZdap script
       ansible.builtin.command:
         cmd: "/home/ibmsys1/docker-compose/bin/dockerManageZdap.sh up"
-      register: result
+      register: docker_manage_result
 
-    - name: Display result of command execution
+    - name: Display dockerManageZdap script result
       debug:
-        var: result.stdout_lines
+        var: docker_manage_result.stdout_lines
 
-    - name: Execute command to start UCD server
+    - name: Start UCD server
       ansible.builtin.command:
         cmd: "/opt/ucd/server/bin/server start"
-      become: yes  
-      register: result
+      become: yes
+      register: ucd_server_result
 
-    - name: Display result of command execution
+    - name: Display UCD server start result
       debug:
-        var: result.stdout_lines
+        var: ucd_server_result.stdout_lines
