@@ -39,7 +39,7 @@
     # Age threshold for zWIC files
     zwic_file_age: 10d
 
-  tasks:
+    tasks:
     # Ping the target host to check connectivity
     - name: Ping using zos_ping
       zos_ping:
@@ -52,11 +52,10 @@
         wait: true
         wait_time_s: "{{ wait_time_s }}"
       register: logrec_result
-
-    - name: DEBUG(-v) Response Submit LOGREC and wait for the job to finish
-      debug:
-        msg: "{{ logrec_result }} with verbosity 1"
-        verbosity: 1
+      retries: 3
+      delay: 30
+      notify:
+        - Handle job submit result
 
     # Submit DSSDFRAG and wait for the job to finish
     - name: Submit DSSDFRAG and wait for the job to finish
@@ -66,11 +65,10 @@
         wait: true
         wait_time_s: "{{ wait_time_s }}"
       register: dssdfrag_result
-
-    - name: DEBUG(-v) Response Submit DSSDFRAG and wait for the job to finish
-      debug:
-        msg: "{{ dssdfrag_result }} with verbosity 1"
-        verbosity: 1
+      retries: 3
+      delay: 30
+      notify:
+        - Handle job submit result
 
     # Submit DCOLLECT and wait for the job to finish
     - name: Submit DCOLLECT and wait for the job to finish
@@ -80,24 +78,18 @@
         wait: true
         wait_time_s: "{{ wait_time_s }}"
       register: dcollect_result
-
-    - name: DEBUG(-v) Response Submit DCOLLECT and wait for the job to finish.
-      debug:
-        msg: "{{ dcollect_result }} with verbosity 1"
-        verbosity: 1
+      retries: 3
+      delay: 30
+      notify:
+        - Handle job submit result
 
     # Purge JES2 output datasets older than 21 days
     - name: Execute JES2 Purge waiting 10 seconds for response
       zos_operator:
         cmd: "$P O JQ,ALL,A>21"
+        wait_time_s: 10
         wait: true
-        wait_time_s: "{{ wait_time_s }}"        
       register: jes2_purge_result
-
-    - name: DEBUG(-v) Response Execute JES2 Purge waiting 10 seconds for response.
-      debug:
-        msg: "{{ jes2_purge_result }} with verbosity 1"
-        verbosity: 1
 
     # Find and delete zWIC files older than specified age
     - name: Find and delete zWIC files older than {{ zwic_file_age }}
@@ -116,6 +108,16 @@
         - Handle file deletion result
 
   handlers:
+    # Handle job submission failures
+    - name: Handle job submit result
+      debug:
+        msg: "{{ item }}"
+      with_items:
+        - "{{ logrec_result }}"
+        - "{{ dssdfrag_result }}"
+        - "{{ dcollect_result }}"
+      when: item is failed
+
     # Handle file deletion failures
     - name: Handle file deletion result
       debug:
