@@ -10,14 +10,22 @@
 #  ansible-playbook -i inventory backup_volumes.yml
 #  ansible-playbook -i inventory backup_volumes.yml -v
 ---
+---
 - name: Backup volumes
   hosts: rhel
   vars:
     src_dir: "/home/ibmsys1/volumes-z25c"
     dest_dir: "/home/ibmsys1/volumes-backup"
     archive_name: "volumes-z25c-{{ ansible_date_time.date.replace('-', '') }}.zip"
+    inventory_file: "inventory"
+    playbook_file: "backup_volumes.yml"
 
   tasks:
+    - name: Check if source directory exists
+      ansible.builtin.stat:
+        path: "{{ src_dir }}"
+      register: src_dir_stat
+
     - name: Create destination directory if it does not exist
       ansible.builtin.file:
         path: "{{ dest_dir }}"
@@ -29,4 +37,15 @@
         path: "{{ src_dir }}"
         dest: "{{ dest_dir }}/{{ archive_name }}"
         format: zip
+      async: 600
+      poll: 10
+      notify: Archive created
 
+  handlers:
+    - name: Archive created
+      ansible.builtin.debug:
+        msg: "Archive created successfully"
+      slack:
+        token: "{{ slack_token }}"
+        channel: "{{ slack_channel }}"
+        msg: "The backup of {{ src_dir }} on {{ inventory_file }} using {{ playbook_file }} has completed."
