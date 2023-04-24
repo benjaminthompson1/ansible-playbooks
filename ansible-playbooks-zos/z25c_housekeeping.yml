@@ -21,9 +21,11 @@
 ---
 - name: z/OS housekeeping
   hosts: ben_s0w1
-  gather_facts: no
+  gather_facts: yes
   collections:
     - ibm.ibm_zos_core
+
+  environment: "{{ environment_vars }}"
 
   vars:
     # Control HLQ for JCL jobs
