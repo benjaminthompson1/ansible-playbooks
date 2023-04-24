@@ -37,3 +37,12 @@
 
     - name: Start dockerManageZdap script
       shell: "/home/ibmsys1/docker-compose/bin/dockerManageZdap.sh up"
+
+    - name: Execute command to start UCD server
+      ansible.builtin.command:
+        cmd: /opt/ucd/server/bin/server start
+      register: result
+
+    - name: Display result of command execution
+      debug:
+        var: result.stdout_lines

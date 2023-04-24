@@ -32,3 +32,12 @@
 
     - name: Stop dockerManageZdap script
       shell: "/home/ibmsys1/docker-compose/bin/dockerManageZdap.sh down"
+
+    - name: Execute command to stop UCD server
+      ansible.builtin.command:
+        cmd: /opt/ucd/server/bin/server stop
+      register: result
+
+    - name: Display result of command execution
+      debug:
+        var: result.stdout_lines
