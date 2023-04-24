@@ -90,6 +90,8 @@
         wait: true
         wait_time_s: "{{ wait_time_s }}"
       register: jes2_purge_result
+      notify:
+        - Handle job submit result
 
     # Find and delete zWIC files older than specified age
     - name: Find and delete zWIC files older than {{ zwic_file_age }}
@@ -116,6 +118,7 @@
         - "{{ logrec_result }}"
         - "{{ dssdfrag_result }}"
         - "{{ dcollect_result }}"
+        - "{{ jes2_purge_result }}"
       when: item is failed
 
     # Handle file deletion failures
