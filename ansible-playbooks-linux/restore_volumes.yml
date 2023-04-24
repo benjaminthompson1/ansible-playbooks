@@ -7,8 +7,8 @@
 #  ansible-playbook -i <inventory> <playbook>
 #
 # Example:
-#  ansible-playbook -i inventory restore_volumes.yml
-#  ansible-playbook -i inventory restore_volumes.yml -v
+#  ansible-playbook -i inventories restore_volumes.yml
+#  ansible-playbook -i inventories restore_volumes.yml -v
 ---
 - name: Restore volumes from backup
   hosts: rhel

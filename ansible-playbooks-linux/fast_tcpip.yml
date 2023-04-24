@@ -6,8 +6,8 @@
 #  ansible-playbook -i <inventory> <playbook>
 #
 # Example:
-#  ansible-playbook -i inventory fast_tcpip.yml --ask-vault-pass
-#  ansible-playbook -i inventory fast_tcpip.yml -v --ask-vault-pass
+#  ansible-playbook -i inventories fast_tcpip.yml --ask-vault-pass
+#  ansible-playbook -i inventories fast_tcpip.yml -v --ask-vault-pass
 ---
 - name: Optimize network settings for zPD
   hosts: rhel

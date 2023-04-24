@@ -4,8 +4,8 @@
 # Usage:
 #  ansible-playbook -i <inventory> <playbook>
 # Example:
-#  ansible-playbook -i inventory backup_volumes.yml
-#  ansible-playbook -i inventory backup_volumes.yml -v
+#  ansible-playbook -i inventories backup_volumes.yml
+#  ansible-playbook -i inventories backup_volumes.yml -v
 ---
 - name: Backup volumes
   hosts: rhel
@@ -16,8 +16,6 @@
     src_dir: "/home/ibmsys1/volumes-z25c"
     dest_dir: "/home/ibmsys1/volumes-backup"
     archive_name: "volumes-z25c-{{ ansible_date_time.date.replace('-', '') }}.zip"
-    inventory_file: "inventory"
-    playbook_file: "backup_volumes.yml"
 
   tasks:
     # Check if the source directory exists

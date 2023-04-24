@@ -12,8 +12,8 @@
 #               for the target hosts (variable: ansible_become_password).
 #
 # Example:
-#  ansible-playbook -i inventory start_containers_and_services.yml --ask-vault-pass
-#  ansible-playbook -i inventory start_containers_and_services.yml -v --ask-vault-pass
+#  ansible-playbook -i inventories start_containers_and_services.yml --ask-vault-pass
+#  ansible-playbook -i inventories start_containers_and_services.yml -v --ask-vault-pass
 ---
 - hosts: p52
   vars_files:
