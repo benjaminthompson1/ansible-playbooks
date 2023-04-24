@@ -39,7 +39,7 @@
     # Age threshold for zWIC files
     zwic_file_age: 10d
 
-    tasks:
+  tasks:
     # Ping the target host to check connectivity
     - name: Ping using zos_ping
       zos_ping:
