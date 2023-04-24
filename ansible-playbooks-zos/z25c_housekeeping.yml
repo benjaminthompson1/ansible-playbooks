@@ -50,8 +50,8 @@
         wait: true
         wait_time_s: "{{ wait_time_s }}"
       register: logrec_result
-      retries: 3
-      delay: 30
+#     retries: 3
+#     delay: 30
       notify:
         - Handle job submit result
 
