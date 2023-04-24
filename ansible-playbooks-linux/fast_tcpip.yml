@@ -11,6 +11,8 @@
 ---
 - name: Optimize network settings for zPD
   hosts: rhel
+  vars_files:
+    - vault.yml  
   become: yes
   vars:
     network_interface: eno1
