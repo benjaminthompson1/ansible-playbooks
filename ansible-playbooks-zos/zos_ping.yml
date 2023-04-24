@@ -3,11 +3,11 @@
 #  ansible-playbook -i <inventory> <playbook>
 #  
 # Example:
-#  ansible-playbook -i inventory zos_ping.yaml
-#  ansible-playbook -i inventory zos_ping.yaml -v
-#  ansible-playbook -i inventory zos_ping.yaml -vv
-#  ansible-playbook -i inventory zos_ping.yaml -e "boolean_debug=true"
-#  ansible-playbook -i inventory zos_ping.yaml -e "enable_debug=yes"
+#  ansible-playbook -i inventories zos_ping.yaml
+#  ansible-playbook -i inventories zos_ping.yaml -v
+#  ansible-playbook -i inventories zos_ping.yaml -vv
+#  ansible-playbook -i inventories zos_ping.yaml -e "boolean_debug=true"
+#  ansible-playbook -i inventories zos_ping.yaml -e "enable_debug=yes"
 ###############################################################################
 ---
 - hosts: ben_s0w1

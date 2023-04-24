@@ -14,9 +14,9 @@
 # The required variables 'cntl_hlq' and 'zwic_dir' must be defined in the inventory.
 # Optional variables can be set in the playbook or passed in via the command line.
 # Example:
-# ansible-playbook -i inventory z25c_housekeeping.yml
-# ansible-playbook -i inventory z25c_housekeeping.yml -v
-# ansible-playbook -i inventory z25c_housekeeping.yml -e adcd_ver=Z24C -e wait_time_s=60
+# ansible-playbook -i inventories z25c_housekeeping.yml
+# ansible-playbook -i inventories z25c_housekeeping.yml -v
+# ansible-playbook -i inventories z25c_housekeeping.yml -e adcd_ver=Z24C -e wait_time_s=60
 ################################################################################
 ---
 - name: z/OS housekeeping

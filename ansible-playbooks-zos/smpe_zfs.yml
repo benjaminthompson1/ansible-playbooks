@@ -3,8 +3,8 @@
 #  ansible-playbook -i <inventory> <playbook>
 #
 # Example:
-#  ansible-playbook -i inventory smpe_zfs.yml
-#  ansible-playbook -i inventory smpe_zfs.yml -v
+#  ansible-playbook -i inventories smpe_zfs.yml
+#  ansible-playbook -i inventories smpe_zfs.yml -v
 ###############################################################################
 ---
 - hosts: ben_s0w1 

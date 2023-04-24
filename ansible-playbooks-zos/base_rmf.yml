@@ -3,8 +3,8 @@
 #  ansible-playbook -i <inventory> <playbook>
 #
 # Example:
-#  ansible-playbook -i inventory base_rmf.yml
-#  ansible-playbook -i inventory base_rmf.yml -v
+#  ansible-playbook -i inventories base_rmf.yml
+#  ansible-playbook -i inventories base_rmf.yml -v
 ###############################################################################
 ---
 - hosts: ben_s0w1 

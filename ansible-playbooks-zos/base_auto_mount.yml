@@ -3,8 +3,8 @@
 #  ansible-playbook -i <inventory> <playbook>
 #
 # Example:
-#  ansible-playbook -i inventory base_auto_mount.yml
-#  ansible-playbook -i inventory base_auto_mount.yml -v
+#  ansible-playbook -i inventories base_auto_mount.yml
+#  ansible-playbook -i inventories base_auto_mount.yml -v
 ###############################################################################
 ---
 - hosts: ben_s0w1 

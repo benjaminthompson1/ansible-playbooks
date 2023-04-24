@@ -3,8 +3,8 @@
 #  ansible-playbook -i <inventory> <playbook>
 #
 # Example:
-#  ansible-playbook -i inventory cics_egui.yml
-#  ansible-playbook -i inventory cics_egui.yml -v
+#  ansible-playbook -i inventories cics_egui.yml
+#  ansible-playbook -i inventories cics_egui.yml -v
 ###############################################################################
 ---
 - hosts: ben_s0w1 

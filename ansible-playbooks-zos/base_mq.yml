@@ -3,8 +3,8 @@
 #  ansible-playbook -i <inventory> <playbook>
 #
 # Example:
-#  ansible-playbook -i inventory base_mq.yml
-#  ansible-playbook -i inventory base_mq.yml -v
+#  ansible-playbook -i inventories base_mq.yml
+#  ansible-playbook -i inventories base_mq.yml -v
 ###############################################################################
 ---
 - hosts: ben_s0w1 

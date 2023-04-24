@@ -3,8 +3,8 @@
 #  ansible-playbook -i <inventory> <playbook>
 #
 # Example:
-#  ansible-playbook -i inventory base_COBOL.yml
-#  ansible-playbook -i inventory base_COBOL.yml -v
+#  ansible-playbook -i inventories base_COBOL.yml
+#  ansible-playbook -i inventories base_COBOL.yml -v
 ###############################################################################
 ---
 - hosts: ben_s0w1 
