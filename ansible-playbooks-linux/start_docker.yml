@@ -41,6 +41,7 @@
     - name: Execute command to start UCD server
       ansible.builtin.command:
         cmd: /opt/ucd/server/bin/server start
+      become: yes  
       register: result
 
     - name: Display result of command execution
