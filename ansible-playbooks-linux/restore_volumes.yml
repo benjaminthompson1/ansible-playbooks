@@ -1,22 +1,25 @@
-###############################################################################
+# restore_volumes.yml
+#
+# This Ansible playbook unarchives a specified backup file to the specified
+# destination directory.
+#
 # Usage:
 #  ansible-playbook -i <inventory> <playbook>
 #
 # Example:
 #  ansible-playbook -i inventory restore_volumes.yml
 #  ansible-playbook -i inventory restore_volumes.yml -v
-###############################################################################
 ---
-- hosts: rhel
-
+- name: Restore volumes from backup
+  hosts: rhel
   vars:
     backup_file: "/home/ibmsys1/volumes-backup/volumes-z25c-20230111.zip"
-#   dest_dir: "/home/ibmsys1/volumes-z25c"
     dest_dir: "/home/ibmsys1/transfers-zPDT"
 
   tasks:
     - name: Unarchive z25c volumes
-      unarchive:
+      ansible.builtin.unarchive:
         src: "{{ backup_file }}"
         dest: "{{ dest_dir }}"
+        remote_src: yes
 

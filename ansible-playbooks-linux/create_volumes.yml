@@ -1,31 +1,34 @@
-###############################################################################
+# create_volumes.yml
+#
+# This Ansible playbook creates volumes with specified device types
+# in the given destination directory.
+#
 # Usage:
 #  ansible-playbook -i <inventory> <playbook>
 #
 # Example:
 #  ansible-playbook -i inventory create_volumes.yml
 #  ansible-playbook -i inventory create_volumes.yml -v
-###############################################################################
 ---
-- hosts: rhel
+- name: Create volumes
+  hosts: rhel
+  vars:
+    dest_dir: "/home/ibmsys1/volumes-z25c"
+    volumes_3390_27:
+      - user0a
+      - user0b
+      - user0c
+      - user0d
+      - c5zcx2
+      - c5dbd3
+    volumes_3390_9:
+      - work0a
+
   tasks:
-    - name: Create user0a volume 3390-27
-      command: alcckd /home/ibmsys1/volumes-z25c/user0a -d3390-27
+    - name: Create 3390-27 volumes
+      command: "alcckd {{ dest_dir }}/{{ item }} -d3390-27"
+      loop: "{{ volumes_3390_27 }}"
 
-    - name: Create user0b volume 3390-27
-      command: alcckd /home/ibmsys1/volumes-z25c/user0b -d3390-27
-
-    - name: Create user0c volume 3390-27
-      command: alcckd /home/ibmsys1/volumes-z25c/user0c -d3390-27
-
-    - name: Create user0d volume 3390-27
-      command: alcckd /home/ibmsys1/volumes-z25c/user0d -d3390-27
-
-    - name: Create c5zcx2 volume 3390-27
-      command: alcckd /home/ibmsys1/volumes-z25c/c5zcx2 -d3390-27
-
-    - name: Create c5dbd3 volume 3390-27
-      command: alcckd /home/ibmsys1/volumes-z25c/c5dbd3 -d3390-27
-
-    - name: Create work0a volume 3390-9
-      command: alcckd /home/ibmsys1/volumes-z25c/work0a -d3390-9
+    - name: Create 3390-9 volumes
+      command: "alcckd {{ dest_dir }}/{{ item }} -d3390-9"
+      loop: "{{ volumes_3390_9 }}"

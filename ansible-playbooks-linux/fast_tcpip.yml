@@ -1,32 +1,27 @@
-###############################################################################
+# fast_tcpip.yml
+#
+# This Ansible playbook alters RHEL settings to improve zPD networking.
+#
 # Usage:
 #  ansible-playbook -i <inventory> <playbook>
 #
 # Example:
-#  ansible-playbook -i inventory fast_tcpip.yml
-#  ansible-playbook -i inventory fast_tcpip.yml -v
-###############################################################################
+#  ansible-playbook -i inventory fast_tcpip.yml --ask-vault-pass
+#  ansible-playbook -i inventory fast_tcpip.yml -v --ask-vault-pass
 ---
-- hosts: rhel
+- name: Optimize network settings for zPD
+  hosts: rhel
   become: yes
+  vars:
+    network_interface: eno1
+    offload_options:
+      - rx
+      - tso
+      - gso
+      - gro
+      - lro
+
   tasks:
-
-###############################################################################
-# Usage:
-#  Alter RHEL setting to improve zPD networking 
-###############################################################################
-  
-    - name: Disable RX checksumming offload
-      command: ethtool -K eno1 rx off
-
-    - name: Disable TCP segmentation offload
-      command: ethtool -K eno1 tso off
-
-    - name: Disable generic segmentation offload
-      command: ethtool -K eno1 gso off
-
-    - name: Disable generic RX offload
-      command: ethtool -K eno1 gro off
-
-    - name: Disable large RX offload
-      command: ethtool -K eno1 lro off
+    - name: Disable offload options
+      command: "ethtool -K {{ network_interface }} {{ item }} off"
+      loop: "{{ offload_options }}"
