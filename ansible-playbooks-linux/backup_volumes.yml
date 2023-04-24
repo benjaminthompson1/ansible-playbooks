@@ -10,7 +10,6 @@
 #  ansible-playbook -i inventory backup_volumes.yml
 #  ansible-playbook -i inventory backup_volumes.yml -v
 ---
----
 - name: Backup volumes
   hosts: rhel
   vars:
