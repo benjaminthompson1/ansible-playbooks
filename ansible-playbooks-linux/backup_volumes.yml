@@ -36,8 +36,8 @@
         path: "{{ src_dir }}"
         dest: "{{ dest_dir }}/{{ archive_name }}"
         format: zip
-      async: 600
-      poll: 10
+      async: 3600
+      poll: 300
       notify: Archive created
 
   handlers:
