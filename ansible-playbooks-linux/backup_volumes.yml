@@ -41,10 +41,13 @@
       notify: Archive created
 
   handlers:
-    - name: Archive created
+    - name: Debug message
       ansible.builtin.debug:
         msg: "Archive created successfully"
+
+    - name: Slack notification
       slack:
         token: "{{ slack_token }}"
         channel: "{{ slack_channel }}"
         msg: "The backup of {{ src_dir }} on {{ inventory_file }} using {{ playbook_file }} has completed."
+
