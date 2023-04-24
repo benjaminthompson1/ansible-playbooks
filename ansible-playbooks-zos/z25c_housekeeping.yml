@@ -1,118 +1,124 @@
-###############################################################################
+################################################################################
 # Usage:
-#  ansible-playbook -i <inventory> <playbook>
-#
+# ansible-playbook -i <inventory> z25c_housekeeping.yml
+# Required Variables:
+# - cntl_hlq: Control HLQ for JCL jobs
+# - zwic_dir: Directory for zWIC files
+# Optional Variables:
+# - adcd_ver: ADCD version (used for testing)
+# - wait_time_s: Default wait time for job submissions (default: 30 seconds)
+# - zwic_file_age: Age threshold for zWIC files (default: 10 days)
+# Description:
+# This playbook performs various housekeeping tasks on a z/OS system, including
+# submitting JCL jobs, executing operator commands, and deleting old files.
+# The required variables 'cntl_hlq' and 'zwic_dir' must be defined in the inventory.
+# Optional variables can be set in the playbook or passed in via the command line.
 # Example:
-#  ansible-playbook -i inventory z25c_housekeeping.yml
-#  ansible-playbook -i inventory z25c_housekeeping.yml -v
-###############################################################################
+# ansible-playbook -i inventory z25c_housekeeping.yml
+# ansible-playbook -i inventory z25c_housekeeping.yml -v
+# ansible-playbook -i inventory z25c_housekeeping.yml -e adcd_ver=Z24C -e wait_time_s=60
+################################################################################
 ---
-- hosts: ben_s0w1 
+- name: z/OS housekeeping
+  hosts: ben_s0w1
+  gather_facts: yes
   collections:
     - ibm.ibm_zos_core
-  gather_facts: no
 
   vars:
-    adcd_ver: Z24C
+    # Control HLQ for JCL jobs
     cntl_hlq: IBMUSER.GIT.JCL.CNTL
-
-  environment: "{{ environment_vars }}"
+    # ADCD version (used for testing)
+    adcd_ver: Z24C
+    # Default wait time for job submissions
+    wait_time_s: 30
+    # Directory for zWIC files
+    zwic_dir: /global/zwic
+    # Age threshold for zWIC files
+    zwic_file_age: 10d
 
   tasks:
+    # Ping the target host to check connectivity
     - name: Ping using zos_ping
       zos_ping:
-      register: zos_ping_result
 
-    - name: Response from zos_ping
-      debug:
-        msg: "{{ zos_ping_result }}"
-
-###############################################################################
-# Usage:
-#  Submit LOGREC and wait for the job to finish
-###############################################################################
-
-    - name: Submit LOGREC and wait for the job to finish.
+    # Submit LOGREC and wait for the job to finish
+    - name: Submit LOGREC and wait for the job to finish
       zos_job_submit:
         src: "{{ cntl_hlq }}(LOGREC)"
         location: DATA_SET
         wait: true
-        wait_time_s: 30
-      register: zos_job_submit_result
+        wait_time_s: "{{ wait_time_s }}"
+      register: logrec_result
+      retries: 3
+      delay: 30
+      notify:
+        - Handle job submit result
 
-    - name: DEBUG(-v) Response Submit LOGREC and wait for the job to finish.
-      debug:
-        msg: "{{ zos_job_submit_result }} with verbosity 1"
-        verbosity: 1
-
-###############################################################################
-# Usage:
-#  Submit DSSDFRAG and wait for the job to finish
-###############################################################################
-
-    - name: Submit DSSDFRAG and wait for the job to finish.
+    # Submit DSSDFRAG and wait for the job to finish
+    - name: Submit DSSDFRAG and wait for the job to finish
       zos_job_submit:
         src: "{{ cntl_hlq }}(DSSDFRAG)"
         location: DATA_SET
         wait: true
-        wait_time_s: 120
-      register: zos_job_submit_result
+        wait_time_s: "{{ wait_time_s }}"
+      register: dssdfrag_result
+      retries: 3
+      delay: 30
+      notify:
+        - Handle job submit result
 
-    - name: DEBUG(-v) Response Submit DSSDFRAG and wait for the job to finish.
-      debug:
-        msg: "{{ zos_job_submit_result }} with verbosity 1"
-        verbosity: 1
-
-###############################################################################
-# Usage:
-#  Submit DCOLLECT and wait for the job to finish - zCDP
-###############################################################################
-
-    - name: Submit DCOLLECT and wait for the job to finish.
+    # Submit DCOLLECT and wait for the job to finish
+    - name: Submit DCOLLECT and wait for the job to finish
       zos_job_submit:
         src: "{{ cntl_hlq }}(DCOLLECT)"
         location: DATA_SET
         wait: true
-        wait_time_s: 120
-      register: zos_job_submit_result
+        wait_time_s: "{{ wait_time_s }}"
+      register: dcollect_result
+      retries: 3
+      delay: 30
+      notify:
+        - Handle job submit result
 
-    - name: DEBUG(-v) Response Submit DCOLLECT and wait for the job to finish.
-      debug:
-        msg: "{{ zos_job_submit_result }} with verbosity 1"
-        verbosity: 1
-
-###############################################################################
-# Usage:
-#  JES2 Purge output data sets are more than 21 days
-###############################################################################
-
-    - name: Execute JES2 Purge waiting 10 seconds for response.
+    # Purge JES2 output datasets older than 21 days
+    - name: Execute JES2 Purge waiting 10 seconds for response
       zos_operator:
         cmd: "$P O JQ,ALL,A>21"
         wait_time_s: 10
         wait: true
-      register: zos_operator_result
+      register: jes2_purge_result
 
-    - name: DEBUG(-v) Response Execute JES2 Purge waiting 10 seconds for response.
-      debug:
-        msg: "{{ zos_operator_result }} with verbosity 1"
-        verbosity: 1
-
-###############################################################################
-# Usage:
-#  Find and delete zWIC files grater than 10 days
-###############################################################################
-
-    - name: Find files older than 10 days
+    # Find and delete zWIC files older than specified age
+    - name: Find and delete zWIC files older than {{ zwic_file_age }}
       find:
-        paths: /global/zwic
-        age: 10d
+        paths: "{{ zwic_dir }}"
+        age: "{{ zwic_file_age }}"
         recurse: yes
-      register: old_files
-    
-    - name: Delete old files
+      register: zwic_files_to_delete
+
+    - name: Delete old zWIC files
       file:
         path: "{{ item.path }}"
         state: absent
-      with_items: "{{ old_files.files }}"
+      with_items: "{{ zwic_files_to_delete.files }}"
+      notify:
+        - Handle file deletion result
 
+  handlers:
+    # Handle job submission failures
+    - name: Handle job submit result
+      debug:
+        msg: "{{ item }}"
+      with_items:
+        - "{{ logrec_result }}"
+        - "{{ dssdfrag_result }}"
+        - "{{ dcollect_result }}"
+      when: item is failed
+
+    # Handle file deletion failures
+    - name: Handle file deletion result
+      debug:
+        msg: "{{ item }}"
+      with_items: "{{ zwic_files_to_delete.files }}"
+      when: item
