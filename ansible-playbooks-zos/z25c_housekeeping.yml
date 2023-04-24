@@ -84,11 +84,11 @@
         - Handle job submit result
 
     # Purge JES2 output datasets older than 21 days
-    - name: Execute JES2 Purge waiting 10 seconds for response
+    - name: Execute JES2 purge and wait for response
       zos_operator:
         cmd: "$P O JQ,ALL,A>21"
-        wait_time_s: 10
         wait: true
+        wait_time_s: "{{ wait_time_s }}"
       register: jes2_purge_result
 
     # Find and delete zWIC files older than specified age
