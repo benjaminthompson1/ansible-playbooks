@@ -100,13 +100,13 @@
 
 ###############################################################################
 # Usage:
-#  Find and delete zWIC files grater than 30 days
+#  Find and delete zWIC files grater than 10 days
 ###############################################################################
 
-    - name: Find files older than 30 days
+    - name: Find files older than 10 days
       find:
         paths: /global/zwic
-        age: 30d
+        age: 10d
         recurse: yes
       register: old_files
     
