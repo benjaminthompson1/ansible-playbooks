@@ -37,7 +37,7 @@
 
     - name: Execute command to stop UCD server
       ansible.builtin.command:
-        cmd: /opt/ucd/server/bin/server stop
+        cmd: "/opt/ucd/server/bin/server stop"
       become: yes
       register: result
 
