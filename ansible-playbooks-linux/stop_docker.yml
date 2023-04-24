@@ -32,8 +32,14 @@
         name: jenkins
         state: absent
 
-    - name: Stop dockerManageZdap script
-      shell: "/home/ibmsys1/docker-compose/bin/dockerManageZdap.sh down"
+    - name: Execute command to stop dockerManageZdap script
+      ansible.builtin.command:
+        cmd: "/home/ibmsys1/docker-compose/bin/dockerManageZdap.sh down"
+      register: result
+
+    - name: Display result of command execution
+      debug:
+        var: result.stdout_lines
 
     - name: Execute command to stop UCD server
       ansible.builtin.command:
