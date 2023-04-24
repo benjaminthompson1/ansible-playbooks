@@ -1,4 +1,3 @@
-###############################################################################
 # Playbook: start_containers_and_services.yml
 #
 # Purpose:
@@ -15,13 +14,13 @@
 # Example:
 #  ansible-playbook -i inventory start_containers_and_services.yml --ask-vault-pass
 #  ansible-playbook -i inventory start_containers_and_services.yml -v --ask-vault-pass
-###############################################################################
 ---
 - hosts: p52
   vars_files:
     - vault.yml
   tasks:
-    - name: Start MQ Docker container
+    # Start IBM MQ Docker container
+    - name: Ensure MQ Docker container is started
       docker_container:
         name: QM1
         image: icr.io/ibm-messaging/mq:latest
@@ -35,7 +34,8 @@
           LICENSE: "accept"
           MQ_APP_PASSWORD: "passw0rd"
 
-    - name: Start Jenkins Docker container
+    # Start Jenkins Docker container
+    - name: Ensure Jenkins Docker container is started
       docker_container:
         name: jenkins
         image: jenkins/jenkins:lts
@@ -46,21 +46,25 @@
         volumes:
           - "jenkins-data:/var/jenkins_home"
 
-    - name: Start dockerManageZdap script
+    # Execute dockerManageZdap script
+    - name: Execute dockerManageZdap script (up command)
       ansible.builtin.command:
         cmd: "/home/ibmsys1/docker-compose/bin/dockerManageZdap.sh up"
       register: docker_manage_result
 
-    - name: Display dockerManageZdap script result
+    # Display the result of the dockerManageZdap script execution
+    - name: Show dockerManageZdap script output
       debug:
         var: docker_manage_result.stdout_lines
 
-    - name: Start UCD server
+    # Start UCD server
+    - name: Ensure UCD server is started
       ansible.builtin.command:
         cmd: "/opt/ucd/server/bin/server start"
       become: yes
       register: ucd_server_result
 
-    - name: Display UCD server start result
+    # Display the result of the UCD server start command
+    - name: Show UCD server start output
       debug:
         var: ucd_server_result.stdout_lines

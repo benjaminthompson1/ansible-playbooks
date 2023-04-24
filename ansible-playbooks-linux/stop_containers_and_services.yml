@@ -1,4 +1,3 @@
-###############################################################################
 # Playbook: stop_containers_and_services.yml
 #
 # Purpose:
@@ -15,13 +14,13 @@
 # Example:
 #  ansible-playbook -i inventory stop_containers_and_services.yml --ask-vault-pass
 #  ansible-playbook -i inventory stop_containers_and_services.yml -v --ask-vault-pass
-###############################################################################
 ---
 - hosts: p52
   vars_files:
     - vault.yml
   tasks:
-    - name: Stop and remove MQ Docker container
+    # Stop and remove IBM MQ Docker container
+    - name: Ensure MQ Docker container is stopped and removed
       docker_container:
         name: QM1
         state: "{{ item }}"
@@ -29,7 +28,8 @@
         - stopped
         - absent
 
-    - name: Stop and remove Jenkins Docker container
+    # Stop and remove Jenkins Docker container
+    - name: Ensure Jenkins Docker container is stopped and removed
       docker_container:
         name: jenkins
         state: "{{ item }}"
@@ -37,21 +37,26 @@
         - stopped
         - absent
 
-    - name: Stop dockerManageZdap script
+    # Execute dockerManageZdap script (down command)
+    - name: Execute dockerManageZdap script (down command)
       ansible.builtin.command:
         cmd: "/home/ibmsys1/docker-compose/bin/dockerManageZdap.sh down"
       register: docker_manage_result
 
-    - name: Display dockerManageZdap script result
+    # Display the result of the dockerManageZdap script execution
+    - name: Show dockerManageZdap script output
       debug:
         var: docker_manage_result.stdout_lines
 
-    - name: Stop UCD server
+    # Stop UCD server
+    - name: Ensure UCD server is stopped
       ansible.builtin.command:
         cmd: "/opt/ucd/server/bin/server stop"
       become: yes
       register: ucd_server_result
 
-    - name: Display UCD server stop result
+    # Display the result of the UCD server stop command
+    - name: Show UCD server stop output
       debug:
         var: ucd_server_result.stdout_lines
+
