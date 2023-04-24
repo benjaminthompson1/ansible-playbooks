@@ -8,6 +8,8 @@
 ###############################################################################
 ---
 - hosts: p52
+  vars_files:
+    - vault.yml
   tasks:
 
     - name: Stop MQ Docker container
