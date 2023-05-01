@@ -37,7 +37,7 @@
         path: "{{ src_dir }}"
         dest: "{{ dest_dir }}/{{ archive_name }}"
         format: zip
-      notify: Archive created
+      notify: Debug message
 
   # The list of handlers to be executed when a task notifies them
   handlers:
