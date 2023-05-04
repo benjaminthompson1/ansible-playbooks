@@ -83,6 +83,19 @@
       notify:
         - Handle job submit result
 
+    # Submit HBOJBDC2 sending DCOLLECT data to the Data Streamer
+    - name: Submit HBOJBDC2 and wait for the job to finish
+      zos_job_submit:
+        src: "{{ cntl_hlq }}(HBOJBDC2)"
+        location: DATA_SET
+        wait: true
+        wait_time_s: "{{ wait_time_s }}"
+      register: hbojbdc2_result
+      retries: 3
+      delay: 30
+      notify:
+        - Handle job submit result
+
     # Purge JES2 output datasets older than 21 days
     - name: Execute JES2 purge and wait for response
       zos_operator:
