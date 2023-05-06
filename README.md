@@ -3,7 +3,7 @@
 This repository contains a collection of **Ansible playbooks** designed for managing and automating tasks on both **z/OS** and **Linux** systems.
 
 ## 📁 Directory Structure
-
+```
 ansible-playbook-repository/
 ├── ansible-playbooks-zos/
 │ ├── playbook1.yml
@@ -13,6 +13,7 @@ ansible-playbook-repository/
 ├── playbook1.yml
 ├── playbook2.yml
 └── ...
+```
 
 ## 🔧 Requirements
 
