@@ -69,9 +69,13 @@ ansible-playbook-repository/
 
 ### Linux Playbooks
 
-- `playbook1.yml`: Description of the purpose of the playbook and what it does.
-- `playbook2.yml`: Description of the purpose of the playbook and what it does.
-- ...
+- `backup_z25c_volumes.yml`: Backs up the z25c volumes.
+- `optimize_zpd_network.yml`: Optimizes the zpd network.
+- `provision_volumes.yml`: Provisions volumes.
+- `restore_backup.yml`: Restores a backup.
+- `start_containers_and_services.yml`: Starts containers and services.
+- `stop_containers_and_services.yml`: Stops containers and services.
+- `vault.yml`: Configures a Vault instance.
 
 ## 🤝 Contributing
 
