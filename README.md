@@ -6,13 +6,28 @@ This repository contains a collection of **Ansible playbooks** designed for mana
 ```
 ansible-playbook-repository/
 ├── ansible-playbooks-zos/
-│ ├── playbook1.yml
-│ ├── playbook2.yml
-│ └── ...
+│ ├── cics-egui-setup.yml
+│ ├── COBOL_Customization_Setup.yml
+│ ├── configure_jes_checkpoint.yml
+│ ├── copy_ibmprods_ispplib.yml
+│ ├── create_jobcard_rexx.yml
+│ ├── rmf-configuration.yml
+│ ├── smpe_zfs_setup.yml
+│ ├── update_mq_parameters.yml
+│ ├── zos_automount_setup.yml
+│ ├── zos_dataset_commander_customization.yml
+│ ├── zos_housekeeping.yml
+│ ├── zos_ping.yml
+│ ├── zos-proclib-setup.yml
+│ └── zos_system_configuration.yml
 └── ansible-playbooks-linux/
-├── playbook1.yml
-├── playbook2.yml
-└── ...
+  ├── backup_z25c_volumes.yml
+  ├── optimize_zpd_network.yml
+  ├── provision_volumes.yml
+  ├── restore_backup.yml
+  ├── start_containers_and_services.yml
+  ├── stop_containers_and_services.yml
+  └── vault.yml
 ```
 
 ## 🔧 Requirements
