@@ -3,8 +3,8 @@
 #  ansible-playbook -i <inventory> <playbook>
 #
 # Example:
-#  ansible-playbook -i inventories base_dataset_commander.yml
-#  ansible-playbook -i inventories base_dataset_commander.yml -v
+#  ansible-playbook -i inventories zos_dataset_commander_customization.yml
+#  ansible-playbook -i inventories zos_dataset_commander_customization.yml -v
 ###############################################################################
 ---
 - hosts: ben_s0w1 

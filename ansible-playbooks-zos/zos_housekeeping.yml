@@ -5,7 +5,6 @@
 # - cntl_hlq: Control HLQ for JCL jobs
 # - zwic_dir: Directory for zWIC files
 # Optional Variables:
-# - adcd_ver: ADCD version (used for testing)
 # - wait_time_s: Default wait time for job submissions (default: 30 seconds)
 # - zwic_file_age: Age threshold for zWIC files (default: 10 days)
 # Description:
@@ -14,9 +13,9 @@
 # The required variables 'cntl_hlq' and 'zwic_dir' must be defined in the inventory.
 # Optional variables can be set in the playbook or passed in via the command line.
 # Example:
-# ansible-playbook -i inventories z25c_housekeeping.yml
-# ansible-playbook -i inventories z25c_housekeeping.yml -v
-# ansible-playbook -i inventories z25c_housekeeping.yml -e adcd_ver=Z24C -e wait_time_s=60
+# ansible-playbook -i inventories zos_housekeeping.yml
+# ansible-playbook -i inventories zos_housekeeping.yml -v
+# ansible-playbook -i inventories zos_housekeeping.yml -e wait_time_s=60
 ################################################################################
 ---
 - name: z/OS housekeeping
@@ -30,8 +29,6 @@
   vars:
     # Control HLQ for JCL jobs
     cntl_hlq: IBMUSER.GIT.JCL.CNTL
-    # ADCD version (used for testing)
-    adcd_ver: Z24C
     # Default wait time for job submissions
     wait_time_s: 30
     # Directory for zWIC files

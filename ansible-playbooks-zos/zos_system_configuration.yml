@@ -1,0 +1,360 @@
+###############################################################################
+# Usage:
+#  ansible-playbook -i <inventory> <playbook>
+#
+# Example:
+#  ansible-playbook -i inventories zos_system_configuration.yml
+#  ansible-playbook -i inventories zos_system_configuration.yml -v
+###############################################################################
+---
+- hosts: ben_s0w1
+  collections:
+    - ibm.ibm_zos_core
+  gather_facts: no
+
+  vars:
+    adcd_ver: Z25C
+
+  environment: "{{ environment_vars }}"
+
+  tasks:
+    - name: Ping using zos_ping
+      zos_ping:
+      register: zos_ping_result
+
+    - name: Response from zos_ping
+      debug:
+        msg: "{{ zos_ping_result }}"
+
+###############################################################################
+# Usage:
+#  Copy ADCD.{{ adcd_ver }}.PARMLIB(CLOCK00) to USER.{{ adcd_ver }}.PARMLIB(CLOCK00)
+#  Alter CLOCK00 to use Canberra Time
+###############################################################################
+
+    - name: Copy CLOCK00 from ADCD to USER; replace if it already exists.
+      zos_copy:
+        src: ADCD.{{ adcd_ver }}.PARMLIB(CLOCK00)
+        dest: USER.{{ adcd_ver }}.PARMLIB(CLOCK00)
+        remote_src: true
+      register: zos_copy_result
+
+    - name: DEBUG(-v) Response from Copy CLOCK00 from ADCD to USER.
+      debug:
+        msg: "{{ zos_copy_result }} with verbosity 1"
+        verbosity: 1
+
+    - name: Update CLOCK00 to Canberra time.
+      zos_lineinfile:
+        src: USER.{{ adcd_ver }}.PARMLIB(CLOCK00)
+        regexp: '^TIMEZONE'
+        line: 'TIMEZONE E.10.00.00'
+      register: zos_lineinfile_result
+
+    - name: DEBUG(-v) Response from Update CLOCK00 to Canberra time.
+      debug:
+        msg: "{{ zos_lineinfile_result }} with verbosity 1"
+        verbosity: 1
+
+###############################################################################
+# Usage:
+#  Create USER.{{ adcd_ver }}.PARMLIB(BPXPRMZZ)
+#  Add MOUNTS for zfs CYP390.ZFS and SMPE.SMPNTS.ZFS
+###############################################################################
+
+    - name: Create member BPXPRMZZ; replace if member exists.
+      zos_data_set:
+        name: USER.{{ adcd_ver }}.PARMLIB(BPXPRMZZ)
+        type: MEMBER
+        replace: yes
+      register: zos_data_set_result
+
+    - name: DEBUG(-v) Response from Create member BPXPRMZZ.
+      debug:
+        msg: "{{ zos_data_set_result }} with verbosity 1"
+        verbosity: 1
+
+    - name: Insert new mount points for member BPXPRMZZ.
+      zos_blockinfile:
+        src: USER.{{ adcd_ver }}.PARMLIB(BPXPRMZZ)
+        marker: "/* {mark} ANSIBLE MANAGED BLOCK */"
+        block: |
+          /* IBM Python V3.10 */
+          MOUNT FILESYSTEM('CYP3A0.ZFS')
+                TYPE(ZFS)
+                MODE(READ)
+                NOAUTOMOVE
+                MOUNTPOINT('/usr/lpp/IBM/cyp')
+          /* IBM Python V3.9 */
+          MOUNT FILESYSTEM('CYP390.ZFS')
+                TYPE(ZFS)
+                MODE(READ)
+                NOAUTOMOVE
+                MOUNTPOINT('/usr/lpp/IBM/cyp/v3r9/')
+          /* SMPE ZFS */ 
+          MOUNT FILESYSTEM('SMPE.SMPNTS.ZFS')
+                TYPE(ZFS)
+                MODE(RDWR)
+                NOAUTOMOVE
+                MOUNTPOINT('/u/smpe/smpnts')
+      register: zos_blockinfile_result
+
+    - name: DEBUG(-v) Response from Insert new mount points for member BPXPRMZZ.
+      debug:
+        msg: "{{ zos_blockinfile_result }} with verbosity 1"
+        verbosity: 1
+
+###############################################################################
+# Usage:
+#  Copy ADCD.{{ adcd_ver }}.PARMLIB(IEASYSAL) to USER.{{ adcd_ver }}.PARMLIB(IEASYSAL)
+#  Alter OMVS to include BPXPRMZZ
+#  Add LFAREA for z/OS lager frame support
+###############################################################################
+
+    - name: Copy IEASYSAL from ADCD to USER; replace if it already exists.
+      zos_copy:
+        src: ADCD.{{ adcd_ver }}.PARMLIB(IEASYSAL)
+        dest: USER.{{ adcd_ver }}.PARMLIB(IEASYSAL)
+        remote_src: true
+      register: zos_copy_result
+
+    - name: DEBUG(-v) Response from Copy IEASYSAL from ADCD to USER.
+      debug:
+        msg: "{{ zos_copy_result }} with verbosity 1"
+        verbosity: 1
+
+    - name: Update IEASYSAL OMVS parm.
+      zos_lineinfile:
+        src: USER.{{ adcd_ver }}.PARMLIB(IEASYSAL)
+        regexp: '^OMVS='
+        line: 'OMVS=(00,01,BP,IZ,CI,DB,IM,W9,RZ,RT,BB,ZW,ZZ), BPXPARMZZ ANSIBLE MANAGED'
+      register: zos_lineinfile_result
+
+    - name: DEBUG(-v) Response from Update IEASYSAL OMVS parm.
+      debug:
+        msg: "{{ zos_lineinfile_result }} with verbosity 1"
+        verbosity: 1
+
+    - name: Add IEASYSAL LFAREA parm.
+      zos_lineinfile:
+        src: USER.{{ adcd_ver }}.PARMLIB(IEASYSAL)
+        insertafter: '^VIODSN='
+        line: 'LFAREA=(1M=(25%,0%),NOPROMPT), Z/OS LARGE FRAME SUPPORT'
+      register: zos_lineinfile_result
+
+    - name: DEBUG(-v) Response from Add IEASYSAL LFAREA parm.
+      debug:
+        msg: "{{ zos_lineinfile_result }} with verbosity 1"
+        verbosity: 1
+
+###############################################################################
+# Usage:
+#  Copy ADCD.{{ adcd_ver }}.PARMLIB(VATLSTDB) to USER.{{ adcd_ver }}.PARMLIB(IEASYSZZ)
+#  Alter VAL to include BPXPRMZZ
+#  Add LFAREA for z/OS lager frame support
+###############################################################################
+
+    - name: Copy VATLSTDB from ADCD to USER; replace if it already exists.
+      zos_copy:
+        src: ADCD.{{ adcd_ver }}.PARMLIB(VATLSTDB)
+        dest: USER.{{ adcd_ver }}.PARMLIB(VATLSTZZ)
+        remote_src: true
+      register: zos_copy_result
+
+    - name: DEBUG(-v) Response from Copy VATLSTDB from ADCD to USER.
+      debug:
+        msg: "{{ zos_copy_result }} with verbosity 1"
+        verbosity: 1
+
+    - name: Update IEASYSAL VAL parm.
+      zos_lineinfile:
+        src: USER.{{ adcd_ver }}.PARMLIB(IEASYSAL)
+        regexp: '^VAL='
+        line: 'VAL=ZZ,                       SELECT VATLSTZZ'
+      register: zos_lineinfile_result
+
+    - name: DEBUG(-v) Response from Update IEASYSAL VAL parm.
+      debug:
+        msg: "{{ zos_lineinfile_result }} with verbosity 1"
+        verbosity: 1
+
+    - name: Add VATLSTZZ WORK0A.
+      zos_lineinfile:
+        src: USER.{{ adcd_ver }}.PARMLIB(VATLSTZZ)
+        insertafter: '^C5DBAR'
+        line: 'WORK0A,0,0,3390    ,N'
+      register: zos_lineinfile_result
+
+    - name: DEBUG(-v) Response from Add VATLSTZZ WORK0A.
+      debug:
+        msg: "{{ zos_lineinfile_result }} with verbosity 1"
+        verbosity: 1
+
+###############################################################################
+# Usage:
+#  Copy ADCD.{{ adcd_ver }}.PARMLIB(IKJTSO00) to USER.{{ adcd_ver }}.PARMLIB(IKJTSOZZ)
+#  Add IKJTSO to reference IKJTSOZZ
+###############################################################################
+
+    - name: Copy IKJTSO00 from ADCD to IKJTSOZZ USER; replace if it already exists.
+      zos_copy:
+        src: ADCD.{{ adcd_ver }}.PARMLIB(IKJTSO00)
+        dest: USER.{{ adcd_ver }}.PARMLIB(IKJTSOZZ)
+        remote_src: true
+      register: zos_copy_result
+
+    - name: DEBUG(-v) Response from Copy IKJTSO00 from ADCD to IKJTSOZZ USER; replace if it already exists.
+      debug:
+        msg: "{{ zos_copy_result }} with verbosity 1"
+        verbosity: 1
+
+    - name: Add IEASYSAL IKJTSOZZ parm.
+      zos_lineinfile:
+        src: USER.{{ adcd_ver }}.PARMLIB(IEASYSAL)
+        insertafter: '^ILMMODE'
+        line: 'IKJTSO=ZZ,'
+      register: zos_lineinfile_result
+
+    - name: DEBUG(-v) Response from Add IEASYSAL IKJTSOZZ parm.
+      debug:
+        msg: "{{ zos_lineinfile_result }} with verbosity 1"
+        verbosity: 1
+
+###############################################################################
+# Usage:
+#  Copy ADCD.{{ adcd_ver }}.PARMLIB(VTAMALL) to USER.{{ adcd_ver }}.PARMLIB(VTAMALL)
+#  Add S FTPD
+###############################################################################
+
+    - name: Copy VTAMALL from ADCD to USER; replace if it already exists.
+      zos_copy:
+        src: ADCD.{{ adcd_ver }}.PARMLIB(VTAMALL)
+        dest: USER.{{ adcd_ver }}.PARMLIB(VTAMALL)
+        remote_src: true
+      register: zos_copy_result
+
+    - name: DEBUG(-v) Response from Copy VTAMALL from ADCD to USER.
+      debug:
+        msg: "{{ zos_copy_result }} with verbosity 1"
+        verbosity: 1
+
+    - name: Add S FTPD to VTAMALL.
+      zos_lineinfile:
+        src: USER.{{ adcd_ver }}.PARMLIB(VTAMALL)
+        insertafter: '^S ZOSCSRV'
+        line: 'S FTPD'
+      register: zos_lineinfile_result
+
+    - name: DEBUG(-v) Response from Add S FTPD to VTAMALL.
+      debug:
+        msg: "{{ zos_lineinfile_result }} with verbosity 1"
+        verbosity: 1
+
+    - name: Comment out S IMS15RL1.
+      zos_lineinfile:
+        src: USER.{{ adcd_ver }}.PARMLIB(VTAMALL)
+        regexp: '^S IMS15RL1'
+        line: '/* S IMS15RL1 */'
+      register: zos_lineinfile_result
+
+    - name: DEBUG(-v) Response from Comment out S IMS15RL1.
+      debug:
+        msg: "{{ zos_lineinfile_result }} with verbosity 1"
+        verbosity: 1
+
+    - name: Comment out S IMS15CR1.
+      zos_lineinfile:
+        src: USER.{{ adcd_ver }}.PARMLIB(VTAMALL)
+        regexp: '^S IMS15CR1'
+        line: '/* S IMS15CR1 */'
+      register: zos_lineinfile_result
+
+    - name: DEBUG(-v) Response from Comment out S IMS15CR1.
+      debug:
+        msg: "{{ zos_lineinfile_result }} with verbosity 1"
+        verbosity: 1
+
+
+###############################################################################
+# Usage:
+#  Copy ADCD.{{ adcd_ver }}.PARMLIB(SHUTALL) to USER.{{ adcd_ver }}.PARMLIB(SHUTALL)
+#  Add P FTPD and stop IMS for starting
+###############################################################################
+
+    - name: Copy SHUTALL from ADCD to USER; replace if it already exists.
+      zos_copy:
+        src: ADCD.{{ adcd_ver }}.PARMLIB(SHUTALL)
+        dest: USER.{{ adcd_ver }}.PARMLIB(SHUTALL)
+        remote_src: true
+      register: zos_copy_result
+
+    - name: DEBUG(-v) Response from Copy SHUTALL from ADCD to USER.
+      debug:
+        msg: "{{ zos_copy_result }} with verbosity 1"
+        verbosity: 1
+
+    - name: Add P FTPD to SHUTALL.
+      zos_lineinfile:
+        src: USER.{{ adcd_ver }}.PARMLIB(SHUTALL)
+        insertbefore: '^P RSED'
+        line: 'P FTPD'
+      register: zos_lineinfile_result
+
+    - name: DEBUG(-v) Response from Add P FTPD to SHUTALL.
+      debug:
+        msg: "{{ zos_lineinfile_result }} with verbosity 1"
+        verbosity: 1
+
+###############################################################################
+# Usage:
+#  Copy ADCD.{{ adcd_ver }}.PARMLIB(IEFSSNDB) to USER.{{ adcd_ver }}.PARMLIB(IEFSSNDB)
+#  Needed for Omegamon implementation 
+###############################################################################
+
+    - name: Copy IEFSSNDB from ADCD to USER; replace if it already exists.
+      zos_copy:
+        src: ADCD.{{ adcd_ver }}.PARMLIB(IEFSSNDB)
+        dest: USER.{{ adcd_ver }}.PARMLIB(IEFSSNDB)
+        remote_src: true
+      register: zos_copy_result
+
+    - name: DEBUG(-v) Response from Copy IEFSSNDB from ADCD to USER.
+      debug:
+        msg: "{{ zos_copy_result }} with verbosity 1"
+        verbosity: 1
+
+###############################################################################
+# Usage:
+#  Copy ADCD.{{ adcd_ver }}.PARMLIB(IEASYM00) to USER.{{ adcd_ver }}.PARMLIB(IEASYM00)
+#  Needed for Omegamon implementation 
+###############################################################################
+
+    - name: Copy IEASYM00 from ADCD to USER; replace if it already exists.
+      zos_copy:
+        src: ADCD.{{ adcd_ver }}.PARMLIB(IEASYM00)
+        dest: USER.{{ adcd_ver }}.PARMLIB(IEASYM00)
+        remote_src: true
+      register: zos_copy_result
+
+    - name: DEBUG(-v) Response from Copy IEASYM00 from ADCD to USER.
+      debug:
+        msg: "{{ zos_copy_result }} with verbosity 1"
+        verbosity: 1
+
+###############################################################################
+# Usage:
+#  Copy ADCD.{{ adcd_ver }}.PARMLIB(IZUPRMAS) to USER.{{ adcd_ver }}.PARMLIB(IZUPRMAS)
+#  zOSMF PARMLIB IZUPRMAS - needed for new certificate and keyring 
+###############################################################################
+
+    - name: Copy IZUPRMAS from ADCD to USER; replace if it already exists.
+      zos_copy:
+        src: ADCD.{{ adcd_ver }}.PARMLIB(IZUPRMAS)
+        dest: USER.{{ adcd_ver }}.PARMLIB(IZUPRMAS)
+        remote_src: true
+      register: zos_copy_result
+
+    - name: DEBUG(-v) Response from Copy IZUPRMAS from ADCD to USER.
+      debug:
+        msg: "{{ zos_copy_result }} with verbosity 1"
+        verbosity: 1
