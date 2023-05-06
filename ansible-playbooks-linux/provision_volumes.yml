@@ -1,0 +1,34 @@
+# provision_volumes.yml
+#
+# This Ansible playbook creates volumes with specified device types
+# in the given destination directory.
+#
+# Usage:
+#  ansible-playbook -i <inventory> <playbook>
+#
+# Example:
+#  ansible-playbook -i inventories provision_volumes.yml
+#  ansible-playbook -i inventories provision_volumes.yml -v
+---
+- name: Create volumes
+  hosts: rhel
+  vars:
+    dest_dir: "/home/ibmsys1/volumes-z25c"
+    volumes_3390_27:
+      - user0a
+      - user0b
+      - user0c
+      - user0d
+      - c5zcx2
+      - c5dbd3
+    volumes_3390_9:
+      - work0a
+
+  tasks:
+    - name: Create 3390-27 volumes
+      command: "alcckd {{ dest_dir }}/{{ item }} -d3390-27"
+      loop: "{{ volumes_3390_27 }}"
+
+    - name: Create 3390-9 volumes
+      command: "alcckd {{ dest_dir }}/{{ item }} -d3390-9"
+      loop: "{{ volumes_3390_9 }}"

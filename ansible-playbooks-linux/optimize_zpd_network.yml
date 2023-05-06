@@ -1,0 +1,29 @@
+# optimize_zpd_network.yml
+#
+# This Ansible playbook alters RHEL settings to improve zPD networking.
+#
+# Usage:
+#  ansible-playbook -i <inventory> <playbook>
+#
+# Example:
+#  ansible-playbook -i inventories optimize_zpd_network.yml --ask-vault-pass
+#  ansible-playbook -i inventories optimize_zpd_network.yml -v --ask-vault-pass
+---
+- name: Optimize network settings for zPD
+  hosts: rhel
+  vars_files:
+    - vault.yml  
+  become: yes
+  vars:
+    network_interface: eno1
+    offload_options:
+      - rx
+      - tso
+      - gso
+      - gro
+      - lro
+
+  tasks:
+    - name: Disable offload options
+      command: "ethtool -K {{ network_interface }} {{ item }} off"
+      loop: "{{ offload_options }}"
