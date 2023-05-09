@@ -35,6 +35,10 @@
     zwic_dir: /global/zwic
     # Age threshold for zWIC files
     zwic_file_age: 10d
+    # Directory for tmp files
+    tmp_dir: /tmp
+    # Age threshold for tmp files
+    tmp_file_age: 20d
 
   tasks:
     # Ping the target host to check connectivity
@@ -116,6 +120,22 @@
         path: "{{ item.path }}"
         state: absent
       with_items: "{{ zwic_files_to_delete.files }}"
+      notify:
+        - Handle file deletion result
+
+    # Find and delete temp files older than specified age
+    - name: Find and delete tmp files older than {{ tmp_file_age }}
+      find:
+        paths: "{{ tmp_dir }}"
+        age: "{{ tmp_file_age }}"
+        recurse: yes
+      register: tmp_files_to_delete
+
+    - name: Delete old tmp files
+      file:
+        path: "{{ item.path }}"
+        state: absent
+      with_items: "{{ tmp_files_to_delete.files }}"
       notify:
         - Handle file deletion result
 
