@@ -28,15 +28,6 @@
         - stopped
         - absent
 
-    # Stop and remove Jenkins Docker container
-    - name: Ensure Jenkins Docker container is stopped and removed
-      docker_container:
-        name: jenkins
-        state: "{{ item }}"
-      loop:
-        - stopped
-        - absent
-
     # Execute dockerManageZdap script (down command)
     - name: Execute dockerManageZdap script (down command)
       ansible.builtin.command:

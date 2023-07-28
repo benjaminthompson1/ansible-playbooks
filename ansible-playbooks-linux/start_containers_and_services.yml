@@ -34,18 +34,6 @@
           LICENSE: "accept"
           MQ_APP_PASSWORD: "passw0rd"
 
-    # Start Jenkins Docker container
-    - name: Ensure Jenkins Docker container is started
-      docker_container:
-        name: jenkins
-        image: jenkins/jenkins:lts
-        state: started
-        published_ports:
-          - "9080:8080"
-          - "50000:50000"
-        volumes:
-          - "jenkins-data:/var/jenkins_home"
-
     # Execute dockerManageZdap script
     - name: Execute dockerManageZdap script (up command)
       ansible.builtin.command:
