@@ -22,6 +22,7 @@ ansible-playbook-repository/
 │ └── zos_system_configuration.yml
 └── ansible-playbooks-linux/
   ├── backup_z25c_volumes.yml
+  ├── install_docker.yml
   ├── optimize_zpd_network.yml
   ├── provision_volumes.yml
   ├── restore_backup.yml
@@ -86,6 +87,7 @@ ansible-playbook-repository/
 ### Linux Playbooks
 
 - `backup_z25c_volumes.yml`: Backs up the z25c volumes.
+- `install_docker.yml`: Install Docker CE.
 - `optimize_zpd_network.yml`: Optimizes the zpd network.
 - `provision_volumes.yml`: Provisions volumes.
 - `restore_backup.yml`: Restores a backup.
