@@ -56,3 +56,15 @@
     - name: Show UCD server start output
       debug:
         var: ucd_server_result.stdout_lines
+
+    # Start GitHub self-managed runner 
+    - name: Ensure GitHub self-managed runner is started
+      ansible.builtin.command:
+        cmd: "/home/ibmsys1/actions-runner/run.sh"
+      become: yes
+      register: github_runner_result
+
+    # Display the result of the GitHub self-managed runner 
+    - name: Show GitHub runner start output
+      debug:
+        var: github_runner_result.stdout_lines
