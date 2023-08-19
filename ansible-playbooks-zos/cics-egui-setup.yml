@@ -1,17 +1,19 @@
-###############################################################################
-# Usage:
-#  ansible-playbook -i <inventory> <playbook>
-#
+# This Ansible playbook sets up the CICS EGUI environment for a specified target.
+# -----------------------------------------------------------------------------
+# General usage:
+#   ansible-playbook -i <inventory> <playbook>
+# 
 # Example:
-#  ansible-playbook -i inventories cics-egui-setup.yml
-#  ansible-playbook -i inventories cics-egui-setup.yml -v
-###############################################################################
+#   ansible-playbook -i inventories cics-egui-setup.yml
+#   ansible-playbook -i inventories cics-egui-setup.yml -v
+# -----------------------------------------------------------------------------
 ---
 - hosts: ben_s0w1 
   collections:
     - ibm.ibm_zos_core
   gather_facts: no
 
+  # Define variables that will be used throughout the playbook
   vars:
     adcd_ver: Z24C
     high_level_qualifier: IBMUSER
@@ -20,19 +22,16 @@
   environment: "{{ environment_vars }}"
 
   tasks:
+    # Verify connectivity with the target host using zos_ping
     - name: Ping using zos_ping
       zos_ping:
       register: zos_ping_result
 
-    - name: Response from zos_ping
+    - name: Display response from zos_ping
       debug:
         msg: "{{ zos_ping_result }}"
-        
-###############################################################################
-# Usage: 
-#  Creating and defining the VSAM data sets.
-###############################################################################
 
+    # Create and define the VSAM data sets
     - name: Submit DFH$ECA to create catalog data set and wait for the job to finish.
       zos_job_submit:
         src: "IBMUSER.GIT.JCL.CNTL(DFH\\$ECA)"
@@ -41,7 +40,7 @@
         wait_time_s: 60
       register: zos_job_submit_result 
 
-    - name: DEBUG(-v) Response from Submit DFH$ECA to create catalog data set and wait for the job to finish.
+    - name: Display response from DFH$ECA job submission (verbose mode)
       debug:
         msg: "{{ zos_job_submit_result }} with verbosity 1"
         verbosity: 1
@@ -54,16 +53,12 @@
         wait_time_s: 60
       register: zos_job_submit_result 
 
-    - name: DEBUG(-v) Response from Submit DFH$CNF to create configuration data set and wait for the job to finish.
+    - name: Display response from DFH$CNF job submission (verbose mode)
       debug:
         msg: "{{ zos_job_submit_result }} with verbosity 1"
         verbosity: 1
 
-###############################################################################
-# Usage: 
-#  submit CICS system definition for zOffice
-###############################################################################
-     
+    # Submit CICS system definition for zOffice
     - name: Submit CICSCSD to create definition for zOffice and wait for the job to finish.
       zos_job_submit:
         src: IBMUSER.GIT.JCL.CNTL(CICSCSD)
@@ -72,7 +67,20 @@
         wait_time_s: 60
       register: zos_job_submit_result 
 
-    - name: DEBUG(-v) Response from Submit CICSCSD to create definition for zOffice and wait for the job to finish.
+    - name: Display response from CICSCSD job submission (verbose mode)
       debug:
         msg: "{{ zos_job_submit_result }} with verbosity 1"
+        verbosity: 1
+
+    # Insert DFLTUSER to CICS SIP configuration
+    - name: Insert DFLTUSER to CICS SIP.
+      zos_lineinfile:
+        src: DFH610.SYSIN(DFH$SIP1)
+        insertbefore: '^*TCPIP=YES'
+        line: 'DFLTUSER=IBMUSER                          ANSIBLE ADDED IBMUSER'
+      register: zos_lineinfile_result
+
+    - name: Display response from Insert DFLTUSER to CICS SIP (verbose mode)
+      debug:
+        msg: "{{ zos_lineinfile_result }} with verbosity 1"
         verbosity: 1

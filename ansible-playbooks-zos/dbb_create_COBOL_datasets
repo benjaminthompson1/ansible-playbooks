@@ -1,0 +1,120 @@
+# This playbook uses the ibm.ibm_zos_core collection to manage (create/replace) DBB specific z/OS data sets.
+# -----------------------------------------------------------------------------
+# General usage:
+#   ansible-playbook -i <inventory> <playbook>
+# 
+# Example:
+#  ansible-playbook -i inventories/hosts dbb_create_COBOL_datasets.yml
+#  ansible-playbook -i inventories/hosts dbb_create_COBOL_datasets.yml -v
+# -----------------------------------------------------------------------------
+---
+- hosts: ben_s0w1 
+  collections:
+    - ibm.ibm_zos_core  # Using IBM's z/OS core collection for mainframe interaction
+  gather_facts: no     # Disables fact gathering to optimize execution time
+
+  # Import environment variables required for playbook execution
+  environment: "{{ environment_vars }}"
+
+  tasks:
+    # Verify connectivity to the z/OS system
+    - name: Ping using zos_ping
+      zos_ping:
+      register: zos_ping_result
+
+    # Display the results from the connectivity check
+    - name: Response from zos_ping
+      debug:
+        msg: "{{ zos_ping_result }}"
+
+    # Block groups data set creation tasks together for more straightforward error handling
+    - block:
+        # Each of the following tasks will create or replace a specific z/OS data set
+        - name: Create IBMUSER.DBB.COBOL
+          zos_data_set:
+            name: IBMUSER.DBB.COBOL
+            type: LIBRARY
+            state: present
+            format: fb
+            size: 1cyl
+            secondary: 1cyl
+            record_length: 80
+            replace: yes
+
+        - name: Create IBMUSER.DBB.COPY
+          zos_data_set:
+            name: IBMUSER.DBB.COPY
+            type: LIBRARY
+            state: present
+            format: fb
+            size: 1cyl
+            secondary: 1cyl
+            record_length: 80
+            replace: yes
+
+        - name: Create IBMUSER.DBB.DBRM
+          zos_data_set:
+            name: IBMUSER.DBB.DBRM
+            type: LIBRARY
+            state: present
+            format: fb
+            size: 1cyl
+            secondary: 1cyl
+            record_length: 80
+            replace: yes
+
+        - name: Create IBMUSER.DBB.BMS
+          zos_data_set:
+            name: IBMUSER.DBB.BMS
+            type: LIBRARY
+            state: present
+            format: fb
+            size: 1cyl
+            secondary: 1cyl
+            record_length: 80
+            replace: yes
+
+        - name: Create IBMUSER.DBB.LINK
+          zos_data_set:
+            name: IBMUSER.DBB.LINK
+            type: LIBRARY
+            state: present
+            format: fb
+            size: 1cyl
+            secondary: 1cyl
+            record_length: 80
+            replace: yes
+
+        - name: Create IBMUSER.DBB.OBJ
+          zos_data_set:
+            name: IBMUSER.DBB.OBJ
+            type: LIBRARY
+            state: present
+            format: fb
+            size: 1cyl
+            secondary: 1cyl
+            record_length: 80
+            replace: yes
+
+        - name: Create IBMUSER.DBB.LOAD
+          zos_data_set:
+            name: IBMUSER.DBB.LOAD
+            type: LIBRARY
+            state: present
+            format: u
+            size: 1cyl
+            secondary: 1cyl
+            record_length: 0
+            replace: yes
+
+      # This section will handle errors that occur during data set creation
+      rescue:
+        - name: Handle Errors
+          debug:
+            msg: "An error occurred while creating the data set. Error: {{ ansible_failed_result }}"
+
+      # This section will always be executed, regardless of the block's success or failure
+      always:
+        - name: Always execute this after block tasks
+          debug:
+            msg: "Finished data set creation tasks."
