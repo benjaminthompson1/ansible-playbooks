@@ -146,11 +146,22 @@
       zos_find:
         patterns:
         - SYS1.S0W1.Z25C.DMP*
+        age: 1w
       register: list_dump_datasets
 
-    - name: Display DUMP datasets
+    - name: Delete DUMP datasets
+      zos_data_set:
+        name: "{{ item.name }}"
+        state: absent
+      loop: "{{ list_dump_datasets.data_sets }}"
+      when: list_dump_datasets.matched > 0
+      register: delete_dump_datasets_result
+
+    - name: Handle DUMP dataset deletion result
       debug:
-        var: list_dump_datasets
+        msg: "{{ item }}"
+      with_items: "{{ delete_dump_datasets_result.results }}"
+      when: item.rc is defined and item.rc != 0
 
     # Find and delete backup_configuration.* files older than 2 months
     - name: Find backup_configuration.* files older than 2 months
