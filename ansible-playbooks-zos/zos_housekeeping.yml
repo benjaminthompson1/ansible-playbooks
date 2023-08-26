@@ -108,7 +108,7 @@
         - Handle job submit result
 
     # Find and delete zWIC files older than specified age
-    - name: Find and delete zWIC files older than {{ zwic_file_age }}
+    - name: Find zWIC files older than {{ zwic_file_age }}
       find:
         paths: "{{ zwic_dir }}"
         age: "{{ zwic_file_age }}"
@@ -120,11 +120,12 @@
         path: "{{ item.path }}"
         state: absent
       with_items: "{{ zwic_files_to_delete.files }}"
+      when: zwic_files_to_delete.matched > 0
       notify:
         - Handle file deletion result
 
     # Find and delete temp files older than specified age
-    - name: Find and delete tmp files older than {{ tmp_file_age }}
+    - name: Find tmp files older than {{ tmp_file_age }}
       find:
         paths: "{{ tmp_dir }}"
         age: "{{ tmp_file_age }}"
@@ -136,14 +137,16 @@
         path: "{{ item.path }}"
         state: absent
       with_items: "{{ tmp_files_to_delete.files }}"
+      when: tmp_files_to_delete.matched > 0
       notify:
         - Handle file deletion result
 
     # List z/OS DUMP datasets matching the specified pattern.
-    - name: List datasets
-      zos_data_set:
-        state: list
-        name: 'SYS1.S0W1.Z25C.DMP*'
+    - name: List DUMP datasets
+      zos_find:
+        patterns:
+        - SYS1.S0W1.Z25C.*
+        contains: 'DMP'
       register: result
 
     - name: Display result
