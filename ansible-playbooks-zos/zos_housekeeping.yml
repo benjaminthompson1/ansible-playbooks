@@ -152,6 +152,24 @@
       debug:
         var: list_dump_datasets
 
+    # Find and delete backup_configuration.* files older than 2 months
+    - name: Find backup_configuration.* files older than 2 months
+      find:
+        paths: "/global/zosmf/configuration/"
+        patterns: "backup_configuration.*"
+        age: "2m"
+        recurse: yes
+      register: backup_configuration_files_to_delete
+
+    - name: Delete old backup_configuration.* files
+      file:
+        path: "{{ item.path }}"
+        state: absent
+      with_items: "{{ backup_configuration_files_to_delete.files }}"
+      when: backup_configuration_files_to_delete.matched > 0
+      notify:
+        - Handle file deletion result
+
   handlers:
     # Handle job submission failures
     - name: Handle job submit result
@@ -162,11 +180,11 @@
         - "{{ dssdfrag_result }}"
         - "{{ dcollect_result }}"
         - "{{ jes2_purge_result }}"
-      when: item.rc != 0 
+      when: item.rc is defined and item.rc > 4
 
     # Handle file deletion failures
     - name: Handle file deletion result
       debug:
         msg: "{{ item }}"
       with_items: "{{ zwic_files_to_delete.files }}"
-      when: item.rc != 0   
+      when: item.rc is defined and item.rc != 0
