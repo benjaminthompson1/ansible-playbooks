@@ -200,7 +200,7 @@
         - "{{ logrec_result }}"
         - "{{ dssdfrag_result }}"
         - "{{ dcollect_result }}"
-      when: result.ret_code.msg is defined and result.ret_code.msg != 'CC 0000'
+      when: item.ret_code.msg is defined and item.ret_code.msg != 'CC 0000'
 
     # Handle file deletion failures
     - name: Handle file deletion result
