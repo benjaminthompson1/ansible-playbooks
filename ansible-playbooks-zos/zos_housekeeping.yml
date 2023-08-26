@@ -147,11 +147,11 @@
         patterns:
         - SYS1.S0W1.Z25C.*
         contains: 'DMP'
-      register: result
+      register: list_dump_datasets
 
     - name: Display result
       debug:
-        var: result
+        var: list_dump_datasets
 
   handlers:
     # Handle job submission failures
