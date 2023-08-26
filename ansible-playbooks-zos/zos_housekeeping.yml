@@ -145,8 +145,7 @@
     - name: List dump datasets
       zos_find:
         patterns:
-        - SYS1.S0W1.Z25C.*
-        contains: 'DMP'
+        - SYS1.S0W1.Z25C.DMP*
       register: list_dump_datasets
 
     - name: Display DUMP datasets
