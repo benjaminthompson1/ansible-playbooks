@@ -54,7 +54,6 @@
         location: DATA_SET
         wait: true
         wait_time_s: "{{ wait_time_s }}"
-        return_output: false
         max_rc: 4            
       register: logrec_result
       retries: 3
@@ -69,7 +68,6 @@
         location: DATA_SET
         wait: true
         wait_time_s: "{{ wait_time_s }}"
-        return_output: false
         max_rc: 4            
       register: dssdfrag_result
       retries: 3
@@ -84,7 +82,6 @@
         location: DATA_SET
         wait: true
         wait_time_s: "{{ wait_time_s }}"
-        return_output: false
         max_rc: 4        
       register: dcollect_result
       retries: 3
@@ -99,7 +96,6 @@
         location: DATA_SET
         wait: true
         wait_time_s: "{{ wait_time_s }}"
-        return_output: false
         max_rc: 4
       register: hbojbdc2_result
       retries: 3
@@ -200,7 +196,8 @@
         - "{{ logrec_result }}"
         - "{{ dssdfrag_result }}"
         - "{{ dcollect_result }}"
-      when: item.ret_code.msg is defined and item.ret_code.msg != 'CC 0000'
+        - "{{ hbojbdc2_result }}"
+      when: item.ret_code.msg is defined and item.ret_code.msg_code != '0000'
 
     # Handle file deletion failures
     - name: Handle file deletion result
