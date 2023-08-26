@@ -162,12 +162,11 @@
         - "{{ dssdfrag_result }}"
         - "{{ dcollect_result }}"
         - "{{ jes2_purge_result }}"
-      when: item is failed
+      when: item.rc != 0 
 
     # Handle file deletion failures
     - name: Handle file deletion result
       debug:
         msg: "{{ item }}"
       with_items: "{{ zwic_files_to_delete.files }}"
-      when: item
-    
+      when: item.rc != 0   
