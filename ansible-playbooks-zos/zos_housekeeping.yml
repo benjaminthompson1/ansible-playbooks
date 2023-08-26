@@ -140,12 +140,15 @@
         - Handle file deletion result
 
     # List z/OS DUMP datasets matching the specified pattern.
-    - name: list z/OS DUMP datasets 
-      zos_find:
-        patterns: "SYS1.S0W1.Z25C.DMP*"
+    - name: List datasets
+      zos_data_set:
+        state: list
+        name: 'SYS1.S0W1.Z25C.DMP*'
       register: result
-    - debug:
-        var: result.matched_datasets
+
+    - name: Display result
+      debug:
+        var: result
 
   handlers:
     # Handle job submission failures
