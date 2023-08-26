@@ -55,10 +55,7 @@
         wait: true
         wait_time_s: "{{ wait_time_s }}"         
       register: logrec_result
-      retries: 3
-      delay: 30    
-      notify:
-        - Handle job submit result
+      failed_when: logrec_result.rc != 0
 
     # Submit DSSDFRAG and wait for the job to finish
     - name: Submit DSSDFRAG and wait for the job to finish
@@ -68,10 +65,7 @@
         wait: true
         wait_time_s: "{{ wait_time_s }}"          
       register: dssdfrag_result
-      retries: 3
-      delay: 30   
-      notify:
-        - Handle job submit result
+      failed_when: dssdfrag_result.rc != 0
 
     # Submit DCOLLECT and wait for the job to finish
     - name: Submit DCOLLECT and wait for the job to finish
@@ -81,10 +75,7 @@
         wait: true
         wait_time_s: "{{ wait_time_s }}"     
       register: dcollect_result
-      retries: 3
-      delay: 30    
-      notify:
-        - Handle job submit result
+      failed_when: dcollect_result.rc != 0
 
     # Submit HBOJBDC2 sending DCOLLECT data to the Data Streamer
     - name: Submit HBOJBDC2 and wait for the job to finish
@@ -94,10 +85,7 @@
         wait: true
         wait_time_s: "{{ wait_time_s }}"
       register: hbojbdc2_result
-      retries: 3
-      delay: 30
-      notify:
-        - Handle job submit result
+      failed_when: hbojbdc2_result.rc != 0
 
     # Purge JES2 output datasets older than 21 days
     - name: Execute JES2 purge and wait for response
@@ -106,6 +94,7 @@
         wait: true
         wait_time_s: "{{ wait_time_s }}"
       register: jes2_purge_result
+      failed_when: jes2_purge_result.rc != 0
 
     # Find and delete zWIC files older than specified age
     - name: Find zWIC files older than {{ zwic_file_age_threshold }}
@@ -121,8 +110,6 @@
         state: absent
       with_items: "{{ zwic_files_to_delete.files }}"
       when: zwic_files_to_delete.matched > 0
-      notify:
-        - Handle file deletion result
 
     # Find and delete temp files older than specified age
     - name: Find tmp files older than {{ temp_file_age_threshold }}
@@ -138,8 +125,6 @@
         state: absent
       with_items: "{{ tmp_files_to_delete.files }}"
       when: tmp_files_to_delete.matched > 0
-      notify:
-        - Handle file deletion result
 
     # List z/OS DUMP datasets matching the specified pattern.
     - name: List dump datasets
@@ -180,24 +165,3 @@
         state: absent
       with_items: "{{ backup_configuration_files_to_delete.files }}"
       when: backup_configuration_files_to_delete.matched > 0
-      notify:
-        - Handle file deletion result
-
-  handlers:
-    # Handle job submission failures
-    - name: Handle job submit result
-      debug:
-        msg: "{{ item }}"
-      with_items:
-        - "{{ logrec_result }}"
-        - "{{ dssdfrag_result }}"
-        - "{{ dcollect_result }}"
-        - "{{ hbojbdc2_result }}"
-      when: item.ret_code.msg is defined and item.ret_code.msg_code != '0000'
-
-    # Handle file deletion failures
-    - name: Handle file deletion result
-      debug:
-        msg: "{{ item }}"
-      with_items: "{{ zwic_files_to_delete.files }}"
-      when: item.rc is defined and item.rc != 0
