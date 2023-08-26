@@ -54,11 +54,11 @@
         location: DATA_SET
         wait: true
         wait_time_s: "{{ wait_time_s }}"
+        return_output: false
+        max_rc: 4            
       register: logrec_result
       retries: 3
-      delay: 30
-      return_output: false
-      max_rc: 4      
+      delay: 30    
       notify:
         - Handle job submit result
 
@@ -69,11 +69,11 @@
         location: DATA_SET
         wait: true
         wait_time_s: "{{ wait_time_s }}"
+        return_output: false
+        max_rc: 4            
       register: dssdfrag_result
       retries: 3
-      delay: 30
-      return_output: false
-      max_rc: 4      
+      delay: 30   
       notify:
         - Handle job submit result
 
@@ -84,11 +84,11 @@
         location: DATA_SET
         wait: true
         wait_time_s: "{{ wait_time_s }}"
+        return_output: false
+        max_rc: 4        
       register: dcollect_result
       retries: 3
-      delay: 30
-      return_output: false
-      max_rc: 4      
+      delay: 30    
       notify:
         - Handle job submit result
 
@@ -99,11 +99,11 @@
         location: DATA_SET
         wait: true
         wait_time_s: "{{ wait_time_s }}"
+        return_output: false
+        max_rc: 4
       register: hbojbdc2_result
       retries: 3
       delay: 30
-      return_output: false
-      max_rc: 4
       notify:
         - Handle job submit result
 
