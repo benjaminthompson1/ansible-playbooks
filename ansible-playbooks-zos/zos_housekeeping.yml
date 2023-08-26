@@ -3,14 +3,14 @@
 # ansible-playbook -i <inventory> z25c_housekeeping.yml
 # Required Variables:
 # - cntl_hlq: Control HLQ for JCL jobs
-# - zwic_dir: Directory for zWIC files
+# - zwic_files_directory: Directory for zWIC files
 # Optional Variables:
 # - wait_time_s: Default wait time for job submissions (default: 30 seconds)
-# - zwic_file_age: Age threshold for zWIC files (default: 10 days)
+# - zwic_file_age_threshold: Age threshold for zWIC files (default: 10 days)
 # Description:
 # This playbook performs various housekeeping tasks on a z/OS system, including
 # submitting JCL jobs, executing operator commands, and deleting old files.
-# The required variables 'cntl_hlq' and 'zwic_dir' must be defined in the inventory.
+# The required variables 'cntl_hlq' and 'zwic_files_directory' must be defined in the inventory.
 # Optional variables can be set in the playbook or passed in via the command line.
 # Example:
 # ansible-playbook -i inventories zos_housekeeping.yml
@@ -32,13 +32,15 @@
     # Default wait time for job submissions
     wait_time_s: 30
     # Directory for zWIC files
-    zwic_dir: /global/zwic
+    zwic_files_directory: /global/zwic
     # Age threshold for zWIC files
-    zwic_file_age: 10d
+    zwic_file_age_threshold: 10d
     # Directory for tmp files
-    tmp_dir: /tmp
+    temp_files_directory: /tmp
     # Age threshold for tmp files
-    tmp_file_age: 20d
+    temp_file_age_threshold: 20d
+    # Age threshold for zOSMF backup files
+    backup_config_file_age_threshold: 2m
 
   tasks:
     # Ping the target host to check connectivity
@@ -104,14 +106,12 @@
         wait: true
         wait_time_s: "{{ wait_time_s }}"
       register: jes2_purge_result
-      notify:
-        - Handle job submit result
 
     # Find and delete zWIC files older than specified age
-    - name: Find zWIC files older than {{ zwic_file_age }}
+    - name: Find zWIC files older than {{ zwic_file_age_threshold }}
       find:
-        paths: "{{ zwic_dir }}"
-        age: "{{ zwic_file_age }}"
+        paths: "{{ zwic_files_directory }}"
+        age: "{{ zwic_file_age_threshold }}"
         recurse: yes
       register: zwic_files_to_delete
 
@@ -125,10 +125,10 @@
         - Handle file deletion result
 
     # Find and delete temp files older than specified age
-    - name: Find tmp files older than {{ tmp_file_age }}
+    - name: Find tmp files older than {{ temp_file_age_threshold }}
       find:
-        paths: "{{ tmp_dir }}"
-        age: "{{ tmp_file_age }}"
+        paths: "{{ temp_files_directory }}"
+        age: "{{ temp_file_age_threshold }}"
         recurse: yes
       register: tmp_files_to_delete
 
@@ -155,9 +155,11 @@
     # Find and delete backup_configuration.* files older than 2 months
     - name: Find backup_configuration.* files older than 2 months
       find:
-        paths: "/global/zosmf/configuration/"
+        paths:
+          - "/global/zosmf/configuration/"
+          - "/global/zosmf_explorer/configuration/"
         patterns: "backup_configuration.*"
-        age: "2m"
+        age: "{{ backup_config_file_age_threshold }}"
         recurse: yes
       register: backup_configuration_files_to_delete
 
@@ -179,7 +181,6 @@
         - "{{ logrec_result }}"
         - "{{ dssdfrag_result }}"
         - "{{ dcollect_result }}"
-        - "{{ jes2_purge_result }}"
       when: item.rc is defined and item.rc > 4
 
     # Handle file deletion failures
