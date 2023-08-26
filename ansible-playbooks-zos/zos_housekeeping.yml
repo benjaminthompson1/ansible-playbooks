@@ -142,14 +142,14 @@
         - Handle file deletion result
 
     # List z/OS DUMP datasets matching the specified pattern.
-    - name: List DUMP datasets
+    - name: List dump datasets
       zos_find:
         patterns:
         - SYS1.S0W1.Z25C.*
         contains: 'DMP'
       register: list_dump_datasets
 
-    - name: Display result
+    - name: Display DUMP datasets
       debug:
         var: list_dump_datasets
 
