@@ -139,6 +139,14 @@
       notify:
         - Handle file deletion result
 
+    # List z/OS DUMP datasets matching the specified pattern.
+    - name: list z/OS DUMP datasets 
+      zos_find:
+        patterns: "SYS1.S0W1.Z25C.DMP*"
+      register: result
+    - debug:
+        var: result.matched_datasets
+
   handlers:
     # Handle job submission failures
     - name: Handle job submit result
@@ -157,3 +165,4 @@
         msg: "{{ item }}"
       with_items: "{{ zwic_files_to_delete.files }}"
       when: item
+    
