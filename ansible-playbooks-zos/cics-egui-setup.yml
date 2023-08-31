@@ -13,12 +13,6 @@
     - ibm.ibm_zos_core
   gather_facts: no
 
-  # Define variables that will be used throughout the playbook
-  vars:
-    adcd_ver: Z24C
-    high_level_qualifier: IBMUSER
-    cics_high_level_qualifier: DFH560
-
   environment: "{{ environment_vars }}"
 
   tasks:
@@ -32,15 +26,15 @@
         msg: "{{ zos_ping_result }}"
 
     # Create and define the VSAM data sets
-    - name: Submit DFH$ECA to create catalog data set and wait for the job to finish.
+    - name: Submit DFH$ECAT to create catalog data set and wait for the job to finish.
       zos_job_submit:
-        src: "IBMUSER.GIT.JCL.CNTL(DFH\\$ECA)"
+        src: "IBMUSER.GIT.JCL.CNTL(DFH$ECAT)"
         location: DATA_SET
         wait: true
         wait_time_s: 60
       register: zos_job_submit_result 
 
-    - name: Display response from DFH$ECA job submission (verbose mode)
+    - name: Display response from DFH$ECAT job submission (verbose mode)
       debug:
         msg: "{{ zos_job_submit_result }} with verbosity 1"
         verbosity: 1
