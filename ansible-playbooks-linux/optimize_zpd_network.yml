@@ -12,7 +12,7 @@
 - name: Optimize network settings for zPD
   hosts: zPDT
   vars_files:
-    - vault.yml  
+    - su_secrets.yml  
   become: yes
   vars:
     network_interface: eno1
