@@ -11,7 +11,7 @@
 #  ansible-playbook -i inventories restore_backup.yml -v -e restore_dir=/new/path/to/restore
 ---
 - name: Restore volumes from backup
-  hosts: rhel
+  hosts: zPDT
   vars:
     backup_file: "/home/ibmsys1/volumes-backup/volumes-z25c-20230111.zip"
     restore_dir: "/home/ibmsys1/restored-volumes" 

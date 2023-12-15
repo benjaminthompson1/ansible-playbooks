@@ -1,13 +1,13 @@
 ---
 linux_systems:
   hosts:
-    rhel:
+    zPDT:
       ansible_host: 192.168.1.170
       ansible_user: ibmsys1
       ansible_ssh_private_key_file: ~/.ssh/zPDT
 
-    p52:
+    OCP:
       ansible_host: 192.168.1.169
       ansible_user: ibmsys1
-      ansible_ssh_private_key_file: ~/.ssh/p52
+      ansible_ssh_private_key_file: ~/.ssh/OCP
 

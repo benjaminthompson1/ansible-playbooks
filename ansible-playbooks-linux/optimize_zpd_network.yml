@@ -10,7 +10,7 @@
 #  ansible-playbook -i inventories optimize_zpd_network.yml -v --ask-vault-pass
 ---
 - name: Optimize network settings for zPD
-  hosts: rhel
+  hosts: zPDT
   vars_files:
     - vault.yml  
   become: yes

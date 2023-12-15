@@ -11,16 +11,15 @@
 #  ansible-playbook -i inventories provision_volumes.yml -v
 ---
 - name: Create volumes
-  hosts: rhel
+  hosts: zPDT
   vars:
-    dest_dir: "/home/ibmsys1/volumes-z25c"
+    dest_dir: "/home/ibmsys1/volumes-z31a"
     volumes_3390_27:
-      - user0a
-      - user0b
-      - user0c
-      - user0d
-      - c5zcx2
-      - c5dbd3
+      - a3usr2
+      - a3usr3
+      - a3usr4
+      - a3usr5
+      - a3zcx2
     volumes_3390_9:
       - work0a
 
