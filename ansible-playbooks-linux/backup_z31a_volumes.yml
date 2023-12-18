@@ -9,6 +9,8 @@
 ---
 - name: Backup volumes
   hosts: zPDT
+  vars_files:
+    - su_secrets.yml   
   become: true
 
   vars:
