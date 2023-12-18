@@ -4,14 +4,11 @@
 # Usage:
 #  ansible-playbook -i <inventory> <playbook>
 # Example:
-#  ansible-playbook -i inventories backup_z31a_volumes.yml --ask-vault-pass
-#  ansible-playbook -i inventories backup_z31a_volumes.yml -v --ask-vault-pass
+#  ansible-playbook -i inventories backup_z31a_volumes.yml 
+#  ansible-playbook -i inventories backup_z31a_volumes.yml -v 
 ---
 - name: Backup volumes
   hosts: zPDT
-#  vars_files:
-#    - su_secrets.yml   
-#  become: true
 
   vars:
     src_dir: "/home/ibmsys1/volumes-z31a"
