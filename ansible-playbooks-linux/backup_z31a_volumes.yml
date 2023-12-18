@@ -31,7 +31,7 @@
       ansible.builtin.archive:
         path: "{{ src_dir }}"
         dest: "{{ dest_dir }}/{{ archive_name }}"
-        format: xz
+        format: gz
       notify: Debug message
 
   handlers:
