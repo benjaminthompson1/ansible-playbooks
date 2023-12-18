@@ -13,7 +13,7 @@
 - name: Restore volumes from backup
   hosts: zPDT
   vars:
-    backup_file: "/home/ibmsys1/volumes-backup/volumes-z25c-20230111.zip"
+    backup_file: "/home/ibmsys1/volumes-backup/volumes-z25c-20231207.zip"
     restore_dir: "/home/ibmsys1/restored-volumes" 
 
   tasks:
