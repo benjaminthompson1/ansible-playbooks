@@ -4,8 +4,8 @@
 # Usage:
 #  ansible-playbook -i <inventory> <playbook>
 # Example:
-#  ansible-playbook -i inventories backup_z31a_volumes.yml
-#  ansible-playbook -i inventories backup_z31a_volumes.yml -v
+#  ansible-playbook -i inventories backup_z31a_volumes.yml --ask-vault-pass
+#  ansible-playbook -i inventories backup_z31a_volumes.yml -v --ask-vault-pass
 ---
 - name: Backup volumes
   hosts: zPDT
