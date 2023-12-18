@@ -11,9 +11,9 @@
   hosts: zPDT
 
   vars:
-    src_dir: "/home/ibmsys1/volumes-z25c"
+    src_dir: "/home/ibmsys1/volumes-z31a"
     dest_dir: "/home/ibmsys1/volumes-backup"
-    archive_name: "volumes-z25c-{{ ansible_date_time.date.replace('-', '') }}.tar.xz"
+    archive_name: "volumes-z31a-{{ ansible_date_time.date.replace('-', '') }}.tar.xz"
 
   tasks:
     - name: Check if source directory exists
@@ -27,7 +27,7 @@
         state: directory
         mode: '0755'
 
-    - name: Archive z25c volumes
+    - name: Archive z31a volumes
       ansible.builtin.archive:
         path: "{{ src_dir }}"
         dest: "{{ dest_dir }}/{{ archive_name }}"
