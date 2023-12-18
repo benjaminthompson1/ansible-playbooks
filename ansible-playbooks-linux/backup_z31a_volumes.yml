@@ -33,9 +33,9 @@
         state: directory
         mode: '0755'
 
-    - name: Archive z31a volumes using tar
+    - name: Archive z31a volumes using tar with fast xz compression
       ansible.builtin.command: >
-        tar -cJf {{ dest_dir }}/{{ archive_name }} -C {{ src_dir }} .
+        tar -c -I 'xz --fast' -f {{ dest_dir }}/{{ archive_name }} -C {{ src_dir }} .
       when: src_dir_stat.stat.exists
       register: tar_result
       failed_when: tar_result.rc != 0
