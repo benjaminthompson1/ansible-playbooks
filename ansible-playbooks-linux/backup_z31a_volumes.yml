@@ -9,9 +9,9 @@
 ---
 - name: Backup volumes
   hosts: zPDT
-  vars_files:
-    - su_secrets.yml   
-  become: true
+#  vars_files:
+#    - su_secrets.yml   
+#  become: true
 
   vars:
     src_dir: "/home/ibmsys1/volumes-z31a"
