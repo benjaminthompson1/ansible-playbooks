@@ -9,6 +9,7 @@
 ---
 - name: Backup volumes
   hosts: zPDT
+  become: true
 
   vars:
     src_dir: "/home/ibmsys1/volumes-z31a"
@@ -16,10 +17,16 @@
     archive_name: "volumes-z31a-{{ ansible_date_time.date.replace('-', '') }}.tar.xz"
 
   tasks:
+    - name: Check RHEL version
+      ansible.builtin.shell: cat /etc/redhat-release
+      register: rhel_version
+      changed_when: false
+
     - name: Check if source directory exists
       ansible.builtin.stat:
         path: "{{ src_dir }}"
       register: src_dir_stat
+      failed_when: not src_dir_stat.stat.exists
 
     - name: Create destination directory if it does not exist
       ansible.builtin.file:
@@ -31,10 +38,17 @@
       ansible.builtin.archive:
         path: "{{ src_dir }}"
         dest: "{{ dest_dir }}/{{ archive_name }}"
-        format: gz
+        format: xz
       notify: Debug message
+      when: src_dir_stat.stat.exists
+
+    - name: Verify Archive
+      ansible.builtin.stat:
+        path: "{{ dest_dir }}/{{ archive_name }}"
+      register: archive_stat
+      failed_when: not archive_stat.stat.exists
 
   handlers:
     - name: Debug message
       ansible.builtin.debug:
-        msg: "Archive created successfully"
+        msg: "Archive created successfully. RHEL Version: {{ rhel_version.stdout }}"
