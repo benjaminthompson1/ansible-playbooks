@@ -18,7 +18,7 @@
 
   tasks:
     - name: Check RHEL version
-      ansible.builtin.shell: cat /etc/redhat-release
+      ansible.builtin.command: cat /etc/redhat-release
       register: rhel_version
       changed_when: false
 
@@ -34,13 +34,12 @@
         state: directory
         mode: '0755'
 
-    - name: Archive z31a volumes
-      ansible.builtin.archive:
-        path: "{{ src_dir }}"
-        dest: "{{ dest_dir }}/{{ archive_name }}"
-        format: xz
-      notify: Debug message
+    - name: Archive z31a volumes using tar
+      ansible.builtin.command: >
+        tar -cJf {{ dest_dir }}/{{ archive_name }} -C {{ src_dir }} .
       when: src_dir_stat.stat.exists
+      register: tar_result
+      failed_when: tar_result.rc != 0
 
     - name: Verify Archive
       ansible.builtin.stat:
