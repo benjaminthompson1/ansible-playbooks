@@ -7,13 +7,13 @@
 #  ansible-playbook -i inventories zos_dataset_commander_customization.yml -v
 ###############################################################################
 ---
-- hosts: ben_s0w1 
+- hosts: z31a_s0w1
   collections:
     - ibm.ibm_zos_core
   gather_facts: no
 
   vars:
-    adcd_ver: Z25C
+    adcd_ver: Z31A
 
   environment: "{{ environment_vars }}"
 
@@ -210,4 +210,3 @@
       debug:
         msg: "{{ zos_lineinfile_result }} with verbosity 1"
         verbosity: 1 
-
