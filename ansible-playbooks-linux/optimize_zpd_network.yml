@@ -6,8 +6,8 @@
 #  ansible-playbook -i <inventory> <playbook>
 #
 # Example:
-#  ansible-playbook -i inventories optimize_zpd_network.yml --ask-vault-pass
-#  ansible-playbook -i inventories optimize_zpd_network.yml -v --ask-vault-pass
+#  ansible-playbook -i inventories optimize_zpd_network.yml --ask-become-pass
+#  ansible-playbook -i inventories optimize_zpd_network.yml -v --ask-become-pass
 ---
 - name: Optimize network settings for zPD
   hosts: zPDT
