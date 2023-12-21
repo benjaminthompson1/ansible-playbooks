@@ -80,17 +80,17 @@
         marker: "/* {mark} ANSIBLE MANAGED BLOCK */"
         block: |
           /* IBM Python V3.10 */
-          MOUNT FILESYSTEM('CYP3A0.ZFS')
+          MOUNT FILESYSTEM('CYP3B0.ZFS')
                 TYPE(ZFS)
                 MODE(READ)
                 NOAUTOMOVE
-                MOUNTPOINT('/usr/lpp/IBM/cyp')
+                MOUNTPOINT('/usr/lpp/IBM/cyp/v3r11')
           /* IBM Python V3.9 */
           MOUNT FILESYSTEM('CYP390.ZFS')
                 TYPE(ZFS)
                 MODE(READ)
                 NOAUTOMOVE
-                MOUNTPOINT('/usr/lpp/IBM/cyp/v3r9/')
+                MOUNTPOINT('/usr/lpp/IBM/cyp/v3r9')
           /* SMPE ZFS */ 
           MOUNT FILESYSTEM('SMPE.SMPNTS.ZFS')
                 TYPE(ZFS)
