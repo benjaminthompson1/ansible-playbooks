@@ -5,4 +5,4 @@ zsystems:
       ansible_host: 10.1.1.2
       ansible_user: ibmuser
       ansible_port: 65522
-      ansible_ssh_private_key_file: ~/.ssh/z31a
+      ansible_ssh_private_key_file: /home/ibmsys1/.ssh/z31a
