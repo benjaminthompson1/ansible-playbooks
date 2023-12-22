@@ -7,14 +7,14 @@
 #  ansible-playbook -i inventories configure_jes_checkpoint.yml -v
 ###############################################################################
 ---
-- hosts: ben_s0w1
+- hosts: z31a_s0w1
   collections:
     - ibm.ibm_zos_core
   gather_facts: no
 
   vars:
-    adcd_ver: Z25C
-    ckpt_volume: C5SYS1
+    adcd_ver: Z31A
+    ckpt_volume: A3SYS1
 
   environment: "{{ environment_vars }}"
 
