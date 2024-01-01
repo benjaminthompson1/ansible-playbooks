@@ -149,49 +149,6 @@
 
 ###############################################################################
 # Usage:
-#  Copy ADCD.{{ adcd_ver }}.PARMLIB(VATLSTDB) to USER.{{ adcd_ver }}.PARMLIB(IEASYSZZ)
-#  Alter VAL to include BPXPRMZZ
-#  Add LFAREA for z/OS lager frame support
-###############################################################################
-
-    - name: Copy VATLSTDB from ADCD to USER; replace if it already exists.
-      zos_copy:
-        src: ADCD.{{ adcd_ver }}.PARMLIB(VATLSTDB)
-        dest: USER.{{ adcd_ver }}.PARMLIB(VATLSTZZ)
-        remote_src: true
-      register: zos_copy_result
-
-    - name: DEBUG(-v) Response from Copy VATLSTDB from ADCD to USER.
-      debug:
-        msg: "{{ zos_copy_result }} with verbosity 1"
-        verbosity: 1
-
-    - name: Update IEASYSAL VAL parm.
-      zos_lineinfile:
-        src: USER.{{ adcd_ver }}.PARMLIB(IEASYSAL)
-        regexp: '^VAL='
-        line: 'VAL=ZZ,                       SELECT VATLSTZZ'
-      register: zos_lineinfile_result
-
-    - name: DEBUG(-v) Response from Update IEASYSAL VAL parm.
-      debug:
-        msg: "{{ zos_lineinfile_result }} with verbosity 1"
-        verbosity: 1
-
-    - name: Add VATLSTZZ WORK0A.
-      zos_lineinfile:
-        src: USER.{{ adcd_ver }}.PARMLIB(VATLSTZZ)
-        insertafter: '^C5DBAR'
-        line: 'WORK0A,0,0,3390    ,N'
-      register: zos_lineinfile_result
-
-    - name: DEBUG(-v) Response from Add VATLSTZZ WORK0A.
-      debug:
-        msg: "{{ zos_lineinfile_result }} with verbosity 1"
-        verbosity: 1
-
-###############################################################################
-# Usage:
 #  Copy ADCD.{{ adcd_ver }}.PARMLIB(IKJTSO00) to USER.{{ adcd_ver }}.PARMLIB(IKJTSOZZ)
 #  Add IKJTSO to reference IKJTSOZZ
 ###############################################################################
