@@ -125,7 +125,7 @@
     - name: Insert RMF stop into SHUTALL.
       zos_lineinfile:
         src: USER.{{ adcd_ver }}.PARMLIB(SHUTALL)
-        insertbefore: '^P TN3270'
+        insertbefore: '^P TSO'
         line: 'P RMF'
       register: zos_lineinfile_result
 
