@@ -56,22 +56,21 @@
 #       wait_time_s: "{{ wait_time_s }}"         
       register: logrec_result
 
-    # Submit DSSDFRAG and wait for the job to finish
-    - name: Submit DSSDFRAG and wait for the job to finish
+    # Submit DSSDFRAG without waiting
+    - name: Submit DSSDFRAG
       zos_job_submit:
         src: "{{ cntl_hlq }}(DSSDFRAG)"
         location: DATA_SET
-#       wait: true
-#       wait_time_s: "{{ wait_time_s }}"   
-        max_rc: 4       
       register: dssdfrag_result
 
-     # Optional: Add a task to poll the job status if it's expected to be long-running
-    - name: Query long running job DSSDFRAG
+    # Poll the job status
+    - name: Query job status of DSSDFRAG
       zos_job_query:
-        job_name: "DFRAG"
+        job_id: "{{ dssdfrag_result.job_id }}"
       register: job_query_result
-      when: dssdfrag_result is failed
+      until: job_query_result.finished
+      retries: 10
+      delay: 30
 
     # Submit DCOLLECT and wait for the job to finish
     - name: Submit DCOLLECT and wait for the job to finish
