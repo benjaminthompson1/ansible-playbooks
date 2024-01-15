@@ -52,8 +52,8 @@
       zos_job_submit:
         src: "{{ cntl_hlq }}(LOGREC)"
         location: DATA_SET
-        wait: true
-        wait_time_s: "{{ wait_time_s }}"         
+#       wait: true
+#       wait_time_s: "{{ wait_time_s }}"         
       register: logrec_result
 
     # Submit DSSDFRAG and wait for the job to finish
@@ -61,8 +61,8 @@
       zos_job_submit:
         src: "{{ cntl_hlq }}(DSSDFRAG)"
         location: DATA_SET
-        wait: true
-        wait_time_s: "{{ wait_time_s }}"   
+#       wait: true
+#       wait_time_s: "{{ wait_time_s }}"   
         max_rc: 4       
       register: dssdfrag_result
 
@@ -71,8 +71,8 @@
       zos_job_submit:
         src: "{{ cntl_hlq }}(DCOLLECT)"
         location: DATA_SET
-        wait: true
-        wait_time_s: "{{ wait_time_s }}"     
+#       wait: true
+#       wait_time_s: "{{ wait_time_s }}"     
       register: dcollect_result
 
     # Submit HBOJBDC2 sending DCOLLECT data to the Data Streamer
