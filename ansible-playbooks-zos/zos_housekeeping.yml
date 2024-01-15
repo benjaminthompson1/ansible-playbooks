@@ -62,7 +62,8 @@
         src: "{{ cntl_hlq }}(DSSDFRAG)"
         location: DATA_SET
         wait: true
-        wait_time_s: "{{ wait_time_s }}"          
+        wait_time_s: "{{ wait_time_s }}"   
+        max_rc: 4       
       register: dssdfrag_result
 
     # Submit DCOLLECT and wait for the job to finish
