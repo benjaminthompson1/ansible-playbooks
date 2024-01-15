@@ -29,8 +29,6 @@
   vars:
     # Control HLQ for JCL jobs
     cntl_hlq: IBMUSER.GIT.JCL.CNTL
-    # Default wait time for job submissions
-    wait_time_s: 30
     # Directory for zWIC files
     zwic_files_directory: /global/zwic
     # Age threshold for zWIC files
@@ -51,9 +49,7 @@
     - name: Submit LOGREC and wait for the job to finish
       zos_job_submit:
         src: "{{ cntl_hlq }}(LOGREC)"
-        location: DATA_SET
-#       wait: true
-#       wait_time_s: "{{ wait_time_s }}"         
+        location: DATA_SET       
       register: logrec_result
 
     # Submit DSSDFRAG without waiting
@@ -61,7 +57,7 @@
       zos_job_submit:
         src: "{{ cntl_hlq }}(DSSDFRAG)"
         location: DATA_SET
-      register: dssdfrag_result
+#      register: dssdfrag_result
 
     # Poll the job status
     - name: Query job status of DSSDFRAG
@@ -76,9 +72,7 @@
     - name: Submit DCOLLECT and wait for the job to finish
       zos_job_submit:
         src: "{{ cntl_hlq }}(DCOLLECT)"
-        location: DATA_SET
-#       wait: true
-#       wait_time_s: "{{ wait_time_s }}"     
+        location: DATA_SET 
       register: dcollect_result
 
     # Submit HBOJBDC2 sending DCOLLECT data to the Data Streamer
