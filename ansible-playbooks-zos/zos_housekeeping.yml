@@ -67,11 +67,11 @@
       register: dssdfrag_result
 
      # Optional: Add a task to poll the job status if it's expected to be long-running
-     - name: Query long running job DSSDFRAG
-       zos_job_query:
-         job_name: "DFRAG"
-       register: job_query_result
-       when: dssdfrag_result is failed
+    - name: Query long running job DSSDFRAG
+      zos_job_query:
+        job_name: "DFRAG"
+      register: job_query_result
+      when: dssdfrag_result is failed
 
     # Submit DCOLLECT and wait for the job to finish
     - name: Submit DCOLLECT and wait for the job to finish
