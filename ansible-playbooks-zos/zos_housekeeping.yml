@@ -75,13 +75,13 @@
       register: dcollect_result
 
     # Submit HBOJBDC2 sending DCOLLECT data to the Data Streamer
-    - name: Submit HBOJBDC2 and wait for the job to finish
-      zos_job_submit:
-        src: "{{ cntl_hlq }}(HBOJBDC2)"
-        location: DATA_SET
-        wait: true
-        wait_time_s: "{{ wait_time_s }}"
-      register: hbojbdc2_result
+#    - name: Submit HBOJBDC2 and wait for the job to finish
+#     zos_job_submit:
+#       src: "{{ cntl_hlq }}(HBOJBDC2)"
+#       location: DATA_SET
+#       wait: true
+#       wait_time_s: "{{ wait_time_s }}"
+#     register: hbojbdc2_result
 
     # Purge JES2 output datasets older than 21 days
     - name: Execute JES2 purge and wait for response
@@ -92,19 +92,19 @@
       register: jes2_purge_result
 
     # Find and delete zWIC files older than specified age
-    - name: Find zWIC files older than {{ zwic_file_age_threshold }}
-      find:
-        paths: "{{ zwic_files_directory }}"
-        age: "{{ zwic_file_age_threshold }}"
-        recurse: yes
-      register: zwic_files_to_delete
+#   - name: Find zWIC files older than {{ zwic_file_age_threshold }}
+#     find:
+#       paths: "{{ zwic_files_directory }}"
+#      age: "{{ zwic_file_age_threshold }}"
+#       recurse: yes
+#     register: zwic_files_to_delete
 
-    - name: Delete old zWIC files
-      file:
-        path: "{{ item.path }}"
-        state: absent
-      with_items: "{{ zwic_files_to_delete.files }}"
-      when: zwic_files_to_delete.matched > 0
+#   - name: Delete old zWIC files
+#     file:
+#       path: "{{ item.path }}"
+#       state: absent
+#     with_items: "{{ zwic_files_to_delete.files }}"
+#     when: zwic_files_to_delete.matched > 0
 
     # Find and delete temp files older than specified age
     - name: Find tmp files older than {{ temp_file_age_threshold }}
