@@ -19,7 +19,7 @@
 ################################################################################
 ---
 - name: z/OS housekeeping
-  hosts: ben_s0w1
+  hosts: z31a_s0w1
   gather_facts: yes
   collections:
     - ibm.ibm_zos_core
