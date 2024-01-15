@@ -71,7 +71,7 @@
        zos_job_query:
          job_name: "DFRAG"
        register: job_query_result
-       when: dssdfrag_result is failed      
+       when: dssdfrag_result is failed
 
     # Submit DCOLLECT and wait for the job to finish
     - name: Submit DCOLLECT and wait for the job to finish
