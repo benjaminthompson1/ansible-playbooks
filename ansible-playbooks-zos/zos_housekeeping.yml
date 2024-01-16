@@ -57,7 +57,7 @@
       zos_job_submit:
         src: "{{ cntl_hlq }}(DSSDFRAG)"
         location: DATA_SET
-#      register: dssdfrag_result
+      register: dssdfrag_result
 
     # Poll the job status
     - name: Query job status of DSSDFRAG
