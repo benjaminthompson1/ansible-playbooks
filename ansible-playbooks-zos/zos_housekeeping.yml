@@ -57,6 +57,7 @@
       zos_job_submit:
         src: "{{ cntl_hlq }}(DSSDFRAG)"
         location: DATA_SET
+        wait_time_s: 120
       register: dssdfrag_result
 
     # Poll the job status
