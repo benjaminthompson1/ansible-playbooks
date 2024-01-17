@@ -8,7 +8,8 @@
 #   ansible-playbook -i inventories cics-egui-setup.yml -v
 # -----------------------------------------------------------------------------
 ---
-- hosts: z31a_s0w1
+- name: CICS EGUI setup
+  hosts: z31a_s0w1
   collections:
     - ibm.ibm_zos_core
   gather_facts: yes
@@ -30,8 +31,8 @@
       zos_job_submit:
         src: "IBMUSER.GIT.JCL.CNTL(DFH$ECAT)"
         location: DATA_SET
-        wait: true
-        wait_time_s: 60
+        wait_time_s: 120  
+        max_rc: 0 
       register: zos_job_submit_result 
 
     - name: Display response from DFH$ECAT job submission (verbose mode)
@@ -43,8 +44,8 @@
       zos_job_submit:
         src: "IBMUSER.GIT.JCL.CNTL(DFH$ECNF)"
         location: DATA_SET
-        wait: true
-        wait_time_s: 60
+        wait_time_s: 120  
+        max_rc: 0 
       register: zos_job_submit_result 
 
     - name: Display response from DFH$CNF job submission (verbose mode)
@@ -57,8 +58,8 @@
       zos_job_submit:
         src: IBMUSER.GIT.JCL.CNTL(CICSCSD)
         location: DATA_SET
-        wait: true
-        wait_time_s: 60
+        wait_time_s: 120  
+        max_rc: 0 
       register: zos_job_submit_result 
 
     - name: Display response from CICSCSD job submission (verbose mode)

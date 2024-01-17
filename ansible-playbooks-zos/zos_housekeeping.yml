@@ -49,7 +49,9 @@
     - name: Submit LOGREC and wait for the job to finish
       zos_job_submit:
         src: "{{ cntl_hlq }}(LOGREC)"
-        location: DATA_SET       
+        location: DATA_SET    
+        wait_time_s: 120   
+        max_rc: 0                   
       register: logrec_result
 
     # Submit DSSDFRAG without waiting
@@ -66,7 +68,8 @@
       zos_job_submit:
         src: "{{ cntl_hlq }}(DCOLLECT)"
         location: DATA_SET 
-        wait_time_s: 120        
+        wait_time_s: 120  
+        max_rc: 0              
       register: dcollect_result
 
     # Submit HBOJBDC2 sending DCOLLECT data to the Data Streamer
@@ -83,7 +86,7 @@
       zos_operator:
         cmd: "$P O JQ,ALL,A>21"
         wait: true
-        wait_time_s: "{{ wait_time_s }}"
+        wait_time_s: 120
       register: jes2_purge_result
 
     # Find and delete zWIC files older than specified age
