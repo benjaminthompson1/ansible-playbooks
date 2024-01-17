@@ -85,7 +85,6 @@
     - name: Execute JES2 purge and wait for response
       zos_operator:
         cmd: "$P O JQ,ALL,A>21"
-        wait: true
         wait_time_s: 120
       register: jes2_purge_result
 
