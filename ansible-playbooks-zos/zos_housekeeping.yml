@@ -66,6 +66,7 @@
       zos_job_submit:
         src: "{{ cntl_hlq }}(DCOLLECT)"
         location: DATA_SET 
+        wait_time_s: 120        
       register: dcollect_result
 
     # Submit HBOJBDC2 sending DCOLLECT data to the Data Streamer
