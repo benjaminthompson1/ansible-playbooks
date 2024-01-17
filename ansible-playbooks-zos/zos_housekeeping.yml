@@ -1,22 +1,21 @@
 ################################################################################
+# Playbook Name: z/OS Housekeeping
+# Purpose:
+#   - Automates routine housekeeping tasks on z/OS systems.
+#   - Handles submission of JCL jobs, management of temporary files,
+#     purging of old datasets, and other maintenance activities.
+#
+# Requirements:
+#   - Ansible 2.9 or higher
+#   - Access to z/OS system with appropriate permissions
+#   - IBM z/OS Core Collection installed
+#
 # Usage:
-# ansible-playbook -i <inventory> z25c_housekeeping.yml
-# Required Variables:
-# - cntl_hlq: Control HLQ for JCL jobs
-# - zwic_files_directory: Directory for zWIC files
-# Optional Variables:
-# - wait_time_s: Default wait time for job submissions (default: 30 seconds)
-# - zwic_file_age_threshold: Age threshold for zWIC files (default: 10 days)
-# Description:
-# This playbook performs various housekeeping tasks on a z/OS system, including
-# submitting JCL jobs, executing operator commands, and deleting old files.
-# The required variables 'cntl_hlq' and 'zwic_files_directory' must be defined in the inventory.
-# Optional variables can be set in the playbook or passed in via the command line.
-# Example:
-# ansible-playbook -i inventories zos_housekeeping.yml
-# ansible-playbook -i inventories zos_housekeeping.yml -v
-# ansible-playbook -i inventories zos_housekeeping.yml -e wait_time_s=60
+#   - Basic execution: ansible-playbook -i inventories zos_housekeeping.yml
+#   - With verbosity: ansible-playbook -i inventories zos_housekeeping.yml -v
+#   - Custom wait time: ansible-playbook -i inventories zos_housekeeping.yml -e wait_time_s=60
 ################################################################################
+
 ---
 - name: z/OS housekeeping
   hosts: z31a_s0w1
@@ -24,21 +23,14 @@
   collections:
     - ibm.ibm_zos_core
 
+  # Environment setup and global variables
   environment: "{{ environment_vars }}"
-
   vars:
-    # Control HLQ for JCL jobs
-    cntl_hlq: IBMUSER.GIT.JCL.CNTL
-    # Directory for zWIC files
-    zwic_files_directory: /global/zwic
-    # Age threshold for zWIC files
-    zwic_file_age_threshold: 10d
-    # Directory for tmp files
-    temp_files_directory: /tmp
-    # Age threshold for tmp files
-    temp_file_age_threshold: 20d
-    # Age threshold for zOSMF backup files
-    backup_config_file_age_threshold: 2m
+    cntl_hlq: IBMUSER.GIT.JCL.CNTL  # Control HLQ for JCL jobs
+    temp_files_directory: /tmp      # Directory for temporary files
+    temp_file_age_threshold: 20d    # Age threshold for temporary files
+    backup_config_file_age_threshold: 2m  # Age threshold for zOSMF backup files
+    wait_time_seconds: 120          # Wait time for z/OS batch and JES 
 
   tasks:
     # Ping the target host to check connectivity
@@ -50,7 +42,7 @@
       zos_job_submit:
         src: "{{ cntl_hlq }}(LOGREC)"
         location: DATA_SET    
-        wait_time_s: 120   
+        wait_time_s: "{{ wait_time_seconds }}"   
         max_rc: 0                   
       register: logrec_result
 
@@ -59,7 +51,7 @@
       zos_job_submit:
         src: "{{ cntl_hlq }}(DSSDFRAG)"
         location: DATA_SET
-        wait_time_s: 120
+        wait_time_s: "{{ wait_time_seconds }}"
         max_rc: 4
       register: dssdfrag_result
 
@@ -68,40 +60,16 @@
       zos_job_submit:
         src: "{{ cntl_hlq }}(DCOLLECT)"
         location: DATA_SET 
-        wait_time_s: 120  
+        wait_time_s: "{{ wait_time_seconds }}" 
         max_rc: 0              
       register: dcollect_result
-
-    # Submit HBOJBDC2 sending DCOLLECT data to the Data Streamer
-#    - name: Submit HBOJBDC2 and wait for the job to finish
-#     zos_job_submit:
-#       src: "{{ cntl_hlq }}(HBOJBDC2)"
-#       location: DATA_SET
-#       wait: true
-#       wait_time_s: "{{ wait_time_s }}"
-#     register: hbojbdc2_result
 
     # Purge JES2 output datasets older than 21 days
     - name: Execute JES2 purge and wait for response
       zos_operator:
         cmd: "$P O JQ,ALL,A>21"
-        wait_time_s: 120
+        wait_time_s: "{{ wait_time_seconds }}"
       register: jes2_purge_result
-
-    # Find and delete zWIC files older than specified age
-#   - name: Find zWIC files older than {{ zwic_file_age_threshold }}
-#     find:
-#       paths: "{{ zwic_files_directory }}"
-#      age: "{{ zwic_file_age_threshold }}"
-#       recurse: yes
-#     register: zwic_files_to_delete
-
-#   - name: Delete old zWIC files
-#     file:
-#       path: "{{ item.path }}"
-#       state: absent
-#     with_items: "{{ zwic_files_to_delete.files }}"
-#     when: zwic_files_to_delete.matched > 0
 
     # Find and delete temp files older than specified age
     - name: Find tmp files older than {{ temp_file_age_threshold }}
@@ -118,11 +86,11 @@
       with_items: "{{ tmp_files_to_delete.files }}"
       when: tmp_files_to_delete.matched > 0
 
-    # List z/OS DUMP datasets matching the specified pattern.
+    # List z/OS DUMP datasets matching the specified pattern
     - name: List dump datasets
       zos_find:
         patterns:
-        - SYS1.S0W1.Z25C.DMP*
+        - SYS1.S0W1.Z31A.DMP*
         age: 1w
       register: list_dump_datasets
 
@@ -134,20 +102,4 @@
       when: list_dump_datasets.matched > 0
       register: delete_dump_datasets_result
 
-    # Find and delete backup_configuration.* files older than 2 months
-    - name: Find backup_configuration.* files older than 2 months
-      find:
-        paths:
-          - "/global/zosmf/configuration/"
-          - "/global/zosmf_explorer/configuration/"
-        patterns: "backup_configuration.*"
-        age: "{{ backup_config_file_age_threshold }}"
-        recurse: yes
-      register: backup_configuration_files_to_delete
-
-    - name: Delete old backup_configuration.* files
-      file:
-        path: "{{ item.path }}"
-        state: absent
-      with_items: "{{ backup_configuration_files_to_delete.files }}"
-      when: backup_configuration_files_to_delete.matched > 0
+# End of the playbook
