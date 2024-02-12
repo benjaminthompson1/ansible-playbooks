@@ -61,7 +61,7 @@
         src: "{{ cntl_hlq }}(DCOLLECT)"
         location: DATA_SET 
         wait_time_s: "{{ wait_time_seconds }}" 
-        max_rc: 0              
+        max_rc: 4              
       register: dcollect_result
 
     # Purge JES2 output datasets older than 21 days
