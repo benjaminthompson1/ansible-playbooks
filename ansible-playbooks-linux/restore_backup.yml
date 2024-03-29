@@ -1,30 +1,46 @@
 # restore_backup.yml
 #
 # This Ansible playbook unarchives a specified backup file to the specified
-# destination directory.
+# destination directory. It includes steps to create a subdirectory for
+# old files and moves existing files to this subdirectory before restoring.
+# The backup file path is now a required parameter passed at runtime.
 #
 # Usage:
-#  ansible-playbook -i <inventory> <playbook>
+#  ansible-playbook -i <inventory> restore_backup.yml -e "backup_file=/path/to/backup_file.tar.xz"
 #
 # Example:
-#  ansible-playbook -i inventories restore_backup.yml -e restore_dir=/new/path/to/restore
-#  ansible-playbook -i inventories restore_backup.yml -v -e restore_dir=/new/path/to/restore
+#  ansible-playbook -i inventories restore_backup.yml -e "backup_file=/home/ibmsys1/volumes-backup/volumes-z31a-20240321.tar.xz"
 ---
-- name: Restore volumes from backup
+- name: Restore volumes from backup with pre-restoration file reorganization
   hosts: zPDT
   vars:
-    backup_file: "/home/ibmsys1/volumes-backup/volumes-z25c-20231207.zip"
-    restore_dir: "/home/ibmsys1/restored-volumes" 
+    restore_dir: "/home/ibmsys1/volumes-z31a" # Restore directory
+    old_files_dir: "/home/ibmsys1/volumes-z31a/old" # Directory to store old files
 
   tasks:
-    - name: Create restore directory
+    - name: Create directory for old files
       ansible.builtin.file:
-        path: "{{ restore_dir }}"
+        path: "{{ old_files_dir }}"
         state: directory
 
-    - name: Unarchive z25c volumes
+    - name: Move existing files to the old directory
+      ansible.builtin.command:
+        cmd: "mv {{ restore_dir }}/* {{ old_files_dir }}/"
+        warn: false
+      ignore_errors: yes
+
+    - name: Check if backup file exists
+      ansible.builtin.stat:
+        path: "{{ backup_file }}"
+      register: backup_file_stat
+
+    - name: Fail if backup file does not exist
+      ansible.builtin.fail:
+        msg: "The specified backup file does not exist"
+      when: not backup_file_stat.stat.exists
+
+    - name: Unarchive backup file to the restore directory
       ansible.builtin.unarchive:
         src: "{{ backup_file }}"
         dest: "{{ restore_dir }}"
         remote_src: yes
-
