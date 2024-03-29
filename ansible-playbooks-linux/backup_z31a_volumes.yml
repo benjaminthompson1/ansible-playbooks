@@ -16,6 +16,16 @@
     archive_name: "volumes-z31a-{{ ansible_date_time.date.replace('-', '') }}.tar.xz"
 
   tasks:
+      - name: Capture start time
+      ansible.builtin.set_fact:
+        backup_start_time: "{{ ansible_date_time.iso8601 }}"
+      tags: always
+
+    - name: Display start time
+      ansible.builtin.debug:
+        msg: "Backup process started at: {{ backup_start_time }}"
+      tags: always
+
     - name: Check RHEL version
       ansible.builtin.command: cat /etc/redhat-release
       register: rhel_version
