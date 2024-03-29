@@ -55,6 +55,18 @@
         path: "{{ dest_dir }}/{{ archive_name }}"
       register: archive_stat
       failed_when: not archive_stat.stat.exists
+      
+    - name: Capture end time
+      ansible.builtin.set_fact:
+        backup_end_time: "{{ ansible_date_time.iso8601 }}"
+      tags: always
+
+    - name: Display completion time and duration
+      ansible.builtin.debug:
+        msg: >
+          "Backup process completed at: {{ backup_end_time }}. 
+          Started at: {{ backup_start_time }}"
+      tags: always
 
   handlers:
     - name: Debug message
