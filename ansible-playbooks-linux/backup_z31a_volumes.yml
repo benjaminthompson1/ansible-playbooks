@@ -16,16 +16,6 @@
     archive_name: "volumes-z31a-{{ ansible_date_time.date.replace('-', '') }}.tar.xz"
 
   tasks:
-    - name: Capture start time
-      ansible.builtin.set_fact:
-        backup_start_time: "{{ ansible_date_time.iso8601 }}"
-      tags: always
-
-    - name: Display start time
-      ansible.builtin.debug:
-        msg: "Backup process started at: {{ backup_start_time }}"
-      tags: always
-
     - name: Check RHEL version
       ansible.builtin.command: cat /etc/redhat-release
       register: rhel_version
@@ -60,18 +50,6 @@
       ansible.builtin.debug:
         msg: "Archive created successfully. RHEL Version: {{ rhel_version.stdout }}"
       when: archive_stat.stat.exists
-
-    - name: Capture end time
-      ansible.builtin.set_fact:
-        backup_end_time: "{{ ansible_date_time.iso8601 }}"
-      tags: always
-
-    - name: Display completion time and duration
-      ansible.builtin.debug:
-        msg: >
-          "Backup process completed at: {{ backup_end_time }}. 
-          Started at: {{ backup_start_time }}"
-      tags: always
 
   handlers:
     - name: Debug message
