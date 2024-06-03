@@ -22,12 +22,12 @@
   tasks:
     - name: Copy JVMJCL17 to SYS1.SAMPLIB
       zos_copy:
-        src: /usr/lpp/java/J17.0_64/mvstools/samples/jcl/JVMJCL17
+        src: /usr/lpp/java/J17.0_64/mvstools/jcl/JVMJCL17
         dest: SYS1.SAMPLIB(JVMJCL17)
 
     - name: Copy JVMPRC17 to SYS1.PROCLIB
       zos_copy:
-        src: /usr/lpp/java/J17.0_64/mvstools/samples/jcl/JVMPRC17
+        src: /usr/lpp/java/J17.0_64/mvstools/jcl/JVMPRC17
         dest: SYS1.PROCLIB(JVMPRC17)
 
     - name: Copy JVMLDM17 to SYS1.SIEALNKE 
