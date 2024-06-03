@@ -1,0 +1,46 @@
+################################################################################
+# Playbook Name: JZOS Setup
+# Purpose:
+#   - Sets up the JZOS Batch Launcher and Toolkit on z/OS systems.
+#   - Copies necessary JCL and PROC files to appropriate datasets.
+#
+# Requirements:
+#   - Ansible 2.9 or higher
+#   - Access to z/OS system with appropriate permissions
+#   - IBM z/OS Core Collection installed
+#
+# Usage:
+#   - Basic execution: ansible-playbook -i inventories zos_jzos_setup.yml
+#   - With verbosity: ansible-playbook -i inventories zos_jzos_setup.yml -v
+################################################################################
+---
+- hosts: z31a_s0w1
+  gather_facts: yes
+  collections:
+    - ibm.ibm_zos_core
+
+  tasks:
+    - name: Change to the JCL samples directory
+      zos_command:
+        cmd: "cd /usr/lpp/java/J17.0_64/mvstools/samples/jcl"
+
+    - name: Copy JVMJCL17 to SYS1.SAMPLIB
+      zos_copy:
+        src: /usr/lpp/java/J17.0_64/mvstools/samples/jcl/JVMJCL17
+        dest: "//'SYS1.SAMPLIB(JVMJCL17)'"
+
+    - name: Copy JVMPRC17 to SYS1.PROCLIB
+      zos_copy:
+        src: /usr/lpp/java/J17.0_64/mvstools/samples/jcl/JVMPRC17
+        dest: "//'SYS1.PROCLIB(JVMPRC17)'"
+
+    - name: Change to the mvstools directory
+      zos_command:
+        cmd: "cd /usr/lpp/java/J17.0_64/mvstools"
+
+    - name: Copy JVMLDM17 to SYS1.SIEALNKE with -X option
+      zos_copy:
+        src: /usr/lpp/java/J17.0_64/mvstools/JVMLDM17
+        dest: "//'SYS1.SIEALNKE(JVMLDM17)'"
+        remote_src: yes
+        force: yes

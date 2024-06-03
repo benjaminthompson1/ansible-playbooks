@@ -1,10 +1,16 @@
 ###############################################################################
-# Usage:
-#  ansible-playbook -i <inventory> <playbook>
+# Playbook Name: Automount Setup
+# Purpose:
+#   - Sets up the USS Automount for z/OS.
+#
+# Requirements:
+#   - Ansible 2.9 or higher
+#   - Access to z/OS system with appropriate permissions
+#   - IBM z/OS Core Collection installed
 #
 # Example:
-#  ansible-playbook -i inventories zos_automount_setup.yml
-#  ansible-playbook -i inventories zos_automount_setup.yml -v
+#   - Basic execution: ansible-playbook -i inventories zos_automount_setup.yml
+#   - With verbosity: ansible-playbook -i inventories zos_automount_setup.yml -v
 ###############################################################################
 ---
 - hosts: z31a_s0w1 
