@@ -19,6 +19,8 @@
   collections:
     - ibm.ibm_zos_core
 
+  environment: "{{ environment_vars }}"
+  
   tasks:
     - name: Copy JVMJCL17 to SYS1.SAMPLIB
       zos_copy:
