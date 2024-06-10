@@ -46,15 +46,6 @@
         max_rc: 0                   
       register: logrec_result
 
-    # Submit DSSDFRAG without waiting
-    - name: Submit DSSDFRAG
-      zos_job_submit:
-        src: "{{ cntl_hlq }}(DSSDFRAG)"
-        location: data_set
-        wait_time_s: "{{ wait_time_seconds }}"
-        max_rc: 4
-      register: dssdfrag_result
-
     # Submit DCOLLECT and wait for the job to finish
     - name: Submit DCOLLECT and wait for the job to finish
       zos_job_submit:
