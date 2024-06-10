@@ -41,7 +41,7 @@
     - name: Submit LOGREC and wait for the job to finish
       zos_job_submit:
         src: "{{ cntl_hlq }}(LOGREC)"
-        location: DATA_SET    
+        location: data_set    
         wait_time_s: "{{ wait_time_seconds }}"   
         max_rc: 0                   
       register: logrec_result
@@ -50,7 +50,7 @@
     - name: Submit DSSDFRAG
       zos_job_submit:
         src: "{{ cntl_hlq }}(DSSDFRAG)"
-        location: DATA_SET
+        location: data_set
         wait_time_s: "{{ wait_time_seconds }}"
         max_rc: 4
       register: dssdfrag_result
@@ -59,7 +59,7 @@
     - name: Submit DCOLLECT and wait for the job to finish
       zos_job_submit:
         src: "{{ cntl_hlq }}(DCOLLECT)"
-        location: DATA_SET 
+        location: data_set 
         wait_time_s: "{{ wait_time_seconds }}" 
         max_rc: 4              
       register: dcollect_result
