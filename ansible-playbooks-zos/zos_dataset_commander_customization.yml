@@ -1,212 +1,120 @@
-###############################################################################
-# Usage:
-#  ansible-playbook -i <inventory> <playbook>
+################################################################################
+# Playbook Name: z/OS Dataset Commander Customization
 #
-# Example:
-#  ansible-playbook -i inventories zos_dataset_commander_customization.yml
-#  ansible-playbook -i inventories zos_dataset_commander_customization.yml -v
-###############################################################################
+# Purpose:
+#   This playbook automates the customization of the DBSPROCD procedure for
+#   z/OS Dataset Commander. It updates USER.{{adcd_ver}}.PROCLIB(DBSPROCD)
+#   with necessary Dataset Commander libraries and DD statements.
+#
+# Requirements:
+#   - Ansible 2.9 or higher
+#   - IBM z/OS Core Collection (ibm.ibm_zos_core) installed
+#   - Access to z/OS system with appropriate permissions
+#   - Dataset Commander installed (IQI910 libraries available)
+#   - Proper setup of Ansible inventory file with z/OS target information
+#
+# Usage:
+#   Basic execution:
+#     ansible-playbook -i <inventory_file> zos_dataset_commander_customization.yml
+#
+#   With increased verbosity:
+#     ansible-playbook -i <inventory_file> zos_dataset_commander_customization.yml -v
+#
+# Variables:
+#   adcd_ver: ADCD version (default: Z31A)
+#   dsc_version: Dataset Commander version (default: IQI910)
+#   dbsprocd_dataset: Dataset name for DBSPROCD (default: USER.{{adcd_ver}}.PROCLIB(DBSPROCD))
+#
+# Notes:
+#   - Ensure that the necessary permissions and system access are in place before running.
+#   - This playbook modifies the DBSPROCD procedure. Ensure you have a backup before running.
+#   - Debug messages are displayed only in verbose mode (-v).
+#   - The playbook includes error handling for critical operations.
+#
+# Examples:
+#   1. Run the playbook with default settings:
+#      ansible-playbook -i inventory.ini zos_dataset_commander_customization.yml
+#
+#   2. Run the playbook with verbose output:
+#      ansible-playbook -i inventory.ini zos_dataset_commander_customization.yml -v
+#
+#   3. Run the playbook with a custom ADCD version:
+#      ansible-playbook -i inventory.ini zos_dataset_commander_customization.yml -e "adcd_ver=Z32A"
+#
+################################################################################
+
 ---
-- hosts: z31a_s0w1
+- name: z/OS Dataset Commander Customization
+  hosts: z31a_s0w1
   collections:
     - ibm.ibm_zos_core
   gather_facts: no
 
   vars:
     adcd_ver: Z31A
+    dsc_version: IQI910
+    dbsprocd_dataset: "USER.{{ adcd_ver }}.PROCLIB(DBSPROCD)"
 
   environment: "{{ environment_vars }}"
 
   tasks:
-    - name: Ping using zos_ping
+    - name: Verify connectivity
       zos_ping:
       register: zos_ping_result
 
-    - name: Response from zos_ping
+    - name: Display ping response
       debug:
-        msg: "{{ zos_ping_result }}"
-
-###############################################################################
-# Usage:
-#  Update USER.{{ adcd_ver }}.PROCLIB(DBSPROCD) with dataset commander libraries
-###############################################################################
-
-    - name: Add STEPLIB IQI910.SIQILPA.
-      zos_lineinfile:
-        src: USER.{{ adcd_ver }}.PROCLIB(DBSPROCD)
-        insertbefore: '^//SYSUADS'
-        line: '//STEPLIB  DD  DISP=SHR,DSN=IQI910.SIQILPA'
-      register: zos_lineinfile_result
-
-    - name: DEBUG(-v) Response from Add STEPLIB IQI910.SIQILPA.
-      debug:
-        msg: "{{ zos_lineinfile_result }} with verbosity 1"
-        verbosity: 1 
-
-    - name: Add STEPLIB IQI910.SIQILOAD.
-      zos_lineinfile:
-        src: USER.{{ adcd_ver }}.PROCLIB(DBSPROCD)
-        insertafter: '^//STEPLIB'
-        line: '//         DD  DISP=SHR,DSN=IQI910.SIQILOAD'
-      register: zos_lineinfile_result
-
-    - name: DEBUG(-v) Response from Add STEPLIB IQI910.SIQILOAD.
-      debug:
-        msg: "{{ zos_lineinfile_result }} with verbosity 1"
-        verbosity: 1 
-
-    - name: Add ISPLLIB IQI910.SIQILOAD.
-      zos_lineinfile:
-        src: USER.{{ adcd_ver }}.PROCLIB(DBSPROCD)
-        insertafter: '^//ISPLLIB'
-        line: '//         DD  DISP=SHR,DSN=IQI910.SIQILOAD'
-      register: zos_lineinfile_result
-
-    - name: DEBUG(-v) Response from Add ISPLLIB IQI910.SIQILOAD.
-      debug:
-        msg: "{{ zos_lineinfile_result }} with verbosity 1"
-        verbosity: 1 
-
-    - name: Add ISPLLIB IQI910.SIQILPA.
-      zos_lineinfile:
-        src: USER.{{ adcd_ver }}.PROCLIB(DBSPROCD)
-        insertafter: '^//ISPLLIB'
-        line: '//         DD  DISP=SHR,DSN=IQI910.SIQILPA'
-      register: zos_lineinfile_result
-
-    - name: DEBUG(-v) Response from Add ISPLLIB IQI910.SIQILPA.
-      debug:
-        msg: "{{ zos_lineinfile_result }} with verbosity 1"
+        var: zos_ping_result
         verbosity: 1
-    
-    - name: Add SYSPROC IQI910.SIQICLIB.
-      zos_lineinfile:
-        src: USER.{{ adcd_ver }}.PROCLIB(DBSPROCD)
-        insertafter: '^//SYSPROC'
-        line: '//         DD  DISP=SHR,DSN=IQI910.SIQICLIB'
-      register: zos_lineinfile_result
 
-    - name: DEBUG(-v) Response from Add SYSPROC IQI910.SIQICLIB.
+    - name: Update DBSPROCD with Dataset Commander libraries
+      block:
+        - name: Add Dataset Commander DD statements
+          zos_lineinfile:
+            src: "{{ dbsprocd_dataset }}"
+            insertafter: "{{ item.insertafter }}"
+            insertbefore: "{{ item.insertbefore | default(omit) }}"
+            line: "{{ item.line }}"
+          loop:
+            - { insertbefore: '^//SYSUADS', line: '//STEPLIB  DD  DISP=SHR,DSN={{ dsc_version }}.SIQILPA' }
+            - { insertafter: '^//STEPLIB', line: '//         DD  DISP=SHR,DSN={{ dsc_version }}.SIQILOAD' }
+            - { insertafter: '^//ISPLLIB', line: '//         DD  DISP=SHR,DSN={{ dsc_version }}.SIQILOAD' }
+            - { insertafter: '^//ISPLLIB', line: '//         DD  DISP=SHR,DSN={{ dsc_version }}.SIQILPA' }
+            - { insertafter: '^//SYSPROC', line: '//         DD  DISP=SHR,DSN={{ dsc_version }}.SIQICLIB' }
+            - { insertafter: '^//ISPMLIB', line: '//         DD  DISP=SHR,DSN={{ dsc_version }}.SIQIMLIB' }
+            - { insertafter: '^//ISPPLIB', line: '//         DD  DISP=SHR,DSN={{ dsc_version }}.SIQIPLIB' }
+            - { insertafter: '^//ISPSLIB', line: '//         DD  DISP=SHR,DSN={{ dsc_version }}.SIQISLIB' }
+            - { insertafter: '^//SDSFMENU', line: '//IQITLIB  DD  DISP=SHR,DSN={{ dsc_version }}.SIQITLIB' }
+            - { insertafter: '^//IQITLIB', line: '//IQIUT04  DD  DISP=NEW,UNIT=VIO,SPACE=(3,1)' }
+            - { insertafter: '^//IQITLIB', line: '//IQIUT03  DD  DISP=NEW,UNIT=VIO,SPACE=(3,1)' }
+            - { insertafter: '^//IQITLIB', line: '//IQIUTOT  DD  DISP=NEW,UNIT=SYSALLDA,' }
+            - { insertafter: '^//IQIUTOT', line: '//         SPACE=(CYL,(2,2)),RECFM=FBA,LRECL=121,BLKSIZE=4840' }
+            - { insertafter: '^//IQITLIB', line: '//IQIUTIN  DD  DISP=NEW,UNIT=VIO,' }
+            - { insertafter: '^//IQIUTIN', line: '//         SPACE=(CYL,(1,1)),RECFM=FB,LRECL=80,BLKSIZE=4000' }
+          register: dbsprocd_update_result
+      rescue:
+        - name: Handle DBSPROCD update errors
+          debug:
+            msg: "Error occurred during DBSPROCD update: {{ ansible_failed_result }}"
+          failed_when: true
+
+    - name: Display task results
       debug:
-        msg: "{{ zos_lineinfile_result }} with verbosity 1"
-        verbosity: 1 
+        msg: "DBSPROCD update results: {{ dbsprocd_update_result }}"
+        verbosity: 1
 
-    - name: Add ISPMLIB IQI910.SIQIMLIB.
-      zos_lineinfile:
-        src: USER.{{ adcd_ver }}.PROCLIB(DBSPROCD)
-        insertafter: '^//ISPMLIB'
-        line: '//         DD  DISP=SHR,DSN=IQI910.SIQIMLIB'
-      register: zos_lineinfile_result
-
-    - name: DEBUG(-v) Response from Add ISPMLIB IQI910.SIQIMLIB.
+    - name: Display task summary
       debug:
-        msg: "{{ zos_lineinfile_result }} with verbosity 1"
-        verbosity: 1 
+        msg:
+          - "z/OS Dataset Commander Customization Summary:"
+          - "- Connectivity check: {{ 'Successful' if zos_ping_result.ping == 'pong' else 'Failed' }}"
+          - "- DBSPROCD updates: {{ 'Successful' if dbsprocd_update_result.changed else 'No changes required' }}"
+        verbosity: 0
 
-    - name: Add ISPPLIB IQI910.SIQIPLIB.
-      zos_lineinfile:
-        src: USER.{{ adcd_ver }}.PROCLIB(DBSPROCD)
-        insertafter: '^//ISPPLIB'
-        line: '//         DD  DISP=SHR,DSN=IQI910.SIQIPLIB'
-      register: zos_lineinfile_result
-
-    - name: DEBUG(-v) Response from Add ISPPLIB IQI910.SIQIPLIB.
-      debug:
-        msg: "{{ zos_lineinfile_result }} with verbosity 1"
-        verbosity: 1 
-
-    - name: Add ISPSLIB IQI910.SIQISLIB.
-      zos_lineinfile:
-        src: USER.{{ adcd_ver }}.PROCLIB(DBSPROCD)
-        insertafter: '^//ISPSLIB'
-        line: '//         DD  DISP=SHR,DSN=IQI910.SIQISLIB'
-      register: zos_lineinfile_result
-
-    - name: DEBUG(-v) Response from Add ISPSLIB IQI910.SIQISLIB.
-      debug:
-        msg: "{{ zos_lineinfile_result }} with verbosity 1"
-        verbosity: 1 
-
-    - name: Add IQITLIB DD.
-      zos_lineinfile:
-        src: USER.{{ adcd_ver }}.PROCLIB(DBSPROCD)
-        insertafter: '^//SDSFMENU'
-        line: '//IQITLIB  DD  DISP=SHR,DSN=IQI910.SIQITLIB'
-      register: zos_lineinfile_result
-
-    - name: DEBUG(-v) Response from Add IQITLIB DD.
-      debug:
-        msg: "{{ zos_lineinfile_result }} with verbosity 1"
-        verbosity: 1 
-
-    - name: Add IQIUT04 DD.
-      zos_lineinfile:
-        src: USER.{{ adcd_ver }}.PROCLIB(DBSPROCD)
-        insertafter: '^//IQITLIB'
-        line: '//IQIUT04  DD  DISP=NEW,UNIT=VIO,SPACE=(3,1)'
-      register: zos_lineinfile_result
-
-    - name: DEBUG(-v) Response from Add IQIUT04 DD.
-      debug:
-        msg: "{{ zos_lineinfile_result }} with verbosity 1"
-        verbosity: 1 
-
-    - name: Add IQIUT03 DD.
-      zos_lineinfile:
-        src: USER.{{ adcd_ver }}.PROCLIB(DBSPROCD)
-        insertafter: '^//IQITLIB'
-        line: '//IQIUT03  DD  DISP=NEW,UNIT=VIO,SPACE=(3,1)'
-      register: zos_lineinfile_result
-
-    - name: DEBUG(-v) Response from Add IQIUT03 DD.
-      debug:
-        msg: "{{ zos_lineinfile_result }} with verbosity 1"
-        verbosity: 1 
-
-    - name: Add IQIUTOT DD.
-      zos_lineinfile:
-        src: USER.{{ adcd_ver }}.PROCLIB(DBSPROCD)
-        insertafter: '^//IQITLIB'
-        line: '//IQIUTOT  DD  DISP=NEW,UNIT=SYSALLDA,'
-      register: zos_lineinfile_result
-
-    - name: DEBUG(-v) Response from Add IQIUTOT DD.
-      debug:
-        msg: "{{ zos_lineinfile_result }} with verbosity 1"
-        verbosity: 1 
-
-    - name: Add IQIUTOT DD.
-      zos_lineinfile:
-        src: USER.{{ adcd_ver }}.PROCLIB(DBSPROCD)
-        insertafter: '^//IQIUTOT'
-        line: '//         SPACE=(CYL,(2,2)),RECFM=FBA,LRECL=121,BLKSIZE=4840'
-      register: zos_lineinfile_result
-
-    - name: DEBUG(-v) Response from Add IQIUTOT DD.
-      debug:
-        msg: "{{ zos_lineinfile_result }} with verbosity 1"
-        verbosity: 1 
-
-    - name: Add IQIUTIN DD.
-      zos_lineinfile:
-        src: USER.{{ adcd_ver }}.PROCLIB(DBSPROCD)
-        insertafter: '^//IQITLIB'
-        line: '//IQIUTIN  DD  DISP=NEW,UNIT=VIO,'
-      register: zos_lineinfile_result
-
-    - name: DEBUG(-v) Response from Add IQIUTIN DD.
-      debug:
-        msg: "{{ zos_lineinfile_result }} with verbosity 1"
-        verbosity: 1 
-
-    - name: Add IQIUTIN DD.
-      zos_lineinfile:
-        src: USER.{{ adcd_ver }}.PROCLIB(DBSPROCD)
-        insertafter: '^//IQIUTIN'
-        line: '//         SPACE=(CYL,(1,1)),RECFM=FB,LRECL=80,BLKSIZE=4000'
-      register: zos_lineinfile_result
-
-    - name: DEBUG(-v) Response from Add IQIUTIN DD.
-      debug:
-        msg: "{{ zos_lineinfile_result }} with verbosity 1"
-        verbosity: 1 
+    - name: Final status check
+      assert:
+        that:
+          - zos_ping_result.ping == "pong"
+          - dbsprocd_update_result is success
+        fail_msg: "z/OS Dataset Commander customization failed. Check the summary for details."
+        success_msg: "z/OS Dataset Commander customization completed successfully."

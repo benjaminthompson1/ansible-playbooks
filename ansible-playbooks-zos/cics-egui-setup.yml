@@ -1,81 +1,124 @@
-# This Ansible playbook sets up the CICS EGUI environment for a specified target.
-# -----------------------------------------------------------------------------
-# General usage:
-#   ansible-playbook -i <inventory> <playbook>
-# 
-# Example:
-#   ansible-playbook -i inventories cics-egui-setup.yml
-#   ansible-playbook -i inventories cics-egui-setup.yml -v
-# -----------------------------------------------------------------------------
+################################################################################
+# Playbook Name: CICS EGUI Setup
+#
+# Purpose:
+#   This playbook automates the setup of the CICS EGUI environment on a z/OS system.
+#   It performs the following tasks:
+#   - Verifies connectivity to the target host
+#   - Creates and defines VSAM data sets for catalog and configuration
+#   - Submits CICS system definition for zOffice
+#   - Configures the CICS SIP by adding DFLTUSER
+#
+# Requirements:
+#   - Ansible 2.9 or higher
+#   - IBM z/OS Core Collection (ibm.ibm_zos_core) installed
+#   - Access to z/OS system with appropriate permissions
+#   - Proper setup of Ansible inventory file with z/OS target information
+#   - JCL members (DFH$ECAT, DFH$ECNF, CICSCSD) available in IBMUSER.GIT.JCL.CNTL
+#   - Access to DFH610.SYSIN(DFH$SIP1) for CICS SIP configuration
+#
+# Usage:
+#   Basic execution:
+#     ansible-playbook -i <inventory_file> cics_egui_setup.yml
+#
+#   With increased verbosity:
+#     ansible-playbook -i <inventory_file> cics_egui_setup.yml -v
+#
+#   Run on a specific host or group:
+#     ansible-playbook -i <inventory_file> cics_egui_setup.yml -l <host_or_group>
+#
+# Variables:
+#   jcl_library: High-level qualifier for JCL control datasets (default: IBMUSER.GIT.JCL.CNTL)
+#   wait_time_seconds: Wait time for z/OS batch jobs (default: 120)
+#   max_rc: Maximum allowed return code for jobs (default: 0)
+#   cics_sip_dataset: Dataset name for CICS SIP configuration (default: DFH610.SYSIN(DFH$SIP1))
+#   dfltuser: Default user to be added to CICS SIP (default: IBMUSER)
+#
+# Notes:
+#   - Ensure that the necessary permissions and system access are in place before running.
+#   - Review and adjust variables as needed for your environment.
+#   - The playbook includes error handling for job submissions and configuration changes.
+#   - A summary of actions taken is displayed at the end of the playbook run.
+#
+# Examples:
+#   1. Run the playbook with default settings:
+#      ansible-playbook -i inventory.ini cics_egui_setup.yml
+#
+#   2. Run the playbook with verbose output:
+#      ansible-playbook -i inventory.ini cics_egui_setup.yml -v
+#
+#   3. Run the playbook on a specific host:
+#      ansible-playbook -i inventory.ini cics_egui_setup.yml -l zos_mainframe1
+#
+################################################################################
+
 ---
-- name: CICS EGUI setup
+- name: CICS EGUI Setup
   hosts: z31a_s0w1
   collections:
     - ibm.ibm_zos_core
   gather_facts: yes
 
+  vars:
+    jcl_library: IBMUSER.GIT.JCL.CNTL
+    wait_time_seconds: 120
+    max_rc: 0
+    cics_sip_dataset: DFH610.SYSIN(DFH$SIP1)
+    dfltuser: IBMUSER
+
   environment: "{{ environment_vars }}"
 
   tasks:
-    # Verify connectivity with the target host using zos_ping
-    - name: Ping using zos_ping
+    - name: Verify connectivity
       zos_ping:
       register: zos_ping_result
 
-    - name: Display response from zos_ping
+    - name: Display ping response
       debug:
-        msg: "{{ zos_ping_result }}"
-
-    # Create and define the VSAM data sets
-    - name: Submit DFH$ECAT to create catalog data set and wait for the job to finish.
-      zos_job_submit:
-        src: "IBMUSER.GIT.JCL.CNTL(DFH$ECAT)"
-        location: DATA_SET
-        wait_time_s: 120  
-        max_rc: 0 
-      register: zos_job_submit_result 
-
-    - name: Display response from DFH$ECAT job submission (verbose mode)
-      debug:
-        msg: "{{ zos_job_submit_result }} with verbosity 1"
+        var: zos_ping_result
         verbosity: 1
 
-    - name: Submit DFH$CNF to create configuration data set and wait for the job to finish.
+    - name: Create and define VSAM data sets
+      block:
+        - name: Submit DFH$ECAT job
+          zos_job_submit:
+            src: "{{ jcl_library }}(DFH$ECAT)"
+            location: DATA_SET
+            wait_time_s: "{{ wait_time_seconds }}"
+            max_rc: "{{ max_rc }}"
+          register: dfhecat_result
+
+        - name: Submit DFH$ECNF job
+          zos_job_submit:
+            src: "{{ jcl_library }}(DFH$ECNF)"
+            location: DATA_SET
+            wait_time_s: "{{ wait_time_seconds }}"
+            max_rc: "{{ max_rc }}"
+          register: dfhecnf_result
+      rescue:
+        - name: Log VSAM data set creation errors
+          debug:
+            msg: "Error occurred during VSAM data set creation: {{ ansible_failed_result }}"
+
+    - name: Submit CICS system definition for zOffice
       zos_job_submit:
-        src: "IBMUSER.GIT.JCL.CNTL(DFH$ECNF)"
+        src: "{{ jcl_library }}(CICSCSD)"
         location: DATA_SET
-        wait_time_s: 120  
-        max_rc: 0 
-      register: zos_job_submit_result 
+        wait_time_s: "{{ wait_time_seconds }}"
+        max_rc: "{{ max_rc }}"
+      register: cicscsd_result
 
-    - name: Display response from DFH$CNF job submission (verbose mode)
-      debug:
-        msg: "{{ zos_job_submit_result }} with verbosity 1"
-        verbosity: 1
-
-    # Submit CICS system definition for zOffice
-    - name: Submit CICSCSD to create definition for zOffice and wait for the job to finish.
-      zos_job_submit:
-        src: IBMUSER.GIT.JCL.CNTL(CICSCSD)
-        location: DATA_SET
-        wait_time_s: 120  
-        max_rc: 0 
-      register: zos_job_submit_result 
-
-    - name: Display response from CICSCSD job submission (verbose mode)
-      debug:
-        msg: "{{ zos_job_submit_result }} with verbosity 1"
-        verbosity: 1
-
-    # Insert DFLTUSER to CICS SIP configuration
-    - name: Insert DFLTUSER to CICS SIP.
+    - name: Configure CICS SIP
       zos_lineinfile:
-        src: DFH610.SYSIN(DFH$SIP1)
+        src: "{{ cics_sip_dataset }}"
         insertbefore: '^*TCPIP=YES'
-        line: 'DFLTUSER=IBMUSER                          ANSIBLE ADDED IBMUSER'
-      register: zos_lineinfile_result
+        line: 'DFLTUSER={{ dfltuser }}                          ANSIBLE ADDED {{ dfltuser }}'
+      register: sip_config_result
 
-    - name: Display response from Insert DFLTUSER to CICS SIP (verbose mode)
+    - name: Display task results
       debug:
-        msg: "{{ zos_lineinfile_result }} with verbosity 1"
-        verbosity: 1
+        msg:
+          - "VSAM Catalog creation result: {{ dfhecat_result }}"
+          - "VSAM Configuration creation result: {{ dfhecnf_result }}"
+          - "CICS System Definition result: {{ cicscsd_result }}"
+          - "CICS SIP Configuration result: {{ sip_config_result }}"

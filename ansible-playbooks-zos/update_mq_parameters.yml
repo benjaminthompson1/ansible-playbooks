@@ -1,13 +1,56 @@
-###############################################################################
-# Usage:
-#  ansible-playbook -i <inventory> <playbook>
+################################################################################
+# Playbook Name: MQ Parameter Update and Queue Manager Management
 #
-# Example:
-#  ansible-playbook -i inventories update_mq_parameters.yml
-#  ansible-playbook -i inventories update_mq_parameters.yml -v
-###############################################################################
+# Purpose:
+#   This playbook automates the process of updating IBM MQ parameters and managing
+#   the MQ queue manager on a z/OS system. It performs the following tasks:
+#   - Updates SMF accounting and statistics parameters in CSQ4ZPRM
+#   - Stops the MQ queue manager CSQ9
+#   - Submits the updated CSQ4ZPRM job
+#   - Updates the PSMODE parameter in CSQ4INYG
+#   - Restarts the MQ queue manager CSQ9 and its channel initiator
+#
+# Requirements:
+#   - Ansible 2.9 or higher
+#   - IBM z/OS Core Collection (ibm.ibm_zos_core) installed
+#   - Access to z/OS system with appropriate permissions
+#   - IBM MQ for z/OS installed and configured
+#   - Proper setup of Ansible inventory file with z/OS target information
+#
+# Usage:
+#   Basic execution:
+#     ansible-playbook -i <inventory_file> update_mq_parameters.yml
+#
+#   With increased verbosity:
+#     ansible-playbook -i <inventory_file> update_mq_parameters.yml -v
+#
+# Variables:
+#   mq_CSQ4ZPRM: Path to the CSQ4ZPRM dataset (default: CSQ920.SVSC.CUSTOM.INSTALL(CSQ4ZPRM))
+#   mq_CSQ4INYG: Path to the CSQ4INYG dataset (default: CSQ920.CSQ9.SCSQPROC(CSQ4INYG))
+#   qmgr_name: Name of the MQ queue manager (default: CSQ9)
+#   job_wait_time: Wait time for job submission in seconds (default: 120)
+#
+# Notes:
+#   - Ensure that the necessary permissions and system access are in place before running.
+#   - The playbook will stop and restart the MQ queue manager. Ensure this is done during a maintenance window.
+#   - Debug messages are displayed only in verbose mode (-v).
+#   - The playbook includes error handling for critical operations.
+#
+# Examples:
+#   1. Run the playbook with default settings:
+#      ansible-playbook -i inventory.ini update_mq_parameters.yml
+#
+#   2. Run the playbook with verbose output:
+#      ansible-playbook -i inventory.ini update_mq_parameters.yml -v
+#
+#   3. Run the playbook with a custom queue manager name:
+#      ansible-playbook -i inventory.ini update_mq_parameters.yml -e "qmgr_name=MQA1"
+#
+################################################################################
+
 ---
-- hosts: ben_s0w1 
+- name: MQ Parameter Update and Queue Manager Management
+  hosts: ben_s0w1
   collections:
     - ibm.ibm_zos_core
   gather_facts: no
@@ -15,121 +58,99 @@
   vars:
     mq_CSQ4ZPRM: CSQ920.SVSC.CUSTOM.INSTALL(CSQ4ZPRM)
     mq_CSQ4INYG: CSQ920.CSQ9.SCSQPROC(CSQ4INYG)
+    qmgr_name: CSQ9
+    job_wait_time: 120
 
   environment: "{{ environment_vars }}"
 
   tasks:
-    - name: Ping using zos_ping
+    - name: Verify connectivity
       zos_ping:
       register: zos_ping_result
 
-    - name: Response from zos_ping
+    - name: Display ping response
       debug:
-        msg: "{{ zos_ping_result }}"
-
-###############################################################################
-# Usage:
-#  Alter the following parameters in CSQ4ZPRM
-#  SMFACCT=YES
-#  SMFSTAT=YES 
-###############################################################################
-
-    - name: Update CSQ4ZPRM to SMFACCT=YES.
-      zos_lineinfile:
-        src: "{{ mq_CSQ4ZPRM }}"
-        regexp: '^               SMFACCT=NO,'
-        line: '               SMFACCT=YES,          GATHER SMF ACCOUNTING             X'
-      register: zos_lineinfile_result
-
-    - name: DEBUG(-v) Response from Update CSQ4ZPRM to SMFACCT=YES.
-      debug:
-        msg: "{{ zos_lineinfile_result }} with verbosity 1"
+        var: zos_ping_result
         verbosity: 1
 
-    - name: Update CSQ4ZPRM to SMFSTAT=YES.
-      zos_lineinfile:
-        src: "{{ mq_CSQ4ZPRM }}"
-        regexp: '^               SMFSTAT=NO,'
-        line: '               SMFSTAT=YES,          GATHER SMF STATS                  X'
-      register: zos_lineinfile_result
+    - name: Update MQ parameters
+      block:
+        - name: Update CSQ4ZPRM parameters
+          zos_lineinfile:
+            src: "{{ mq_CSQ4ZPRM }}"
+            regexp: "{{ item.regexp }}"
+            line: "{{ item.line }}"
+          loop:
+            - { regexp: '^               SMFACCT=NO,', line: '               SMFACCT=YES,          GATHER SMF ACCOUNTING             X' }
+            - { regexp: '^               SMFSTAT=NO,', line: '               SMFSTAT=YES,          GATHER SMF STATS                  X' }
+          register: csq4zprm_update
 
-    - name: DEBUG(-v) Response from Update CSQ4ZPRM to SMFSTAT=YES.
+        - name: Stop MQ Queue Manager
+          zos_operator:
+            cmd: "%{{ qmgr_name }} STOP QMGR"
+          register: stop_qmgr
+
+        - name: Submit CSQ4ZPRM job
+          zos_job_submit:
+            src: "{{ mq_CSQ4ZPRM }}"
+            location: DATA_SET
+            wait: true
+            wait_time_s: "{{ job_wait_time }}"
+          register: csq4zprm_job
+
+        - name: Update CSQ4INYG PSMODE parameter
+          zos_lineinfile:
+            src: "{{ mq_CSQ4INYG }}"
+            regexp: '^         PSMODE'
+            line: '         PSMODE( ENABLED ) +'
+          register: csq4inyg_update
+
+        - name: Start MQ Queue Manager
+          zos_operator:
+            cmd: "%{{ qmgr_name }} START QMGR"
+          register: start_qmgr
+
+        - name: Start MQ Channel Initiator
+          zos_operator:
+            cmd: "%{{ qmgr_name }} START CHINIT"
+          register: start_chinit
+
+      rescue:
+        - name: Handle MQ update errors
+          debug:
+            msg: "Error occurred during MQ update: {{ ansible_failed_result }}"
+          failed_when: true
+
+    - name: Display task results
       debug:
-        msg: "{{ zos_lineinfile_result }} with verbosity 1"
+        msg:
+          - "CSQ4ZPRM update result: {{ csq4zprm_update }}"
+          - "Stop Queue Manager result: {{ stop_qmgr }}"
+          - "CSQ4ZPRM job submission result: {{ csq4zprm_job }}"
+          - "CSQ4INYG update result: {{ csq4inyg_update }}"
+          - "Start Queue Manager result: {{ start_qmgr }}"
+          - "Start Channel Initiator result: {{ start_chinit }}"
         verbosity: 1
 
-###############################################################################
-# Usage:
-#  Operator command to stop QMGR CSQ9
-###############################################################################
-
-    - name: Stop QMGR CSQ9.
-      zos_operator:
-        cmd: "%CSQ9 STOP QMGR"
-      register: zos_operator_result
-
-    - name: DEBUG(-v) Response from Stop QMGR CSQ9.
+    - name: Display task summary
       debug:
-        msg: "{{ zos_operator_result }} with verbosity 1"
-        verbosity: 1
+        msg:
+          - "MQ Parameter Update Summary:"
+          - "- Connectivity check: {{ 'Successful' if zos_ping_result.ping == 'pong' else 'Failed' }}"
+          - "- CSQ4ZPRM update: {{ 'Successful' if csq4zprm_update.changed else 'No changes required' }}"
+          - "- Queue Manager stop: {{ 'Successful' if stop_qmgr.rc == 0 else 'Failed' }}"
+          - "- CSQ4ZPRM job submission: {{ 'Successful' if csq4zprm_job.jobs[0].ret_code.code == '0000' else 'Failed' }}"
+          - "- CSQ4INYG update: {{ 'Successful' if csq4inyg_update.changed else 'No changes required' }}"
+          - "- Queue Manager start: {{ 'Successful' if start_qmgr.rc == 0 else 'Failed' }}"
+          - "- Channel Initiator start: {{ 'Successful' if start_chinit.rc == 0 else 'Failed' }}"
+        verbosity: 0
 
-###############################################################################
-# Usage:
-#  Submit CSQ4ZPRM and wait for the job to finish
-###############################################################################
-
-    - name: Submit CSQ4ZPRM and wait for the job to finish.
-      zos_job_submit:
-        src: "{{ mq_CSQ4ZPRM }}"
-        location: DATA_SET
-        wait: true
-        wait_time_s: 120
-      register: zos_job_submit_result
-
-    - name: DEBUG(-v) Response Submit CSQ4ZPRM and wait for the job to finish.
-      debug:
-        msg: "{{ zos_job_submit_result }} with verbosity 1"
-        verbosity: 1
-
-###############################################################################
-# Usage:
-#  Alter the following parameters in CSQ4INYG
-#  PSMODE( ENABLED )
-###############################################################################
-
-    - name: Update CSQ4ZPRM to PSMODE( ENABLED ).
-      zos_lineinfile:
-        src: "{{ mq_CSQ4INYG }}"
-        regexp: '^         PSMODE'
-        line: '         PSMODE( ENABLED ) +'
-      register: zos_lineinfile_result
-
-    - name: DEBUG(-v) Response from Update CSQ4ZPRM to PSMODE( ENABLED ).
-      debug:
-        msg: "{{ zos_lineinfile_result }} with verbosity 1"
-        verbosity: 1
-      
-###############################################################################
-# Usage:
-#  Operator command to start QMGR and CHINIT for CSQ9
-###############################################################################
-
-    - name: Star QMGR CSQ9.
-      zos_operator:
-        cmd: "%CSQ9 START QMGR"
-      register: zos_operator_result
-
-    - name: DEBUG(-v) Response from Start QMGR CSQ9.
-      debug:
-        msg: "{{ zos_operator_result }} with verbosity 1"
-        verbosity: 1
-
-    - name: Star CHINIT CSQ9.
-      zos_operator:
-        cmd: "%CSQ9 START CHINIT"
-      register: zos_operator_result
-
-    - name: DEBUG(-v) Response from Start CHINIT CSQ9.
-      debug:
-        msg: "{{ zos_operator_result }} with verbosity 1"
-        verbosity: 1
+    - name: Final status check
+      assert:
+        that:
+          - zos_ping_result.ping == "pong"
+          - csq4zprm_job.jobs[0].ret_code.code == "0000"
+          - start_qmgr.rc == 0
+          - start_chinit.rc == 0
+        fail_msg: "MQ parameter update failed. Check the summary for details."
+        success_msg: "MQ parameter update completed successfully."

@@ -1,13 +1,50 @@
-###############################################################################
-# Usage:
-#  ansible-playbook -i <inventory> <playbook>
+################################################################################
+# Playbook Name: Enhanced z/OS PROCLIB Setup
 #
-# Example:
-#  ansible-playbook -i inventories zos-proclib-setup.yml
-#  ansible-playbook -i inventories zos-proclib-setup.yml -v
-###############################################################################
+# Purpose:
+#   This playbook automates the setup of various PROCLIB members on a z/OS system.
+#   It performs the following tasks:
+#   - Copies and updates VTAMALL procedure
+#   - Copies and updates SHUTALL procedure
+#   - Copies DBSPROCD procedure for Db2 V13
+#
+# Requirements:
+#   - Ansible 2.9 or higher
+#   - IBM z/OS Core Collection (ibm.ibm_zos_core) installed
+#   - Access to z/OS system with appropriate permissions
+#   - Proper setup of Ansible inventory file with z/OS target information
+#
+# Usage:
+#   Basic execution:
+#     ansible-playbook -i <inventory_file> zos-proclib-setup.yml
+#
+#   With increased verbosity:
+#     ansible-playbook -i <inventory_file> zos-proclib-setup.yml -v
+#
+# Variables:
+#   adcd_ver: ADCD version (default: Z31A)
+#
+# Notes:
+#   - Ensure that the necessary permissions and system access are in place before running.
+#   - This playbook modifies PROCLIB members. Ensure you have appropriate backups.
+#   - Debug messages are displayed only in verbose mode (-v).
+#   - The playbook includes error handling for critical operations.
+#
+# Examples:
+#   1. Run the playbook with default settings:
+#      ansible-playbook -i inventory.ini zos-proclib-setup.yml
+#
+#   2. Run the playbook with verbose output:
+#      ansible-playbook -i inventory.ini zos-proclib-setup.yml -v
+#
+#   3. Run the playbook with a custom ADCD version:
+#      ansible-playbook -i inventory.ini zos-proclib-setup.yml -e "adcd_ver=Z32A"
+#
+################################################################################
+
 ---
-- hosts: z31a_s0w1
+- name: Enhanced z/OS PROCLIB Setup
+  hosts: z31a_s0w1
   collections:
     - ibm.ibm_zos_core
   gather_facts: no
@@ -18,88 +55,99 @@
   environment: "{{ environment_vars }}"
 
   tasks:
-    - name: Ping using zos_ping
+    - name: Verify connectivity
       zos_ping:
       register: zos_ping_result
 
-    - name: Response from zos_ping
+    - name: Display ping response
       debug:
-        msg: "{{ zos_ping_result }}"
-
-###############################################################################
-# Usage:
-#  Copy ADCD.{{ adcd_ver }}.PROCLIB(VTAMALL) to USER.{{ adcd_ver }}.PROCLIB(VTAMALL)
-#  Alter VTAMALL PARMLIB DD to reference USER.&SYSVER..PARMLIB(&M)
-###############################################################################
-
-    - name: Copy VTAMALL from ADCD to USER; replace if it already exists.
-      zos_copy:
-        src: ADCD.{{ adcd_ver }}.PROCLIB(VTAMALL)
-        dest: USER.{{ adcd_ver }}.PROCLIB(VTAMALL)
-        remote_src: true
-      register: zos_copy_result
-
-    - name: DEBUG(-v) Response from Copy VTAMALL from ADCD to USER.
-      debug:
-        msg: "{{ zos_copy_result }} with verbosity 1"
+        var: zos_ping_result
         verbosity: 1
 
-    - name: Update PARMLIB DD for VTAMALL.
-      zos_lineinfile:
-        src: USER.{{ adcd_ver }}.PROCLIB(VTAMALL)
-        regexp: '^//PARMLIB'
-        line: '//PARMLIB  DD  DSN=USER.&SYSVER..PARMLIB(&M),DISP=SHR'
-      register: zos_lineinfile_result
+    - name: Setup VTAMALL procedure
+      block:
+        - name: Copy VTAMALL from ADCD to USER
+          zos_copy:
+            src: "ADCD.{{ adcd_ver }}.PROCLIB(VTAMALL)"
+            dest: "USER.{{ adcd_ver }}.PROCLIB(VTAMALL)"
+            remote_src: true
+          register: vtamall_copy_result
 
-    - name: DEBUG(-v) Response from Update PARMLIB DD for VTAMALL.
+        - name: Update PARMLIB DD for VTAMALL
+          zos_lineinfile:
+            src: "USER.{{ adcd_ver }}.PROCLIB(VTAMALL)"
+            regexp: '^//PARMLIB'
+            line: '//PARMLIB  DD  DSN=USER.&SYSVER..PARMLIB(&M),DISP=SHR'
+          register: vtamall_update_result
+      rescue:
+        - name: Handle VTAMALL setup errors
+          debug:
+            msg: "Error occurred during VTAMALL setup: {{ ansible_failed_result }}"
+          failed_when: true
+
+    - name: Setup SHUTALL procedure
+      block:
+        - name: Copy SHUTALL from ADCD to USER
+          zos_copy:
+            src: "ADCD.{{ adcd_ver }}.PROCLIB(SHUTALL)"
+            dest: "USER.{{ adcd_ver }}.PROCLIB(SHUTALL)"
+            remote_src: true
+          register: shutall_copy_result
+
+        - name: Update PARMLIB DD for SHUTALL
+          zos_lineinfile:
+            src: "USER.{{ adcd_ver }}.PROCLIB(SHUTALL)"
+            regexp: '^//PARMLIB'
+            line: '//PARMLIB  DD  DSN=USER.&SYSVER..PARMLIB(&M),DISP=SHR'
+          register: shutall_update_result
+      rescue:
+        - name: Handle SHUTALL setup errors
+          debug:
+            msg: "Error occurred during SHUTALL setup: {{ ansible_failed_result }}"
+          failed_when: true
+
+    - name: Setup DBSPROCD procedure for Db2 V13
+      block:
+        - name: Copy DBSPROCD from ADCD to USER
+          zos_copy:
+            src: "ADCD.{{ adcd_ver }}.PROCLIB(DBSPROCD)"
+            dest: "USER.{{ adcd_ver }}.PROCLIB(DBSPROCD)"
+            remote_src: true
+          register: dbsprocd_copy_result
+      rescue:
+        - name: Handle DBSPROCD setup errors
+          debug:
+            msg: "Error occurred during DBSPROCD setup: {{ ansible_failed_result }}"
+          failed_when: true
+
+    - name: Display task results
       debug:
-        msg: "{{ zos_lineinfile_result }} with verbosity 1"
+        msg:
+          - "VTAMALL copy result: {{ vtamall_copy_result }}"
+          - "VTAMALL update result: {{ vtamall_update_result }}"
+          - "SHUTALL copy result: {{ shutall_copy_result }}"
+          - "SHUTALL update result: {{ shutall_update_result }}"
+          - "DBSPROCD copy result: {{ dbsprocd_copy_result }}"
         verbosity: 1
 
-###############################################################################
-# Usage:
-#  Copy ADCD.{{ adcd_ver }}.PROCLIB(SHUTALL) to USER.{{ adcd_ver }}.PROCLIB(SHUTALL)
-#  Alter SHUTALL PARMLIB DD to reference USER.&SYSVER..PARMLIB(&M)
-###############################################################################
-
-    - name: Copy SHUTALL from ADCD to USER; replace if it already exists.
-      zos_copy:
-        src: ADCD.{{ adcd_ver }}.PROCLIB(SHUTALL)
-        dest: USER.{{ adcd_ver }}.PROCLIB(SHUTALL)
-        remote_src: true
-      register: zos_copy_result
-
-    - name: DEBUG(-v) Response from Copy SHUTALL from ADCD to USER.
+    - name: Display task summary
       debug:
-        msg: "{{ zos_copy_result }} with verbosity 1"
-        verbosity: 1
+        msg:
+          - "z/OS PROCLIB Setup Summary:"
+          - "- Connectivity check: {{ 'Successful' if zos_ping_result.ping == 'pong' else 'Failed' }}"
+          - "- VTAMALL procedure: {{ 'Updated' if vtamall_copy_result.changed or vtamall_update_result.changed else 'No changes required' }}"
+          - "- SHUTALL procedure: {{ 'Updated' if shutall_copy_result.changed or shutall_update_result.changed else 'No changes required' }}"
+          - "- DBSPROCD procedure: {{ 'Copied' if dbsprocd_copy_result.changed else 'Already exists' }}"
+        verbosity: 0
 
-    - name: Update PARMLIB DD for SHUTALL.
-      zos_lineinfile:
-        src: USER.{{ adcd_ver }}.PROCLIB(SHUTALL)
-        regexp: '^//PARMLIB'
-        line: '//PARMLIB  DD  DSN=USER.&SYSVER..PARMLIB(&M),DISP=SHR'
-      register: zos_lineinfile_result
-
-    - name: DEBUG(-v) Response from Update PARMLIB DD for SHUTALL.
-      debug:
-        msg: "{{ zos_lineinfile_result }} with verbosity 1"
-        verbosity: 1
-
-###############################################################################
-# Usage:
-#  Copy ADCD.{{ adcd_ver }}.PROCLIB(DBSPROCD) to USER.{{ adcd_ver }}.PROCLIB(DBSPROCD) Db2 V13
-###############################################################################
-
-    - name: Copy DBSPROCD from ADCD to USER; replace if it already exists.
-      zos_copy:
-        src: ADCD.{{ adcd_ver }}.PROCLIB(DBSPROCD)
-        dest: USER.{{ adcd_ver }}.PROCLIB(DBSPROCD)
-        remote_src: true
-      register: zos_copy_result
-
-    - name: DEBUG(-v) Response from Copy DBSPROCD from ADCD to USER.
-      debug:
-        msg: "{{ zos_copy_result }} with verbosity 1"
-        verbosity: 1
- 
+    - name: Final status check
+      assert:
+        that:
+          - zos_ping_result.ping == "pong"
+          - vtamall_copy_result is success
+          - vtamall_update_result is success
+          - shutall_copy_result is success
+          - shutall_update_result is success
+          - dbsprocd_copy_result is success
+        fail_msg: "z/OS PROCLIB setup failed. Check the summary for details."
+        success_msg: "z/OS PROCLIB setup completed successfully."

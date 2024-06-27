@@ -1,13 +1,53 @@
-###############################################################################
-# Usage:
-#  ansible-playbook -i <inventory> <playbook>
+################################################################################
+# Playbook Name: JES Checkpoint Configuration
 #
-# Example:
-#  ansible-playbook -i inventories configure_jes_checkpoint.yml
-#  ansible-playbook -i inventories configure_jes_checkpoint.yml -v
-###############################################################################
+# Purpose:
+#   This playbook automates the configuration of JES2 checkpoints on a z/OS system.
+#   It performs the following tasks:
+#   - Verifies connectivity to the target host
+#   - Alters JES JOBCLASS for STC
+#   - Deletes and recreates JES2 checkpoint datasets
+#   - Updates JES2 configuration to use new checkpoint datasets
+#   - Updates JES2PARM and JES2 PROC in USER.PARMLIB and USER.PROCLIB
+#
+# Requirements:
+#   - Ansible 2.9 or higher
+#   - IBM z/OS Core Collection (ibm.ibm_zos_core) installed
+#   - Access to z/OS system with appropriate permissions
+#   - Proper setup of Ansible inventory file with z/OS target information
+#
+# Usage:
+#   Basic execution:
+#     ansible-playbook -i <inventory_file> configure_jes_checkpoint.yml
+#
+#   With increased verbosity:
+#     ansible-playbook -i <inventory_file> configure_jes_checkpoint.yml -v
+#
+# Variables:
+#   adcd_ver: ADCD version (default: Z31A)
+#   ckpt_volume: Volume for checkpoint datasets (default: A3SYS1)
+#
+# Notes:
+#   - Ensure that the necessary permissions and system access are in place before running.
+#   - Review and adjust variables as needed for your environment.
+#   - The playbook includes error handling for critical operations.
+#   - Debug messages are displayed only in verbose mode (-v).
+#
+# Examples:
+#   1. Run the playbook with default settings:
+#      ansible-playbook -i inventory.ini configure_jes_checkpoint.yml
+#
+#   2. Run the playbook with verbose output:
+#      ansible-playbook -i inventory.ini configure_jes_checkpoint.yml -v
+#
+#   3. Run the playbook with custom ADCD version and checkpoint volume:
+#      ansible-playbook -i inventory.ini configure_jes_checkpoint.yml -e "adcd_ver=Z32A ckpt_volume=SYSVOL"
+#
+################################################################################
+
 ---
-- hosts: z31a_s0w1
+- name: JES Checkpoint Configuration
+  hosts: z31a_s0w1
   collections:
     - ibm.ibm_zos_core
   gather_facts: no
@@ -19,160 +59,103 @@
   environment: "{{ environment_vars }}"
 
   tasks:
-    - name: Ping using zos_ping
+    - name: Verify connectivity
       zos_ping:
       register: zos_ping_result
 
-    - name: Response from zos_ping
+    - name: Display ping response
       debug:
-        msg: "{{ zos_ping_result }}"
+        var: zos_ping_result
+        verbosity: 1
 
-###############################################################################
-# Usage:
-#  Dynamicly alter the JES JOBCLASS for STC 
-#  $T JOBCLASS(STC),OUTDISP=(HOLD,HOLD)
-###############################################################################
-
-    - name: Alter JOBCASS STC OUTDISP.
+    - name: Alter JES JOBCLASS for STC
       zos_operator:
         cmd: "$T JOBCLASS(STC),OUTDISP=(HOLD,HOLD)"
-      register: zos_operator_result
+      register: jobclass_result
 
-    - name: DEBUG(-v) Response from Alter JOBCASS STC OUTDISP.
+    - name: Manage JES2 checkpoint datasets
+      block:
+        - name: Delete existing JES CKPT datasets
+          zos_tso_command:
+            commands:
+              - DELETE 'SYS1.{{ adcd_ver }}.CKPT1'
+              - DELETE 'SYS1.{{ adcd_ver }}.CKPT2'
+          ignore_errors: true
+
+        - name: Allocate new JES CKPT datasets
+          zos_tso_command:
+            commands:
+              - ALLOC DA('SYS1.{{ adcd_ver }}.CKPT1') DSORG(PSU) SPACE(300,0) TRACKS VOLUME({{ ckpt_volume }}) UNIT(SYSDA)
+              - ALLOC DA('SYS1.{{ adcd_ver }}.CKPT2') DSORG(PSU) SPACE(300,0) TRACKS VOLUME({{ ckpt_volume }}) UNIT(SYSDA)
+          register: ckpt_alloc_result
+      rescue:
+        - name: Log checkpoint dataset management errors
+          debug:
+            msg: "Error occurred during checkpoint dataset management: {{ ansible_failed_result }}"
+
+    - name: Update JES2 configuration
+      block:
+        - name: Alter CKPTDEF for new checkpoint datasets
+          zos_operator:
+            cmd: "{{ item }}"
+          loop:
+            - "$T CKPTDEF,NEWCKPT1=(DSNAME=SYS1.{{ adcd_ver }}.CKPT1,VOLSER={{ ckpt_volume }})"
+            - "$T CKPTDEF,NEWCKPT2=(DSNAME=SYS1.{{ adcd_ver }}.CKPT2,VOLSER={{ ckpt_volume }})"
+            - "$T CKPTDEF,OPVERIFY=NO"
+          register: ckptdef_result
+      rescue:
+        - name: Log JES2 configuration update errors
+          debug:
+            msg: "Error occurred during JES2 configuration update: {{ ansible_failed_result }}"
+
+    - name: Update JES2PARM in USER.PARMLIB
+      block:
+        - name: Copy JES2PARM from ADCD to USER PARMLIB
+          zos_copy:
+            src: "ADCD.{{ adcd_ver }}.PARMLIB(JES2PARM)"
+            dest: "USER.{{ adcd_ver }}.PARMLIB(JES2PARM)"
+            remote_src: true
+
+        - name: Insert NEWCKPT datasets in JES2PARM
+          zos_blockinfile:
+            src: "USER.{{ adcd_ver }}.PARMLIB(JES2PARM)"
+            marker: "/* {mark} ANSIBLE MANAGED BLOCK */"
+            insertafter: "MODE=DUPLEX,"
+            block: |
+              NEWCKPT1=(DSNAME=SYS1.{{ adcd_ver }}.CKPT1,VOLSER={{ ckpt_volume }}),
+              NEWCKPT2=(DSNAME=SYS1.{{ adcd_ver }}.CKPT2,VOLSER={{ ckpt_volume }}),
+              OPVERIFY=NO,
+          register: jes2parm_result
+      rescue:
+        - name: Log JES2PARM update errors
+          debug:
+            msg: "Error occurred during JES2PARM update: {{ ansible_failed_result }}"
+
+    - name: Update JES2 PROC in USER.PROCLIB
+      block:
+        - name: Copy JES2 PROC from ADCD to USER PROCLIB
+          zos_copy:
+            src: "ADCD.{{ adcd_ver }}.PROCLIB(JES2)"
+            dest: "USER.{{ adcd_ver }}.PROCLIB(JES2)"
+            remote_src: true
+
+        - name: Update JES2 PROC HASPPARM DD to use USER HLQ
+          zos_lineinfile:
+            src: "USER.{{ adcd_ver }}.PROCLIB(JES2)"
+            regexp: "^//HASPPARM"
+            line: "//HASPPARM  DD   DSN=USER.&SYSVER..PARMLIB(&MEMBER),DISP=SHR"
+          register: jes2proc_result
+      rescue:
+        - name: Log JES2 PROC update errors
+          debug:
+            msg: "Error occurred during JES2 PROC update: {{ ansible_failed_result }}"
+
+    - name: Display task results
       debug:
-        msg: "{{ zos_operator_result }} with verbosity 1"
-        verbosity: 1
-
-###############################################################################
-# Usage:
-#  Delete and re-create the JES2 checkpoint datasets
-#  SYS1.{{ adcd_ver }}.CKPT1
-#  SYS1.{{ adcd_ver }}.CKPT2
-###############################################################################
-
-    - name: Delete JES CKPT datasets incase the already exist.
-      zos_tso_command:
-        commands:
-          - DELETE 'SYS1.{{ adcd_ver }}.CKPT1'
-          - DELETE 'SYS1.{{ adcd_ver }}.CKPT2'
-      ignore_errors: true
-      register: zos_tso_command_result
-
-    - name: DEBUG(-v) Response from Delete JES CKPT datasets incase the already exist.
-      debug:
-        msg: "{{ zos_tso_command_result }} with verbosity 1"
-        verbosity: 1
-
-    - name: Allocate JES CKPT datasets.
-      zos_tso_command:
-        commands:
-          - ALLOC DA('SYS1.{{ adcd_ver }}.CKPT1') DSORG(PSU) SPACE(300,0) TRACKS VOLUME({{ ckpt_volume }}) UNIT(SYSDA)
-          - ALLOC DA('SYS1.{{ adcd_ver }}.CKPT2') DSORG(PSU) SPACE(300,0) TRACKS VOLUME({{ ckpt_volume }}) UNIT(SYSDA)
-      register: zos_tso_command_result
-
-    - name: DEBUG(-v) Response from Allocate JES CKPT datasets.
-      debug:
-        msg: "{{ zos_tso_command_result }} with verbosity 1"
-        verbosity: 1
-
-###############################################################################
-# Usage:
-#  Dynamicly alter the JES to add the new checkpoint datasets and supress verification
-#  $T CKPTDEF,NEWCKPT1=(DSNAME=SYS1.{{ adcd_ver }}.CKPT1,VOLSER={{ ckpt_volume }}
-#  $T CKPTDEF,NEWCKPT1=(DSNAME=SYS1.{{ adcd_ver }}.CKPT2,VOLSER={{ ckpt_volume }}
-#  $T CKPTDEF,OPVERIFY=NO
-###############################################################################
-
-    - name: Alter CKPTDEF NEWCKPT1.
-      zos_operator:
-        cmd: "$T CKPTDEF,NEWCKPT1=(DSNAME=SYS1.{{ adcd_ver }}.CKPT1,VOLSER={{ ckpt_volume }})"
-      register: zos_operator_result
-
-    - name: DEBUG(-v) Response from Alter CKPTDEF NEWCKPT1.
-      debug:
-        msg: "{{ zos_operator_result }} with verbosity 1"
-        verbosity: 1
-
-    - name: Alter CKPTDEF NEWCKPT2.
-      zos_operator:
-        cmd: "$T CKPTDEF,NEWCKPT2=(DSNAME=SYS1.{{ adcd_ver }}.CKPT2,VOLSER={{ ckpt_volume }})"
-      register: zos_operator_result
-
-    - name: DEBUG(-v) Response from Alter CKPTDEF NEWCKPT2.
-      debug:
-        msg: "{{ zos_operator_result }} with verbosity 1"
-        verbosity: 1
-
-    - name: Alter CKPTDEF suppressing operator verification.
-      zos_operator:
-        cmd: "$T CKPTDEF,OPVERIFY=NO"
-      register: zos_operator_result
-
-    - name: DEBUG(-v) Response from Alter CKPTDEF suppressing operator verification.
-      debug:
-        msg: "{{ zos_operator_result }} with verbosity 1"
-        verbosity: 1
-
-###############################################################################
-# Usage:
-#  Copy ADCD.{{ adcd_ver }}.PARMLIB(JES2PARM) to USER.{{ adcd_ver }}.PARMLIB(JES2PARM)
-#  Update JESPARM with the new checkpoint datasets and supress verification
-###############################################################################
-
-    - name: Copy JES2PARM from ADCD to USER; replace if it already exists.
-      zos_copy:
-        src: ADCD.{{ adcd_ver }}.PARMLIB(JES2PARM)
-        dest: USER.{{ adcd_ver }}.PARMLIB(JES2PARM)
-        remote_src: true
-      register: zos_copy_result
-
-    - name: DEBUG(-v) Response from Copy JES2PARM from ADCD to USER.
-      debug:
-        msg: "{{ zos_copy_result }} with verbosity 1"
-        verbosity: 1
-
-    - name: Insert NEWXKPT datasets in JES2PARM.
-      zos_blockinfile:
-        src: USER.{{ adcd_ver }}.PARMLIB(JES2PARM)
-        marker: "/* {mark} ANSIBLE MANAGED BLOCK */"
-        insertafter: "MODE=DUPLEX,"
-        block: |
-          NEWCKPT1=(DSNAME=SYS1.{{ adcd_ver }}.CKPT1,VOLSER={{ ckpt_volume }}),
-          NEWCKPT2=(DSNAME=SYS1.{{ adcd_ver }}.CKPT2,VOLSER={{ ckpt_volume }}),
-          OPVERIFY=NO,
-      register: zos_blockinfile_result
-
-    - name: DEBUG(-v) Response from Insert NEWXKPT datasets in JES2PARM.
-      debug:
-        msg: "{{ zos_blockinfile_result }} with verbosity 1"
-        verbosity: 1
-
-###############################################################################
-# Usage:
-#  Copy ADCD.{{ adcd_ver }}.PROCLIB(JES2) to USER.{{ adcd_ver }}.PROCLIB(JES2)
-#  Update JES2 PROC HASPPARM DD to refernce altered JES2PARM
-###############################################################################
-
-    - name: Copy JES2 PROC from ADCD to USER; replace if it already exists.
-      zos_copy:
-        src: ADCD.{{ adcd_ver }}.PROCLIB(JES2)
-        dest: USER.{{ adcd_ver }}.PROCLIB(JES2)
-        remote_src: true
-      register: zos_copy_result
-
-    - name: DEBUG(-v) Response from Copy JES2 PROC from ADCD to USER.
-      debug:
-        msg: "{{ zos_copy_result }} with verbosity 1"
-        verbosity: 1
-
-    - name: Update JES2 PROC HASPPARM DD to use USER HLQ.
-      zos_lineinfile:
-        src: USER.{{ adcd_ver }}.PROCLIB(JES2)
-        regexp: "^//HASPPARM"
-        line: "//HASPPARM  DD   DSN=USER.&SYSVER..PARMLIB(&MEMBER),DISP=SHR"
-      register: zos_lineinfile_result
-
-    - name: DEBUG(-v) Response from Update JES2 PROC HASPPARM DD to use USER HLQ.
-      debug:
-        msg: "{{ zos_lineinfile_result }} with verbosity 1"
+        msg:
+          - "JES JOBCLASS alteration result: {{ jobclass_result }}"
+          - "JES CKPT dataset allocation result: {{ ckpt_alloc_result }}"
+          - "CKPTDEF alteration result: {{ ckptdef_result }}"
+          - "JES2PARM update result: {{ jes2parm_result }}"
+          - "JES2 PROC update result: {{ jes2proc_result }}"
         verbosity: 1

@@ -1,13 +1,48 @@
-###############################################################################
-# Usage:
-#  ansible-playbook -i <inventory> <playbook>
+################################################################################
+# Playbook Name: Copy IBMPRODS ISPPLIB
 #
-# Example:
-#  ansible-playbook -i copy_ibmprods_ispplib.yml.yml
-#  ansible-playbook -i copy_ibmprods_ispplib.yml.yml -v
-###############################################################################
+# Purpose:
+#   This playbook automates the copying of the IBMPRODS member from the ADCD
+#   ISPPLIB to the USER ISPPLIB on a z/OS system. This is typically used for
+#   customizing Db2 V13 ISPF panels.
+#
+# Requirements:
+#   - Ansible 2.9 or higher
+#   - IBM z/OS Core Collection (ibm.ibm_zos_core) installed
+#   - Access to z/OS system with appropriate permissions
+#   - Proper setup of Ansible inventory file with z/OS target information
+#
+# Usage:
+#   Basic execution:
+#     ansible-playbook -i <inventory_file> copy_ibmprods_ispplib.yml
+#
+#   With increased verbosity:
+#     ansible-playbook -i <inventory_file> copy_ibmprods_ispplib.yml -v
+#
+# Variables:
+#   adcd_ver: ADCD version (default: Z31A)
+#
+# Notes:
+#   - Ensure that the necessary permissions and system access are in place before running.
+#   - Review and adjust the 'adcd_ver' variable as needed for your environment.
+#   - The playbook will replace the IBMPRODS member in USER.ISPPLIB if it already exists.
+#   - Debug messages are displayed only in verbose mode (-v).
+#
+# Examples:
+#   1. Run the playbook with default settings:
+#      ansible-playbook -i inventory.ini copy_ibmprods_ispplib.yml
+#
+#   2. Run the playbook with verbose output:
+#      ansible-playbook -i inventory.ini copy_ibmprods_ispplib.yml -v
+#
+#   3. Run the playbook with a custom ADCD version:
+#      ansible-playbook -i inventory.ini copy_ibmprods_ispplib.yml -e "adcd_ver=Z32A"
+#
+################################################################################
+
 ---
-- hosts: z31a_s0w1
+- name: Copy IBMPRODS ISPPLIB
+  hosts: z31a_s0w1
   collections:
     - ibm.ibm_zos_core
   gather_facts: no
@@ -18,27 +53,36 @@
   environment: "{{ environment_vars }}"
 
   tasks:
-    - name: Ping using zos_ping
+    - name: Verify connectivity
       zos_ping:
       register: zos_ping_result
 
-    - name: Response from zos_ping
+    - name: Display ping response
       debug:
-        msg: "{{ zos_ping_result }}"
-
-###############################################################################
-# Usage:
-#  Copy ADCD.{{ adcd_ver }}.DBD.ISPPLIB(IBMPRODS) to USER.{{ adcd_ver }}.ISPPLIB(IBMPRODS) Db2 V13
-###############################################################################
-
-    - name: Copy IBMPRODS from ADCD to USER; replace if it already exists.
-      zos_copy:
-        src: ADCD.{{ adcd_ver }}.DBD.ISPPLIB(IBMPRODS)
-        dest: USER.{{ adcd_ver }}.ISPPLIB(IBMPRODS)
-        remote_src: true
-      register: zos_copy_result
-
-    - name: DEBUG(-v) Response from Copy IBMPRODS from ADCD to USER.
-      debug:
-        msg: "{{ zos_copy_result }} with verbosity 1"
+        var: zos_ping_result
         verbosity: 1
+
+    - name: Copy IBMPRODS from ADCD to USER ISPPLIB
+      block:
+        - name: Copy IBMPRODS member
+          zos_copy:
+            src: "ADCD.{{ adcd_ver }}.DBD.ISPPLIB(IBMPRODS)"
+            dest: "USER.{{ adcd_ver }}.ISPPLIB(IBMPRODS)"
+            remote_src: true
+          register: copy_result
+      rescue:
+        - name: Log IBMPRODS copy errors
+          debug:
+            msg: "Error occurred during IBMPRODS copy: {{ ansible_failed_result }}"
+      always:
+        - name: Display copy operation result
+          debug:
+            var: copy_result
+            verbosity: 1
+
+    - name: Display task summary
+      debug:
+        msg:
+          - "Connectivity check result: {{ zos_ping_result.ping }}"
+          - "IBMPRODS copy status: {{ 'Successful' if copy_result.changed else 'Failed or No Change Required' }}"
+        verbosity: 0

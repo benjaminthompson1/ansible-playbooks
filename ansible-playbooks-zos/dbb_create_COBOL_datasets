@@ -1,120 +1,150 @@
-# This playbook uses the ibm.ibm_zos_core collection to manage (create/replace) DBB specific z/OS data sets.
-# -----------------------------------------------------------------------------
-# General usage:
-#   ansible-playbook -i <inventory> <playbook>
-# 
-# Example:
-#  ansible-playbook -i inventories/hosts dbb_create_COBOL_datasets.yml
-#  ansible-playbook -i inventories/hosts dbb_create_COBOL_datasets.yml -v
-# -----------------------------------------------------------------------------
----
-- hosts: ben_s0w1 
-  collections:
-    - ibm.ibm_zos_core  # Using IBM's z/OS core collection for mainframe interaction
-  gather_facts: no     # Disables fact gathering to optimize execution time
+################################################################################
+# Playbook Name: DBB COBOL Datasets Creation
+#
+# Purpose:
+#   This playbook automates the creation or replacement of DBB-specific z/OS 
+#   datasets using the IBM z/OS Core Collection. It creates datasets for COBOL,
+#   COPY, DBRM, BMS, LINK, OBJ, and LOAD libraries.
+#
+# Requirements:
+#   - Ansible 2.9 or higher
+#   - IBM z/OS Core Collection (ibm.ibm_zos_core) installed
+#   - Access to z/OS system with appropriate permissions
+#   - Proper setup of Ansible inventory file with z/OS target information
+#
+# Usage:
+#   Basic execution:
+#     ansible-playbook -i <inventory_file> dbb_create_COBOL_datasets.yml
+#
+#   With increased verbosity:
+#     ansible-playbook -i <inventory_file> dbb_create_COBOL_datasets.yml -v
+#
+# Variables:
+#   hlq: High-level qualifier for datasets (default: IBMUSER.DBB)
+#   primary_space: Primary space allocation (default: 1CYL)
+#   secondary_space: Secondary space allocation (default: 1CYL)
+#   record_length: Record length for FB datasets (default: 80)
+#
+# Notes:
+#   - Ensure that the necessary permissions and system access are in place before running.
+#   - The playbook will replace existing datasets if they already exist.
+#   - Debug messages are displayed only in verbose mode (-v).
+#   - The playbook includes error handling for dataset creation tasks.
+#
+# Examples:
+#   1. Run the playbook with default settings:
+#      ansible-playbook -i inventory.ini dbb_create_COBOL_datasets.yml
+#
+#   2. Run the playbook with verbose output:
+#      ansible-playbook -i inventory.ini dbb_create_COBOL_datasets.yml -v
+#
+#   3. Run the playbook with custom HLQ and space allocations:
+#      ansible-playbook -i inventory.ini dbb_create_COBOL_datasets.yml -e "hlq=TEST.DBB primary_space=2CYL secondary_space=1CYL"
+#
+################################################################################
 
-  # Import environment variables required for playbook execution
+---
+- name: Create DBB COBOL Datasets
+  hosts: ben_s0w1
+  collections:
+    - ibm.ibm_zos_core
+  gather_facts: no
+
+  vars:
+    hlq: IBMUSER.DBB
+    primary_space: 1CYL
+    secondary_space: 1CYL
+    record_length: 80
+
   environment: "{{ environment_vars }}"
 
   tasks:
-    # Verify connectivity to the z/OS system
-    - name: Ping using zos_ping
+    - name: Verify connectivity
       zos_ping:
       register: zos_ping_result
 
-    # Display the results from the connectivity check
-    - name: Response from zos_ping
+    - name: Display ping response
       debug:
-        msg: "{{ zos_ping_result }}"
+        var: zos_ping_result
+        verbosity: 1
 
-    # Block groups data set creation tasks together for more straightforward error handling
-    - block:
-        # Each of the following tasks will create or replace a specific z/OS data set
-        - name: Create IBMUSER.DBB.COBOL
+    - name: Create DBB datasets
+      block:
+        - name: Create FB format datasets
           zos_data_set:
-            name: IBMUSER.DBB.COBOL
+            name: "{{ hlq }}.{{ item }}"
             type: LIBRARY
             state: present
             format: fb
-            size: 1cyl
-            secondary: 1cyl
-            record_length: 80
+            size: "{{ primary_space }}"
+            secondary: "{{ secondary_space }}"
+            record_length: "{{ record_length }}"
             replace: yes
+          loop:
+            - COBOL
+            - COPY
+            - DBRM
+            - BMS
+            - LINK
+            - OBJ
+          register: fb_datasets_result
 
-        - name: Create IBMUSER.DBB.COPY
+        - name: Create LOAD dataset (U format)
           zos_data_set:
-            name: IBMUSER.DBB.COPY
-            type: LIBRARY
-            state: present
-            format: fb
-            size: 1cyl
-            secondary: 1cyl
-            record_length: 80
-            replace: yes
-
-        - name: Create IBMUSER.DBB.DBRM
-          zos_data_set:
-            name: IBMUSER.DBB.DBRM
-            type: LIBRARY
-            state: present
-            format: fb
-            size: 1cyl
-            secondary: 1cyl
-            record_length: 80
-            replace: yes
-
-        - name: Create IBMUSER.DBB.BMS
-          zos_data_set:
-            name: IBMUSER.DBB.BMS
-            type: LIBRARY
-            state: present
-            format: fb
-            size: 1cyl
-            secondary: 1cyl
-            record_length: 80
-            replace: yes
-
-        - name: Create IBMUSER.DBB.LINK
-          zos_data_set:
-            name: IBMUSER.DBB.LINK
-            type: LIBRARY
-            state: present
-            format: fb
-            size: 1cyl
-            secondary: 1cyl
-            record_length: 80
-            replace: yes
-
-        - name: Create IBMUSER.DBB.OBJ
-          zos_data_set:
-            name: IBMUSER.DBB.OBJ
-            type: LIBRARY
-            state: present
-            format: fb
-            size: 1cyl
-            secondary: 1cyl
-            record_length: 80
-            replace: yes
-
-        - name: Create IBMUSER.DBB.LOAD
-          zos_data_set:
-            name: IBMUSER.DBB.LOAD
+            name: "{{ hlq }}.LOAD"
             type: LIBRARY
             state: present
             format: u
-            size: 1cyl
-            secondary: 1cyl
+            size: "{{ primary_space }}"
+            secondary: "{{ secondary_space }}"
             record_length: 0
             replace: yes
+          register: load_dataset_result
 
-      # This section will handle errors that occur during data set creation
       rescue:
-        - name: Handle Errors
+        - name: Handle dataset creation errors
           debug:
-            msg: "An error occurred while creating the data set. Error: {{ ansible_failed_result }}"
+            msg: "Error occurred during dataset creation: {{ ansible_failed_result }}"
+          failed_when: true
 
-      # This section will always be executed, regardless of the block's success or failure
       always:
-        - name: Always execute this after block tasks
+        - name: Display dataset creation results
           debug:
-            msg: "Finished data set creation tasks."
+            msg: 
+              - "FB format datasets creation result: {{ fb_datasets_result }}"
+              - "LOAD dataset creation result: {{ load_dataset_result }}"
+            verbosity: 1
+
+    - name: Verify dataset creation
+      zos_data_set:
+        name: "{{ hlq }}.{{ item }}"
+        type: LIBRARY
+      loop:
+        - COBOL
+        - COPY
+        - DBRM
+        - BMS
+        - LINK
+        - OBJ
+        - LOAD
+      register: verify_result
+
+    - name: Display task summary
+      debug:
+        msg:
+          - "Playbook execution summary:"
+          - "- Connectivity check result: {{ zos_ping_result.ping }}"
+          - "- Datasets created:"
+          - "  {% for item in verify_result.results %}"
+          - "  - {{ item.name }}: {{ 'Created' if item.changed else 'Already existed' }}"
+          - "  {% endfor %}"
+        verbosity: 0
+
+    - name: Final status check
+      assert:
+        that:
+          - zos_ping_result.ping == "pong"
+          - verify_result.results | map(attribute='exists') | list | unique | length == 1
+          - verify_result.results | map(attribute='exists') | list | unique | first == true
+        fail_msg: "Playbook execution failed. Check the summary for details."
+        success_msg: "Playbook executed successfully. All DBB datasets created and verified."

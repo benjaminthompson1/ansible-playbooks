@@ -1,42 +1,130 @@
 ################################################################################
-# Playbook Name: JZOS Setup
+# Playbook Name: Enhanced JZOS Setup
+#
 # Purpose:
-#   - Sets up the JZOS Batch Launcher and Toolkit on z/OS systems.
-#   - Copies necessary JCL and PROC files to appropriate datasets.
+#   This playbook automates the setup of the JZOS Batch Launcher and Toolkit on z/OS systems.
+#   It performs the following tasks:
+#   - Copies JVMJCL17 to SYS1.SAMPLIB
+#   - Copies JVMPRC17 to SYS1.PROCLIB
+#   - Copies JVMLDM17 to SYS1.SIEALNKE
 #
 # Requirements:
 #   - Ansible 2.9 or higher
+#   - IBM z/OS Core Collection (ibm.ibm_zos_core) installed
 #   - Access to z/OS system with appropriate permissions
-#   - IBM z/OS Core Collection installed
+#   - Proper setup of Ansible inventory file with z/OS target information
+#   - Java 17 (or specified version) installed on the z/OS system
 #
 # Usage:
-#   - Basic execution: ansible-playbook -i inventories zos_jzos_setup.yml
-#   - With verbosity: ansible-playbook -i inventories zos_jzos_setup.yml -v
+#   Basic execution:
+#     ansible-playbook -i <inventory_file> zos_jzos_setup.yml
+#
+#   With increased verbosity:
+#     ansible-playbook -i <inventory_file> zos_jzos_setup.yml -v
+#
+#   With custom Java version:
+#     ansible-playbook -i <inventory_file> zos_jzos_setup.yml -e "java_version=J17.0_64"
+#
+# Variables:
+#   java_version: Version of Java to use (default: J17.0_64)
+#   java_home: Base directory for Java installation (default: /usr/lpp/java)
+#   samplib_dataset: Dataset name for SAMPLIB (default: SYS1.SAMPLIB)
+#   proclib_dataset: Dataset name for PROCLIB (default: SYS1.PROCLIB)
+#   siealnke_dataset: Dataset name for SIEALNKE (default: SYS1.SIEALNKE)
+#
+# Notes:
+#   - Ensure that the necessary permissions and system access are in place before running.
+#   - This playbook assumes Java is installed in the default location. Adjust java_home if needed.
+#   - The playbook includes error handling for file copy operations.
+#   - A summary of actions taken is displayed at the end of the playbook run.
+#
+# Examples:
+#   1. Run the playbook with default settings:
+#      ansible-playbook -i inventory.ini zos_jzos_setup.yml
+#
+#   2. Run the playbook with verbose output:
+#      ansible-playbook -i inventory.ini zos_jzos_setup.yml -v
+#
+#   3. Run the playbook with a different Java version:
+#      ansible-playbook -i inventory.ini zos_jzos_setup.yml -e "java_version=J11.0_64"
+#
 ################################################################################
+
 ---
-- hosts: z31a_s0w1
+- name: Enhanced JZOS Setup
+  hosts: z31a_s0w1
   gather_facts: yes
   collections:
     - ibm.ibm_zos_core
 
+  vars:
+    java_version: J17.0_64
+    java_home: /usr/lpp/java
+    samplib_dataset: SYS1.SAMPLIB
+    proclib_dataset: SYS1.PROCLIB
+    siealnke_dataset: SYS1.SIEALNKE
+
   environment: "{{ environment_vars }}"
 
   tasks:
-    - name: Copy JVMJCL17 to SYS1.SAMPLIB
-      zos_copy:
-        src: /usr/lpp/java/J17.0_64/mvstools/jcl/JVMJCL17
-        dest: SYS1.SAMPLIB(JVMJCL17)
-        remote_src: true
+    - name: Verify connectivity
+      zos_ping:
+      register: ping_result
 
-    - name: Copy JVMPRC17 to SYS1.PROCLIB
-      zos_copy:
-        src: /usr/lpp/java/J17.0_64/mvstools/jcl/JVMPRC17
-        dest: SYS1.PROCLIB(JVMPRC17)
-        remote_src: true
+    - name: Setup JZOS
+      block:
+        - name: Copy JVMJCL17 to SAMPLIB
+          zos_copy:
+            src: "{{ java_home }}/{{ java_version }}/mvstools/jcl/JVMJCL17"
+            dest: "{{ samplib_dataset }}(JVMJCL17)"
+            remote_src: true
+          register: jvmjcl_copy
 
-    - name: Copy JVMLDM17 to SYS1.SIEALNKE 
-      zos_copy:
-        src: /usr/lpp/java/J17.0_64/mvstools/JVMLDM17
-        dest: SYS1.SIEALNKE(JVMLDM17)
-        is_binary: true
-        remote_src: true
+        - name: Copy JVMPRC17 to PROCLIB
+          zos_copy:
+            src: "{{ java_home }}/{{ java_version }}/mvstools/jcl/JVMPRC17"
+            dest: "{{ proclib_dataset }}(JVMPRC17)"
+            remote_src: true
+          register: jvmprc_copy
+
+        - name: Copy JVMLDM17 to SIEALNKE
+          zos_copy:
+            src: "{{ java_home }}/{{ java_version }}/mvstools/JVMLDM17"
+            dest: "{{ siealnke_dataset }}(JVMLDM17)"
+            is_binary: true
+            remote_src: true
+          register: jvmldm_copy
+
+      rescue:
+        - name: Handle JZOS setup errors
+          debug:
+            msg: "Error occurred during JZOS setup: {{ ansible_failed_result }}"
+          failed_when: true
+
+    - name: Display task results
+      debug:
+        msg:
+          - "JVMJCL17 copy result: {{ jvmjcl_copy }}"
+          - "JVMPRC17 copy result: {{ jvmprc_copy }}"
+          - "JVMLDM17 copy result: {{ jvmldm_copy }}"
+        verbosity: 1
+
+    - name: Display task summary
+      debug:
+        msg:
+          - "JZOS Setup Summary:"
+          - "- Connectivity check: {{ 'Successful' if ping_result.ping == 'pong' else 'Failed' }}"
+          - "- JVMJCL17 to SAMPLIB: {{ 'Copied' if jvmjcl_copy.changed else 'Already exists' }}"
+          - "- JVMPRC17 to PROCLIB: {{ 'Copied' if jvmprc_copy.changed else 'Already exists' }}"
+          - "- JVMLDM17 to SIEALNKE: {{ 'Copied' if jvmldm_copy.changed else 'Already exists' }}"
+        verbosity: 0
+
+    - name: Final status check
+      assert:
+        that:
+          - ping_result.ping == "pong"
+          - jvmjcl_copy is success
+          - jvmprc_copy is success
+          - jvmldm_copy is success
+        fail_msg: "JZOS setup failed. Check the summary for details."
+        success_msg: "JZOS setup completed successfully."

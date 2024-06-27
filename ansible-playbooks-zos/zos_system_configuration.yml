@@ -1,13 +1,54 @@
-###############################################################################
-# Usage:
-#  ansible-playbook -i <inventory> <playbook>
+################################################################################
+# Playbook Name: Enhanced z/OS System Configuration
 #
-# Example:
-#  ansible-playbook -i inventories zos_system_configuration.yml
-#  ansible-playbook -i inventories zos_system_configuration.yml -v
-###############################################################################
+# Purpose:
+#   This playbook automates various z/OS system configurations, including:
+#   - Setting up system clock (CLOCK00)
+#   - Configuring USS mount points (BPXPRMZZ)
+#   - Updating system symbols (IEASYSAL)
+#   - Configuring TSO (IKJTSOZZ)
+#   - Updating VTAM startup (VTAMALL) and shutdown (SHUTALL) procedures
+#   - Setting up subsystem definitions (IEFSSNDB)
+#   - Configuring system symbols (IEASYM00)
+#   - Setting up z/OSMF parameters (IZUPRMAS)
+#
+# Requirements:
+#   - Ansible 2.9 or higher
+#   - IBM z/OS Core Collection (ibm.ibm_zos_core) installed
+#   - Access to z/OS system with appropriate permissions
+#   - Proper setup of Ansible inventory file with z/OS target information
+#
+# Usage:
+#   Basic execution:
+#     ansible-playbook -i <inventory_file> zos_system_configuration.yml
+#
+#   With increased verbosity:
+#     ansible-playbook -i <inventory_file> zos_system_configuration.yml -v
+#
+# Variables:
+#   adcd_ver: ADCD version (default: Z31A)
+#
+# Notes:
+#   - Ensure that the necessary permissions and system access are in place before running.
+#   - This playbook makes significant changes to system configuration. Ensure you have appropriate backups.
+#   - Review and adjust the configurations as needed for your specific environment.
+#   - Debug messages are displayed only in verbose mode (-v).
+#
+# Examples:
+#   1. Run the playbook with default settings:
+#      ansible-playbook -i inventory.ini zos_system_configuration.yml
+#
+#   2. Run the playbook with verbose output:
+#      ansible-playbook -i inventory.ini zos_system_configuration.yml -v
+#
+#   3. Run the playbook with a custom ADCD version:
+#      ansible-playbook -i inventory.ini zos_system_configuration.yml -e "adcd_ver=Z32A"
+#
+################################################################################
+
 ---
-- hosts: z31a_s0w1
+- name: Enhanced z/OS System Configuration
+  hosts: z31a_s0w1
   collections:
     - ibm.ibm_zos_core
   gather_facts: no
@@ -18,300 +59,189 @@
   environment: "{{ environment_vars }}"
 
   tasks:
-    - name: Ping using zos_ping
+    - name: Verify connectivity
       zos_ping:
       register: zos_ping_result
 
-    - name: Response from zos_ping
+    - name: Configure system clock (CLOCK00)
+      block:
+        - name: Copy and update CLOCK00
+          zos_copy:
+            src: "ADCD.{{ adcd_ver }}.PARMLIB(CLOCK00)"
+            dest: "USER.{{ adcd_ver }}.PARMLIB(CLOCK00)"
+            remote_src: true
+        - name: Set Canberra time
+          zos_lineinfile:
+            src: "USER.{{ adcd_ver }}.PARMLIB(CLOCK00)"
+            regexp: '^TIMEZONE'
+            line: 'TIMEZONE E.10.00.00'
+      rescue:
+        - name: Handle CLOCK00 configuration errors
+          debug:
+            msg: "Error occurred during CLOCK00 configuration: {{ ansible_failed_result }}"
+          failed_when: true
+
+    - name: Configure USS mount points (BPXPRMZZ)
+      block:
+        - name: Create BPXPRMZZ member
+          zos_data_set:
+            name: "USER.{{ adcd_ver }}.PARMLIB(BPXPRMZZ)"
+            type: MEMBER
+            replace: yes
+        - name: Add mount points
+          zos_blockinfile:
+            src: "USER.{{ adcd_ver }}.PARMLIB(BPXPRMZZ)"
+            marker: "/* {mark} ANSIBLE MANAGED BLOCK */"
+            block: |
+              /* IBM Python V3.10 */
+              MOUNT FILESYSTEM('CYP3B0.ZFS')
+                    TYPE(ZFS)
+                    MODE(READ)
+                    NOAUTOMOVE
+                    MOUNTPOINT('/usr/lpp/IBM/cyp/v3r11')
+              /* IBM Python V3.9 */
+              MOUNT FILESYSTEM('CYP390.ZFS')
+                    TYPE(ZFS)
+                    MODE(READ)
+                    NOAUTOMOVE
+                    MOUNTPOINT('/usr/lpp/IBM/cyp/v3r9')
+              /* SMPE ZFS */ 
+              MOUNT FILESYSTEM('SMPE.SMPNTS.ZFS')
+                    TYPE(ZFS)
+                    MODE(RDWR)
+                    NOAUTOMOVE
+                    MOUNTPOINT('/u/smpe/smpnts')
+      rescue:
+        - name: Handle BPXPRMZZ configuration errors
+          debug:
+            msg: "Error occurred during BPXPRMZZ configuration: {{ ansible_failed_result }}"
+          failed_when: true
+
+    - name: Update system symbols (IEASYSAL)
+      block:
+        - name: Copy IEASYSAL
+          zos_copy:
+            src: "ADCD.{{ adcd_ver }}.PARMLIB(IEASYSAL)"
+            dest: "USER.{{ adcd_ver }}.PARMLIB(IEASYSAL)"
+            remote_src: true
+        - name: Update OMVS parameter
+          zos_lineinfile:
+            src: "USER.{{ adcd_ver }}.PARMLIB(IEASYSAL)"
+            regexp: '^OMVS='
+            line: 'OMVS=(00,01,BP,IZ,CI,DB,IM,W9,RZ,RT,BB,ZW,ZZ), BPXPARMZZ ANSIBLE MANAGED'
+        - name: Add LFAREA parameter
+          zos_lineinfile:
+            src: "USER.{{ adcd_ver }}.PARMLIB(IEASYSAL)"
+            insertafter: '^VIODSN='
+            line: 'LFAREA=(1M=(25%,0%),NOPROMPT), Z/OS LARGE FRAME SUPPORT'
+      rescue:
+        - name: Handle IEASYSAL configuration errors
+          debug:
+            msg: "Error occurred during IEASYSAL configuration: {{ ansible_failed_result }}"
+          failed_when: true
+
+    - name: Configure TSO (IKJTSOZZ)
+      block:
+        - name: Copy IKJTSO00 to IKJTSOZZ
+          zos_copy:
+            src: "ADCD.{{ adcd_ver }}.PARMLIB(IKJTSO00)"
+            dest: "USER.{{ adcd_ver }}.PARMLIB(IKJTSOZZ)"
+            remote_src: true
+        - name: Add IKJTSOZZ parameter
+          zos_lineinfile:
+            src: "USER.{{ adcd_ver }}.PARMLIB(IEASYSAL)"
+            insertafter: '^ILMMODE'
+            line: 'IKJTSO=ZZ,'
+      rescue:
+        - name: Handle IKJTSOZZ configuration errors
+          debug:
+            msg: "Error occurred during IKJTSOZZ configuration: {{ ansible_failed_result }}"
+          failed_when: true
+
+    - name: Update VTAM startup (VTAMALL)
+      block:
+        - name: Copy VTAMALL
+          zos_copy:
+            src: "ADCD.{{ adcd_ver }}.PARMLIB(VTAMALL)"
+            dest: "USER.{{ adcd_ver }}.PARMLIB(VTAMALL)"
+            remote_src: true
+        - name: Add FTPD startup
+          zos_lineinfile:
+            src: "USER.{{ adcd_ver }}.PARMLIB(VTAMALL)"
+            insertafter: '^S ZOSCSRV'
+            line: 'S FTPD'
+        - name: Comment out IMS startups
+          zos_lineinfile:
+            src: "USER.{{ adcd_ver }}.PARMLIB(VTAMALL)"
+            regexp: "{{ item }}"
+            line: "/* {{ item }} */"
+          loop:
+            - '^S IMS15RL1'
+            - '^S IMS15CR1'
+      rescue:
+        - name: Handle VTAMALL configuration errors
+          debug:
+            msg: "Error occurred during VTAMALL configuration: {{ ansible_failed_result }}"
+          failed_when: true
+
+    - name: Update shutdown procedure (SHUTALL)
+      block:
+        - name: Copy SHUTALL
+          zos_copy:
+            src: "ADCD.{{ adcd_ver }}.PARMLIB(SHUTALL)"
+            dest: "USER.{{ adcd_ver }}.PARMLIB(SHUTALL)"
+            remote_src: true
+        - name: Add FTPD shutdown
+          zos_lineinfile:
+            src: "USER.{{ adcd_ver }}.PARMLIB(SHUTALL)"
+            insertbefore: '^P RSED'
+            line: 'P FTPD'
+      rescue:
+        - name: Handle SHUTALL configuration errors
+          debug:
+            msg: "Error occurred during SHUTALL configuration: {{ ansible_failed_result }}"
+          failed_when: true
+
+    - name: Copy additional PARMLIB members
+      block:
+        - name: Copy IEFSSNDB (for Omegamon)
+          zos_copy:
+            src: "ADCD.{{ adcd_ver }}.PARMLIB(IEFSSNDB)"
+            dest: "USER.{{ adcd_ver }}.PARMLIB(IEFSSNDB)"
+            remote_src: true
+        - name: Copy IEASYM00 (for Omegamon)
+          zos_copy:
+            src: "ADCD.{{ adcd_ver }}.PARMLIB(IEASYM00)"
+            dest: "USER.{{ adcd_ver }}.PARMLIB(IEASYM00)"
+            remote_src: true
+        - name: Copy IZUPRMAS (for z/OSMF)
+          zos_copy:
+            src: "ADCD.{{ adcd_ver }}.PARMLIB(IZUPRMAS)"
+            dest: "USER.{{ adcd_ver }}.PARMLIB(IZUPRMAS)"
+            remote_src: true
+      rescue:
+        - name: Handle additional PARMLIB member copy errors
+          debug:
+            msg: "Error occurred during additional PARMLIB member copy: {{ ansible_failed_result }}"
+          failed_when: true
+
+    - name: Display configuration summary
       debug:
-        msg: "{{ zos_ping_result }}"
+        msg:
+          - "z/OS System Configuration Summary:"
+          - "- Connectivity check: {{ 'Successful' if zos_ping_result.ping == 'pong' else 'Failed' }}"
+          - "- CLOCK00 configured for Canberra time"
+          - "- BPXPRMZZ created with mount points for Python and SMPE"
+          - "- IEASYSAL updated with OMVS and LFAREA parameters"
+          - "- IKJTSOZZ configured for TSO"
+          - "- VTAMALL updated with FTPD startup and IMS changes"
+          - "- SHUTALL updated with FTPD shutdown"
+          - "- Additional PARMLIB members copied: IEFSSNDB, IEASYM00, IZUPRMAS"
+        verbosity: 0
 
-###############################################################################
-# Usage:
-#  Copy ADCD.{{ adcd_ver }}.PARMLIB(CLOCK00) to USER.{{ adcd_ver }}.PARMLIB(CLOCK00)
-#  Alter CLOCK00 to use Canberra Time
-###############################################################################
-
-    - name: Copy CLOCK00 from ADCD to USER; replace if it already exists.
-      zos_copy:
-        src: ADCD.{{ adcd_ver }}.PARMLIB(CLOCK00)
-        dest: USER.{{ adcd_ver }}.PARMLIB(CLOCK00)
-        remote_src: true
-      register: zos_copy_result
-
-    - name: DEBUG(-v) Response from Copy CLOCK00 from ADCD to USER.
-      debug:
-        msg: "{{ zos_copy_result }} with verbosity 1"
-        verbosity: 1
-
-    - name: Update CLOCK00 to Canberra time.
-      zos_lineinfile:
-        src: USER.{{ adcd_ver }}.PARMLIB(CLOCK00)
-        regexp: '^TIMEZONE'
-        line: 'TIMEZONE E.10.00.00'
-      register: zos_lineinfile_result
-
-    - name: DEBUG(-v) Response from Update CLOCK00 to Canberra time.
-      debug:
-        msg: "{{ zos_lineinfile_result }} with verbosity 1"
-        verbosity: 1
-
-###############################################################################
-# Usage:
-#  Create USER.{{ adcd_ver }}.PARMLIB(BPXPRMZZ)
-#  Add MOUNTS for zfs CYP390.ZFS and SMPE.SMPNTS.ZFS
-###############################################################################
-
-    - name: Create member BPXPRMZZ; replace if member exists.
-      zos_data_set:
-        name: USER.{{ adcd_ver }}.PARMLIB(BPXPRMZZ)
-        type: MEMBER
-        replace: yes
-      register: zos_data_set_result
-
-    - name: DEBUG(-v) Response from Create member BPXPRMZZ.
-      debug:
-        msg: "{{ zos_data_set_result }} with verbosity 1"
-        verbosity: 1
-
-    - name: Insert new mount points for member BPXPRMZZ.
-      zos_blockinfile:
-        src: USER.{{ adcd_ver }}.PARMLIB(BPXPRMZZ)
-        marker: "/* {mark} ANSIBLE MANAGED BLOCK */"
-        block: |
-          /* IBM Python V3.10 */
-          MOUNT FILESYSTEM('CYP3B0.ZFS')
-                TYPE(ZFS)
-                MODE(READ)
-                NOAUTOMOVE
-                MOUNTPOINT('/usr/lpp/IBM/cyp/v3r11')
-          /* IBM Python V3.9 */
-          MOUNT FILESYSTEM('CYP390.ZFS')
-                TYPE(ZFS)
-                MODE(READ)
-                NOAUTOMOVE
-                MOUNTPOINT('/usr/lpp/IBM/cyp/v3r9')
-          /* SMPE ZFS */ 
-          MOUNT FILESYSTEM('SMPE.SMPNTS.ZFS')
-                TYPE(ZFS)
-                MODE(RDWR)
-                NOAUTOMOVE
-                MOUNTPOINT('/u/smpe/smpnts')
-      register: zos_blockinfile_result
-
-    - name: DEBUG(-v) Response from Insert new mount points for member BPXPRMZZ.
-      debug:
-        msg: "{{ zos_blockinfile_result }} with verbosity 1"
-        verbosity: 1
-
-###############################################################################
-# Usage:
-#  Copy ADCD.{{ adcd_ver }}.PARMLIB(IEASYSAL) to USER.{{ adcd_ver }}.PARMLIB(IEASYSAL)
-#  Alter OMVS to include BPXPRMZZ
-#  Add LFAREA for z/OS lager frame support
-###############################################################################
-
-    - name: Copy IEASYSAL from ADCD to USER; replace if it already exists.
-      zos_copy:
-        src: ADCD.{{ adcd_ver }}.PARMLIB(IEASYSAL)
-        dest: USER.{{ adcd_ver }}.PARMLIB(IEASYSAL)
-        remote_src: true
-      register: zos_copy_result
-
-    - name: DEBUG(-v) Response from Copy IEASYSAL from ADCD to USER.
-      debug:
-        msg: "{{ zos_copy_result }} with verbosity 1"
-        verbosity: 1
-
-    - name: Update IEASYSAL OMVS parm.
-      zos_lineinfile:
-        src: USER.{{ adcd_ver }}.PARMLIB(IEASYSAL)
-        regexp: '^OMVS='
-        line: 'OMVS=(00,01,BP,IZ,CI,DB,IM,W9,RZ,RT,BB,ZW,ZZ), BPXPARMZZ ANSIBLE MANAGED'
-      register: zos_lineinfile_result
-
-    - name: DEBUG(-v) Response from Update IEASYSAL OMVS parm.
-      debug:
-        msg: "{{ zos_lineinfile_result }} with verbosity 1"
-        verbosity: 1
-
-    - name: Add IEASYSAL LFAREA parm.
-      zos_lineinfile:
-        src: USER.{{ adcd_ver }}.PARMLIB(IEASYSAL)
-        insertafter: '^VIODSN='
-        line: 'LFAREA=(1M=(25%,0%),NOPROMPT), Z/OS LARGE FRAME SUPPORT'
-      register: zos_lineinfile_result
-
-    - name: DEBUG(-v) Response from Add IEASYSAL LFAREA parm.
-      debug:
-        msg: "{{ zos_lineinfile_result }} with verbosity 1"
-        verbosity: 1
-
-###############################################################################
-# Usage:
-#  Copy ADCD.{{ adcd_ver }}.PARMLIB(IKJTSO00) to USER.{{ adcd_ver }}.PARMLIB(IKJTSOZZ)
-#  Add IKJTSO to reference IKJTSOZZ
-###############################################################################
-
-    - name: Copy IKJTSO00 from ADCD to IKJTSOZZ USER; replace if it already exists.
-      zos_copy:
-        src: ADCD.{{ adcd_ver }}.PARMLIB(IKJTSO00)
-        dest: USER.{{ adcd_ver }}.PARMLIB(IKJTSOZZ)
-        remote_src: true
-      register: zos_copy_result
-
-    - name: DEBUG(-v) Response from Copy IKJTSO00 from ADCD to IKJTSOZZ USER; replace if it already exists.
-      debug:
-        msg: "{{ zos_copy_result }} with verbosity 1"
-        verbosity: 1
-
-    - name: Add IEASYSAL IKJTSOZZ parm.
-      zos_lineinfile:
-        src: USER.{{ adcd_ver }}.PARMLIB(IEASYSAL)
-        insertafter: '^ILMMODE'
-        line: 'IKJTSO=ZZ,'
-      register: zos_lineinfile_result
-
-    - name: DEBUG(-v) Response from Add IEASYSAL IKJTSOZZ parm.
-      debug:
-        msg: "{{ zos_lineinfile_result }} with verbosity 1"
-        verbosity: 1
-
-###############################################################################
-# Usage:
-#  Copy ADCD.{{ adcd_ver }}.PARMLIB(VTAMALL) to USER.{{ adcd_ver }}.PARMLIB(VTAMALL)
-#  Add S FTPD
-###############################################################################
-
-    - name: Copy VTAMALL from ADCD to USER; replace if it already exists.
-      zos_copy:
-        src: ADCD.{{ adcd_ver }}.PARMLIB(VTAMALL)
-        dest: USER.{{ adcd_ver }}.PARMLIB(VTAMALL)
-        remote_src: true
-      register: zos_copy_result
-
-    - name: DEBUG(-v) Response from Copy VTAMALL from ADCD to USER.
-      debug:
-        msg: "{{ zos_copy_result }} with verbosity 1"
-        verbosity: 1
-
-    - name: Add S FTPD to VTAMALL.
-      zos_lineinfile:
-        src: USER.{{ adcd_ver }}.PARMLIB(VTAMALL)
-        insertafter: '^S ZOSCSRV'
-        line: 'S FTPD'
-      register: zos_lineinfile_result
-
-    - name: DEBUG(-v) Response from Add S FTPD to VTAMALL.
-      debug:
-        msg: "{{ zos_lineinfile_result }} with verbosity 1"
-        verbosity: 1
-
-    - name: Comment out S IMS15RL1.
-      zos_lineinfile:
-        src: USER.{{ adcd_ver }}.PARMLIB(VTAMALL)
-        regexp: '^S IMS15RL1'
-        line: '/* S IMS15RL1 */'
-      register: zos_lineinfile_result
-
-    - name: DEBUG(-v) Response from Comment out S IMS15RL1.
-      debug:
-        msg: "{{ zos_lineinfile_result }} with verbosity 1"
-        verbosity: 1
-
-    - name: Comment out S IMS15CR1.
-      zos_lineinfile:
-        src: USER.{{ adcd_ver }}.PARMLIB(VTAMALL)
-        regexp: '^S IMS15CR1'
-        line: '/* S IMS15CR1 */'
-      register: zos_lineinfile_result
-
-    - name: DEBUG(-v) Response from Comment out S IMS15CR1.
-      debug:
-        msg: "{{ zos_lineinfile_result }} with verbosity 1"
-        verbosity: 1
-
-
-###############################################################################
-# Usage:
-#  Copy ADCD.{{ adcd_ver }}.PARMLIB(SHUTALL) to USER.{{ adcd_ver }}.PARMLIB(SHUTALL)
-#  Add P FTPD and stop IMS for starting
-###############################################################################
-
-    - name: Copy SHUTALL from ADCD to USER; replace if it already exists.
-      zos_copy:
-        src: ADCD.{{ adcd_ver }}.PARMLIB(SHUTALL)
-        dest: USER.{{ adcd_ver }}.PARMLIB(SHUTALL)
-        remote_src: true
-      register: zos_copy_result
-
-    - name: DEBUG(-v) Response from Copy SHUTALL from ADCD to USER.
-      debug:
-        msg: "{{ zos_copy_result }} with verbosity 1"
-        verbosity: 1
-
-    - name: Add P FTPD to SHUTALL.
-      zos_lineinfile:
-        src: USER.{{ adcd_ver }}.PARMLIB(SHUTALL)
-        insertbefore: '^P RSED'
-        line: 'P FTPD'
-      register: zos_lineinfile_result
-
-    - name: DEBUG(-v) Response from Add P FTPD to SHUTALL.
-      debug:
-        msg: "{{ zos_lineinfile_result }} with verbosity 1"
-        verbosity: 1
-
-###############################################################################
-# Usage:
-#  Copy ADCD.{{ adcd_ver }}.PARMLIB(IEFSSNDB) to USER.{{ adcd_ver }}.PARMLIB(IEFSSNDB)
-#  Needed for Omegamon implementation 
-###############################################################################
-
-    - name: Copy IEFSSNDB from ADCD to USER; replace if it already exists.
-      zos_copy:
-        src: ADCD.{{ adcd_ver }}.PARMLIB(IEFSSNDB)
-        dest: USER.{{ adcd_ver }}.PARMLIB(IEFSSNDB)
-        remote_src: true
-      register: zos_copy_result
-
-    - name: DEBUG(-v) Response from Copy IEFSSNDB from ADCD to USER.
-      debug:
-        msg: "{{ zos_copy_result }} with verbosity 1"
-        verbosity: 1
-
-###############################################################################
-# Usage:
-#  Copy ADCD.{{ adcd_ver }}.PARMLIB(IEASYM00) to USER.{{ adcd_ver }}.PARMLIB(IEASYM00)
-#  Needed for Omegamon implementation 
-###############################################################################
-
-    - name: Copy IEASYM00 from ADCD to USER; replace if it already exists.
-      zos_copy:
-        src: ADCD.{{ adcd_ver }}.PARMLIB(IEASYM00)
-        dest: USER.{{ adcd_ver }}.PARMLIB(IEASYM00)
-        remote_src: true
-      register: zos_copy_result
-
-    - name: DEBUG(-v) Response from Copy IEASYM00 from ADCD to USER.
-      debug:
-        msg: "{{ zos_copy_result }} with verbosity 1"
-        verbosity: 1
-
-###############################################################################
-# Usage:
-#  Copy ADCD.{{ adcd_ver }}.PARMLIB(IZUPRMAS) to USER.{{ adcd_ver }}.PARMLIB(IZUPRMAS)
-#  zOSMF PARMLIB IZUPRMAS - needed for new certificate and keyring 
-###############################################################################
-
-    - name: Copy IZUPRMAS from ADCD to USER; replace if it already exists.
-      zos_copy:
-        src: ADCD.{{ adcd_ver }}.PARMLIB(IZUPRMAS)
-        dest: USER.{{ adcd_ver }}.PARMLIB(IZUPRMAS)
-        remote_src: true
-      register: zos_copy_result
-
-    - name: DEBUG(-v) Response from Copy IZUPRMAS from ADCD to USER.
-      debug:
-        msg: "{{ zos_copy_result }} with verbosity 1"
-        verbosity: 1
+    - name: Final status check
+      assert:
+        that:
+          - zos_ping_result.ping == "pong"
+        fail_msg: "z/OS system configuration failed. Check the summary and logs for details."
+        success_msg: "z/OS system configuration completed successfully."

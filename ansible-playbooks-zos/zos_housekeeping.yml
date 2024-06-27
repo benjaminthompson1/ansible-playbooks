@@ -1,5 +1,5 @@
 ################################################################################
-# Playbook Name: z/OS Housekeeping
+# Playbook Name: Enhanced z/OS Housekeeping
 #
 # Purpose:
 #   This playbook automates routine housekeeping tasks on z/OS systems, including:
@@ -16,19 +16,16 @@
 #
 # Usage:
 #   Basic execution:
-#     ansible-playbook -i <inventory_file> zos_housekeeping.yml
+#     ansible-playbook -i <inventory_file> enhanced_zos_housekeeping.yml
 #
 #   With increased verbosity:
-#     ansible-playbook -i <inventory_file> zos_housekeeping.yml -v
+#     ansible-playbook -i <inventory_file> enhanced_zos_housekeeping.yml -v
 #
-#   Override wait time:
-#     ansible-playbook -i <inventory_file> zos_housekeeping.yml -e wait_time_s=60
-#
-#   Specify different temp file age threshold:
-#     ansible-playbook -i <inventory_file> zos_housekeeping.yml -e temp_file_age_threshold=30d
+#   Override specific variables:
+#     ansible-playbook -i <inventory_file> enhanced_zos_housekeeping.yml -e "wait_time_s=60 temp_file_age_threshold=30d"
 #
 #   Run on a specific host or group:
-#     ansible-playbook -i <inventory_file> zos_housekeeping.yml -l <host_or_group>
+#     ansible-playbook -i <inventory_file> enhanced_zos_housekeeping.yml -l <host_or_group>
 #
 # Variables:
 #   cntl_hlq: High-level qualifier for JCL control datasets (default: IBMUSER.GIT.JCL.CNTL)
@@ -41,30 +38,36 @@
 #   jes2_output_age: Age threshold for JES2 output datasets to purge (default: 21 days)
 #   dump_dataset_pattern: Pattern for DUMP datasets to manage (default: SYS1.S0W1.Z31A.DMP*)
 #   dump_dataset_age: Age threshold for DUMP datasets to delete (default: 1w)
+#   skip_logrec: Skip LOGREC job submission (default: false)
+#   skip_dcollect: Skip DCOLLECT job submission (default: false)
+#   skip_jes2_purge: Skip JES2 output purge (default: false)
+#   skip_temp_cleanup: Skip temporary file cleanup (default: false)
+#   skip_dump_cleanup: Skip DUMP dataset cleanup (default: false)
 #
 # Notes:
 #   - Ensure that the necessary permissions and system access are in place before running.
 #   - Review and adjust variables as needed for your environment.
-#   - The playbook includes error handling for temp file and DUMP dataset operations.
+#   - The playbook includes error handling for all major operations.
 #   - A summary of actions taken is displayed at the end of the playbook run.
+#   - Use the 'skip_*' variables to selectively bypass certain operations if needed.
 #
 # Examples:
 #   1. Run the playbook with default settings:
-#      ansible-playbook -i inventory.ini zos_housekeeping.yml
+#      ansible-playbook -i inventory.ini enhanced_zos_housekeeping.yml
 #
-#   2. Run the playbook with a custom wait time of 180 seconds:
-#      ansible-playbook -i inventory.ini zos_housekeeping.yml -e wait_time_s=180
+#   2. Run the playbook with a custom wait time and temp file age:
+#      ansible-playbook -i inventory.ini enhanced_zos_housekeeping.yml -e "wait_time_s=180 temp_file_age_threshold=30d"
 #
-#   3. Run the playbook and delete temp files older than 30 days:
-#      ansible-playbook -i inventory.ini zos_housekeeping.yml -e temp_file_age_threshold=30d
+#   3. Run the playbook skipping LOGREC and DCOLLECT jobs:
+#      ansible-playbook -i inventory.ini enhanced_zos_housekeeping.yml -e "skip_logrec=true skip_dcollect=true"
 #
 #   4. Run the playbook on a specific host:
-#      ansible-playbook -i inventory.ini zos_housekeeping.yml -l zos_mainframe1
+#      ansible-playbook -i inventory.ini enhanced_zos_housekeeping.yml -l zos_mainframe1
 #
 ################################################################################
 
 ---
-- name: z/OS Housekeeping
+- name: Enhanced z/OS Housekeeping
   hosts: z31a_s0w1
   gather_facts: yes
   collections:
@@ -81,12 +84,18 @@
     jes2_output_age: 21
     dump_dataset_pattern: "SYS1.S0W1.Z31A.DMP*"
     dump_dataset_age: 1w
+    skip_logrec: false
+    skip_dcollect: false
+    skip_jes2_purge: false
+    skip_temp_cleanup: false
+    skip_dump_cleanup: false
 
   environment: "{{ environment_vars }}"
 
   tasks:
-    - name: Ping using zos_ping
+    - name: Verify connectivity
       zos_ping:
+      register: ping_result
 
     - name: Submit LOGREC job
       zos_job_submit:
@@ -95,6 +104,8 @@
         wait_time_s: "{{ wait_time_seconds }}"   
         max_rc: "{{ max_rc_logrec }}"
       register: logrec_result
+      when: not skip_logrec
+      ignore_errors: yes
 
     - name: Submit DCOLLECT job
       zos_job_submit:
@@ -103,14 +114,18 @@
         wait_time_s: "{{ wait_time_seconds }}" 
         max_rc: "{{ max_rc_dcollect }}"
       register: dcollect_result
+      when: not skip_dcollect
+      ignore_errors: yes
 
     - name: Execute JES2 purge
       zos_operator:
         cmd: "\\$P O JQ,ALL,A>{{ jes2_output_age }}"
         wait_time_s: "{{ wait_time_seconds }}"
       register: jes2_purge_result
+      when: not skip_jes2_purge
+      ignore_errors: yes
 
-    - name: Find and delete old temp files
+    - name: Manage temporary files
       block:
         - name: Find tmp files older than {{ temp_file_age_threshold }}
           find:
@@ -125,10 +140,8 @@
             state: absent
           loop: "{{ tmp_files_to_delete.files }}"
           when: tmp_files_to_delete.matched > 0
-      rescue:
-        - name: Log error for temp file deletion
-          debug:
-            msg: "Error occurred while deleting temp files: {{ ansible_failed_result }}"
+      when: not skip_temp_cleanup
+      ignore_errors: yes
 
     - name: Manage DUMP datasets
       block:
@@ -146,16 +159,27 @@
           loop: "{{ list_dump_datasets.data_sets }}"
           when: list_dump_datasets.matched > 0
           register: delete_dump_datasets_result
-      rescue:
-        - name: Log error for DUMP dataset management
-          debug:
-            msg: "Error occurred while managing DUMP datasets: {{ ansible_failed_result }}"
+      when: not skip_dump_cleanup
+      ignore_errors: yes
 
-    - name: Display task results
+    - name: Display task summary
       debug:
         msg: 
-          - "LOGREC job result: {{ logrec_result }}"
-          - "DCOLLECT job result: {{ dcollect_result }}"
-          - "JES2 purge result: {{ jes2_purge_result }}"
-          - "Temp files deleted: {{ tmp_files_to_delete.matched | default(0) }}"
-          - "DUMP datasets deleted: {{ delete_dump_datasets_result.results | default([]) | length }}"
+          - "z/OS Housekeeping Summary:"
+          - "- Connectivity: {{ 'Success' if ping_result.ping == 'pong' else 'Failed' }}"
+          - "- LOGREC job: {{ 'Skipped' if skip_logrec else ('Success' if logrec_result.jobs[0].ret_code.code == '0000' else 'Failed') }}"
+          - "- DCOLLECT job: {{ 'Skipped' if skip_dcollect else ('Success' if dcollect_result.jobs[0].ret_code.code == '0000' else 'Failed') }}"
+          - "- JES2 purge: {{ 'Skipped' if skip_jes2_purge else ('Success' if jes2_purge_result.rc == 0 else 'Failed') }}"
+          - "- Temp files deleted: {{ 'Skipped' if skip_temp_cleanup else (tmp_files_to_delete.matched | default(0)) }}"
+          - "- DUMP datasets deleted: {{ 'Skipped' if skip_dump_cleanup else (delete_dump_datasets_result.results | default([]) | length) }}"
+        verbosity: 0
+
+    - name: Check for any failures
+      assert:
+        that:
+          - ping_result.ping == "pong"
+          - skip_logrec or logrec_result.jobs[0].ret_code.code == "0000"
+          - skip_dcollect or dcollect_result.jobs[0].ret_code.code == "0000"
+          - skip_jes2_purge or jes2_purge_result.rc == 0
+        fail_msg: "One or more housekeeping tasks failed. Please check the summary for details."
+        success_msg: "All housekeeping tasks completed successfully."

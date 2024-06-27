@@ -1,112 +1,153 @@
-###############################################################################
-# Usage:
-#  ansible-playbook -i <inventory> <playbook>
+################################################################################
+# Playbook Name: SMP/E ZFS Setup
 #
-# Example:
-#  ansible-playbook -i inventories smpe_zfs_setup.yml
-#  ansible-playbook -i inventories smpe_zfs_setup.yml -v
-###############################################################################
+# Purpose:
+#   This playbook automates the setup of an SMP/E ZFS on a z/OS system. It performs the following tasks:
+#   - Unmounts the existing SMPE.SMPNTS.ZFS if it exists
+#   - Defines a catalog alias for SMPE
+#   - Creates a new SMPE.SMPNTS.ZFS
+#   - Creates a directory for mounting the ZFS
+#   - Mounts the new SMPE.SMPNTS.ZFS
+#
+# Requirements:
+#   - Ansible 2.9 or higher
+#   - IBM z/OS Core Collection (ibm.ibm_zos_core) installed
+#   - Access to z/OS system with appropriate permissions
+#   - Proper setup of Ansible inventory file with z/OS target information
+#
+# Usage:
+#   Basic execution:
+#     ansible-playbook -i <inventory_file> smpe_zfs_setup.yml
+#
+#   With increased verbosity:
+#     ansible-playbook -i <inventory_file> smpe_zfs_setup.yml -v
+#
+# Variables:
+#   adcd_ver: ADCD version (default: Z31A)
+#   zfs_name: Name of the ZFS to be created (default: SMPE.SMPNTS.ZFS)
+#   mount_point: Directory where the ZFS will be mounted (default: /u/smpe/smpnts)
+#   primary_space: Primary space allocation for ZFS in cylinders (default: 100)
+#   secondary_space: Secondary space allocation for ZFS in cylinders (default: 50)
+#
+# Notes:
+#   - Ensure that the necessary permissions and system access are in place before running.
+#   - The playbook will attempt to unmount the existing ZFS if it exists.
+#   - Debug messages are displayed only in verbose mode (-v).
+#   - The playbook includes error handling for critical operations.
+#
+# Examples:
+#   1. Run the playbook with default settings:
+#      ansible-playbook -i inventory.ini smpe_zfs_setup.yml
+#
+#   2. Run the playbook with verbose output:
+#      ansible-playbook -i inventory.ini smpe_zfs_setup.yml -v
+#
+#   3. Run the playbook with custom ZFS size:
+#      ansible-playbook -i inventory.ini smpe_zfs_setup.yml -e "primary_space=200 secondary_space=100"
+#
+################################################################################
+
 ---
-- hosts: z31a_s0w1 
+- name: SMP/E ZFS Setup
+  hosts: z31a_s0w1
   collections:
     - ibm.ibm_zos_core
   gather_facts: no
 
   vars:
     adcd_ver: Z31A
+    zfs_name: SMPE.SMPNTS.ZFS
+    mount_point: /u/smpe/smpnts
+    primary_space: 100
+    secondary_space: 50
 
   environment: "{{ environment_vars }}"
 
   tasks:
-    - name: Ping using zos_ping
+    - name: Verify connectivity
       zos_ping:
       register: zos_ping_result
 
-    - name: Response from zos_ping
+    - name: Display ping response
       debug:
-        msg: "{{ zos_ping_result }}"
+        var: zos_ping_result
+        verbosity: 1
 
-###############################################################################
-# Usage:
-#  UNMOUNT zfs SMPE.SMPNTS.ZFS
-###############################################################################
-
-    - name: Unmount zfs SMPE.SMPNTS.ZFS.
+    - name: Unmount existing ZFS
       zos_mount:
-        src: SMPE.SMPNTS.ZFS
-        path: /u/smpe/smpnts
+        src: "{{ zfs_name }}"
+        path: "{{ mount_point }}"
         fs_type: ZFS
         state: unmounted
       ignore_errors: true
-      register: zos_mount_result
+      register: unmount_result
 
-    - name: DEBUG(-v) Response Unmount zfs SMPE.SMPNTS.ZFS.
-      debug:
-        msg: "{{ zos_mount_result }} with verbosity 1"
-        verbosity: 1
-
-###############################################################################
-# Usage:
-#  Define catalog ALIAS SMPE
-###############################################################################
-
-    - name: Define alias SMPE.
+    - name: Define SMPE catalog alias
       zos_tso_command:
         commands:
           - DEFINE ALIAS (NAME('SMPE') RELATE('USERCAT.{{ adcd_ver }}.USER'))
       ignore_errors: true
-      register: zos_tso_command_result
+      register: alias_result
 
-    - name: DEBUG(-v) Response from Define alias SMPE.
+    - name: Setup SMP/E ZFS
+      block:
+        - name: Create ZFS
+          zos_data_set:
+            name: "{{ zfs_name }}"
+            type: zfs
+            space_primary: "{{ primary_space }}"
+            space_secondary: "{{ secondary_space }}"
+            space_type: cyl
+            replace: yes
+          register: zfs_create_result
+
+        - name: Create mount point directory
+          file:
+            path: "{{ mount_point }}"
+            state: directory
+          register: dir_create_result
+
+        - name: Mount ZFS
+          zos_mount:
+            src: "{{ zfs_name }}"
+            path: "{{ mount_point }}"
+            fs_type: ZFS
+            state: mounted
+          register: mount_result
+      rescue:
+        - name: Handle ZFS setup errors
+          debug:
+            msg: "Error occurred during ZFS setup: {{ ansible_failed_result }}"
+          failed_when: true
+
+    - name: Display task results
       debug:
-        msg: "{{ zos_tso_command_result }} with verbosity 1"
+        msg:
+          - "Unmount existing ZFS result: {{ unmount_result }}"
+          - "Define SMPE alias result: {{ alias_result }}"
+          - "Create ZFS result: {{ zfs_create_result }}"
+          - "Create directory result: {{ dir_create_result }}"
+          - "Mount ZFS result: {{ mount_result }}"
         verbosity: 1
 
-###############################################################################
-# Usage:
-#  Create zfs SMPE.SMPNTS.ZFS
-#  Create directory /u/smpe/smpnts
-###############################################################################
-
-    - name: Create zfs SMPE.SMPNTS.ZFS.
-      zos_data_set:
-        name: SMPE.SMPNTS.ZFS
-        type: zfs
-        space_primary: 100
-        space_secondary: 50
-        space_type: cyl
-        replace: yes
-      register: zos_data_set_result
-
-    - name: DEBUG(-v) Response Create zfs SMPE.SMPNTS.ZFS.
+    - name: Display task summary
       debug:
-        msg: "{{ zos_data_set_result }} with verbosity 1"
-        verbosity: 1
- 
-    - name: Create smpnts directory for zfs mount.
-      file:
-        path: /u/smpe/smpnts
-        state: directory
-      register: file_result
+        msg:
+          - "SMP/E ZFS Setup Summary:"
+          - "- Connectivity check: {{ 'Successful' if zos_ping_result.ping == 'pong' else 'Failed' }}"
+          - "- Unmount existing ZFS: {{ 'Successful' if unmount_result.rc == 0 else 'Failed or not necessary' }}"
+          - "- Define SMPE alias: {{ 'Successful' if alias_result.rc == 0 else 'Failed or already exists' }}"
+          - "- Create ZFS: {{ 'Successful' if zfs_create_result.changed else 'Failed' }}"
+          - "- Create mount point: {{ 'Successful' if dir_create_result.changed else 'Already exists' }}"
+          - "- Mount ZFS: {{ 'Successful' if mount_result.changed else 'Failed' }}"
+        verbosity: 0
 
-    - name: Response from Create smpnts directory for zfs mount.
-      debug:
-        msg: "{{ file_result }}"
-
-###############################################################################
-# Usage:
-#  MOUNT zfs SMPE.SMPNTS.ZFS to /u/smpe/smpnts
-###############################################################################
-
-    - name: Mount zfs SMPE.SMPNTS.ZFS.
-      zos_mount:
-        src: SMPE.SMPNTS.ZFS
-        path: /u/smpe/smpnts
-        fs_type: ZFS
-        state: mounted
-      register: zos_mount_result
-
-    - name: DEBUG(-v) Response Mount zfs SMPE.SMPNTS.ZFS.
-      debug:
-        msg: "{{ zos_mount_result }} with verbosity 1"
-        verbosity: 1
+    - name: Final status check
+      assert:
+        that:
+          - zos_ping_result.ping == "pong"
+          - zfs_create_result is success
+          - dir_create_result is success
+          - mount_result is success
+        fail_msg: "SMP/E ZFS setup failed. Check the summary for details."
+        success_msg: "SMP/E ZFS setup completed successfully."
