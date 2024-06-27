@@ -1,96 +1,161 @@
 ################################################################################
 # Playbook Name: z/OS Housekeeping
+#
 # Purpose:
-#   - Automates routine housekeeping tasks on z/OS systems.
-#   - Handles submission of JCL jobs, management of temporary files,
-#     purging of old datasets, and other maintenance activities.
+#   This playbook automates routine housekeeping tasks on z/OS systems, including:
+#   - Submitting and monitoring LOGREC and DCOLLECT jobs
+#   - Purging old JES2 output datasets
+#   - Cleaning up temporary files
+#   - Managing and deleting old DUMP datasets
 #
 # Requirements:
 #   - Ansible 2.9 or higher
+#   - IBM z/OS Core Collection (ibm.ibm_zos_core) installed
 #   - Access to z/OS system with appropriate permissions
-#   - IBM z/OS Core Collection installed
+#   - Proper setup of Ansible inventory file with z/OS target information
 #
 # Usage:
-#   - Basic execution: ansible-playbook -i inventories zos_housekeeping.yml
-#   - With verbosity: ansible-playbook -i inventories zos_housekeeping.yml -v
-#   - Custom wait time: ansible-playbook -i inventories zos_housekeeping.yml -e wait_time_s=60
+#   Basic execution:
+#     ansible-playbook -i <inventory_file> zos_housekeeping.yml
+#
+#   With increased verbosity:
+#     ansible-playbook -i <inventory_file> zos_housekeeping.yml -v
+#
+#   Override wait time:
+#     ansible-playbook -i <inventory_file> zos_housekeeping.yml -e wait_time_s=60
+#
+#   Specify different temp file age threshold:
+#     ansible-playbook -i <inventory_file> zos_housekeeping.yml -e temp_file_age_threshold=30d
+#
+#   Run on a specific host or group:
+#     ansible-playbook -i <inventory_file> zos_housekeeping.yml -l <host_or_group>
+#
+# Variables:
+#   cntl_hlq: High-level qualifier for JCL control datasets (default: IBMUSER.GIT.JCL.CNTL)
+#   temp_files_directory: Directory for temporary files (default: /tmp)
+#   temp_file_age_threshold: Age threshold for temporary files (default: 20d)
+#   backup_config_file_age_threshold: Age threshold for zOSMF backup files (default: 2m)
+#   wait_time_seconds: Wait time for z/OS batch and JES operations (default: 120)
+#   max_rc_logrec: Maximum return code for LOGREC job (default: 0)
+#   max_rc_dcollect: Maximum return code for DCOLLECT job (default: 4)
+#   jes2_output_age: Age threshold for JES2 output datasets to purge (default: 21 days)
+#   dump_dataset_pattern: Pattern for DUMP datasets to manage (default: SYS1.S0W1.Z31A.DMP*)
+#   dump_dataset_age: Age threshold for DUMP datasets to delete (default: 1w)
+#
+# Notes:
+#   - Ensure that the necessary permissions and system access are in place before running.
+#   - Review and adjust variables as needed for your environment.
+#   - The playbook includes error handling for temp file and DUMP dataset operations.
+#   - A summary of actions taken is displayed at the end of the playbook run.
+#
+# Examples:
+#   1. Run the playbook with default settings:
+#      ansible-playbook -i inventory.ini zos_housekeeping.yml
+#
+#   2. Run the playbook with a custom wait time of 180 seconds:
+#      ansible-playbook -i inventory.ini zos_housekeeping.yml -e wait_time_s=180
+#
+#   3. Run the playbook and delete temp files older than 30 days:
+#      ansible-playbook -i inventory.ini zos_housekeeping.yml -e temp_file_age_threshold=30d
+#
+#   4. Run the playbook on a specific host:
+#      ansible-playbook -i inventory.ini zos_housekeeping.yml -l zos_mainframe1
+#
 ################################################################################
 
 ---
-- name: z/OS housekeeping
+- name: z/OS Housekeeping
   hosts: z31a_s0w1
   gather_facts: yes
   collections:
     - ibm.ibm_zos_core
 
-  # Environment setup and global variables
-  environment: "{{ environment_vars }}"
   vars:
-    cntl_hlq: IBMUSER.GIT.JCL.CNTL  # Control HLQ for JCL jobs
-    temp_files_directory: /tmp      # Directory for temporary files
-    temp_file_age_threshold: 20d    # Age threshold for temporary files
-    backup_config_file_age_threshold: 2m  # Age threshold for zOSMF backup files
-    wait_time_seconds: 120          # Wait time for z/OS batch and JES 
+    cntl_hlq: IBMUSER.GIT.JCL.CNTL
+    temp_files_directory: /tmp
+    temp_file_age_threshold: 20d
+    backup_config_file_age_threshold: 2m
+    wait_time_seconds: "{{ wait_time_s | default(120) }}"
+    max_rc_logrec: 0
+    max_rc_dcollect: 4
+    jes2_output_age: 21
+    dump_dataset_pattern: "SYS1.S0W1.Z31A.DMP*"
+    dump_dataset_age: 1w
+
+  environment: "{{ environment_vars }}"
 
   tasks:
-    # Ping the target host to check connectivity
     - name: Ping using zos_ping
       zos_ping:
 
-    # Submit LOGREC and wait for the job to finish
-    - name: Submit LOGREC and wait for the job to finish
+    - name: Submit LOGREC job
       zos_job_submit:
         src: "{{ cntl_hlq }}(LOGREC)"
         location: data_set    
         wait_time_s: "{{ wait_time_seconds }}"   
-        max_rc: 0                   
+        max_rc: "{{ max_rc_logrec }}"
       register: logrec_result
 
-    # Submit DCOLLECT and wait for the job to finish
-    - name: Submit DCOLLECT and wait for the job to finish
+    - name: Submit DCOLLECT job
       zos_job_submit:
         src: "{{ cntl_hlq }}(DCOLLECT)"
         location: data_set 
         wait_time_s: "{{ wait_time_seconds }}" 
-        max_rc: 4              
+        max_rc: "{{ max_rc_dcollect }}"
       register: dcollect_result
 
-    # Purge JES2 output datasets older than 21 days
-    - name: Execute JES2 purge and wait for response
+    - name: Execute JES2 purge
       zos_operator:
-        cmd: "\\$P O JQ,ALL,A>21"
+        cmd: "\\$P O JQ,ALL,A>{{ jes2_output_age }}"
         wait_time_s: "{{ wait_time_seconds }}"
       register: jes2_purge_result
 
-    # Find and delete temp files older than specified age
-    - name: Find tmp files older than {{ temp_file_age_threshold }}
-      find:
-        paths: "{{ temp_files_directory }}"
-        age: "{{ temp_file_age_threshold }}"
-        recurse: yes
-      register: tmp_files_to_delete
+    - name: Find and delete old temp files
+      block:
+        - name: Find tmp files older than {{ temp_file_age_threshold }}
+          find:
+            paths: "{{ temp_files_directory }}"
+            age: "{{ temp_file_age_threshold }}"
+            recurse: yes
+          register: tmp_files_to_delete
 
-    - name: Delete old tmp files
-      file:
-        path: "{{ item.path }}"
-        state: absent
-      with_items: "{{ tmp_files_to_delete.files }}"
-      when: tmp_files_to_delete.matched > 0
+        - name: Delete old tmp files
+          file:
+            path: "{{ item.path }}"
+            state: absent
+          loop: "{{ tmp_files_to_delete.files }}"
+          when: tmp_files_to_delete.matched > 0
+      rescue:
+        - name: Log error for temp file deletion
+          debug:
+            msg: "Error occurred while deleting temp files: {{ ansible_failed_result }}"
 
-    # List z/OS DUMP datasets matching the specified pattern
-    - name: List dump datasets
-      zos_find:
-        patterns:
-        - SYS1.S0W1.Z31A.DMP*
-        age: 1w
-      register: list_dump_datasets
+    - name: Manage DUMP datasets
+      block:
+        - name: List dump datasets
+          zos_find:
+            patterns:
+              - "{{ dump_dataset_pattern }}"
+            age: "{{ dump_dataset_age }}"
+          register: list_dump_datasets
 
-    - name: Delete DUMP datasets
-      zos_data_set:
-        name: "{{ item.name }}"
-        state: absent
-      loop: "{{ list_dump_datasets.data_sets }}"
-      when: list_dump_datasets.matched > 0
-      register: delete_dump_datasets_result
+        - name: Delete DUMP datasets
+          zos_data_set:
+            name: "{{ item.name }}"
+            state: absent
+          loop: "{{ list_dump_datasets.data_sets }}"
+          when: list_dump_datasets.matched > 0
+          register: delete_dump_datasets_result
+      rescue:
+        - name: Log error for DUMP dataset management
+          debug:
+            msg: "Error occurred while managing DUMP datasets: {{ ansible_failed_result }}"
 
-# End of the playbook
+    - name: Display task results
+      debug:
+        msg: 
+          - "LOGREC job result: {{ logrec_result }}"
+          - "DCOLLECT job result: {{ dcollect_result }}"
+          - "JES2 purge result: {{ jes2_purge_result }}"
+          - "Temp files deleted: {{ tmp_files_to_delete.matched | default(0) }}"
+          - "DUMP datasets deleted: {{ delete_dump_datasets_result.results | default([]) | length }}"
