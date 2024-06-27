@@ -33,13 +33,13 @@
 #
 # Examples:
 #   1. Run the playbook with default settings:
-#      ansible-playbook -i inventory.ini dbb_create_COBOL_datasets.yml
+#      ansible-playbook -i inventories/inventory.yml dbb_create_COBOL_datasets.yml
 #
 #   2. Run the playbook with verbose output:
-#      ansible-playbook -i inventory.ini dbb_create_COBOL_datasets.yml -v
+#      ansible-playbook -i inventories/inventory.yml dbb_create_COBOL_datasets.yml -v
 #
 #   3. Run the playbook with custom HLQ and space allocations:
-#      ansible-playbook -i inventory.ini dbb_create_COBOL_datasets.yml -e "hlq=TEST.DBB primary_space=2CYL secondary_space=1CYL"
+#      ansible-playbook -i inventories/inventory.yml dbb_create_COBOL_datasets.yml -e "hlq=TEST.DBB primary_space=2CYL secondary_space=1CYL"
 #
 ################################################################################
 

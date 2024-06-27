@@ -35,13 +35,13 @@
 #
 # Examples:
 #   1. Run the playbook with default settings:
-#      ansible-playbook -i inventory.ini provision_volumes.yml
+#      ansible-playbook -i inventories/inventory.yml provision_volumes.yml
 #
 #   2. Run the playbook with verbose output:
-#      ansible-playbook -i inventory.ini provision_volumes.yml -v
+#      ansible-playbook -i inventories/inventory.yml provision_volumes.yml -v
 #
 #   3. Run the playbook with a custom destination directory:
-#      ansible-playbook -i inventory.ini provision_volumes.yml -e "dest_dir=/custom/volume/path"
+#      ansible-playbook -i inventories/inventory.yml provision_volumes.yml -e "dest_dir=/custom/volume/path"
 #
 ################################################################################
 

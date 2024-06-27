@@ -37,13 +37,13 @@
 #
 # Examples:
 #   1. Run the playbook with default settings:
-#      ansible-playbook -i inventory.ini smpe_zfs_setup.yml
+#      ansible-playbook -i inventories/inventory.yml smpe_zfs_setup.yml
 #
 #   2. Run the playbook with verbose output:
-#      ansible-playbook -i inventory.ini smpe_zfs_setup.yml -v
+#      ansible-playbook -i inventories/inventory.yml smpe_zfs_setup.yml -v
 #
 #   3. Run the playbook with custom ZFS size:
-#      ansible-playbook -i inventory.ini smpe_zfs_setup.yml -e "primary_space=200 secondary_space=100"
+#      ansible-playbook -i inventories/inventory.yml smpe_zfs_setup.yml -e "primary_space=200 secondary_space=100"
 #
 ################################################################################
 

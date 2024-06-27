@@ -57,12 +57,12 @@ ansible-playbook-repository/
     cd ansible-playbook-repository/ansible-playbooks-linux
     ```
 
-3. Modify the `inventory.ini` file to include the target hosts for your playbooks.
+3. Modify the `inventories/inventory.yml` file to include the target hosts for your playbooks.
 
 4. Run the desired playbook:
 
     ```
-    ansible-playbook -i inventory.ini playbook1.yml
+    ansible-playbook -i inventories/inventory.yml playbook1.yml
     ```
 
 ## 📚 Playbook Descriptions

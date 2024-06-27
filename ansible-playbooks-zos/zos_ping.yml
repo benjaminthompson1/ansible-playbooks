@@ -37,16 +37,16 @@
 #
 # Examples:
 #   1. Run the playbook with default settings:
-#      ansible-playbook -i inventory.ini zos_ping.yml
+#      ansible-playbook -i inventories/inventory.yml zos_ping.yml
 #
 #   2. Run the playbook with verbose output:
-#      ansible-playbook -i inventory.ini zos_ping.yml -v
+#      ansible-playbook -i inventories/inventory.yml zos_ping.yml -v
 #
 #   3. Run the playbook with boolean debug enabled:
-#      ansible-playbook -i inventory.ini zos_ping.yml -e "boolean_debug=true"
+#      ansible-playbook -i inventories/inventory.yml zos_ping.yml -e "boolean_debug=true"
 #
 #   4. Run the playbook with enable_debug set to yes:
-#      ansible-playbook -i inventory.ini zos_ping.yml -e "enable_debug=yes"
+#      ansible-playbook -i inventories/inventory.yml zos_ping.yml -e "enable_debug=yes"
 #
 ################################################################################
 

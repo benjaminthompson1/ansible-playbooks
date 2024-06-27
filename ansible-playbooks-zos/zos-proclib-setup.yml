@@ -32,13 +32,13 @@
 #
 # Examples:
 #   1. Run the playbook with default settings:
-#      ansible-playbook -i inventory.ini zos-proclib-setup.yml
+#      ansible-playbook -i inventories/inventory.yml zos-proclib-setup.yml
 #
 #   2. Run the playbook with verbose output:
-#      ansible-playbook -i inventory.ini zos-proclib-setup.yml -v
+#      ansible-playbook -i inventories/inventory.yml zos-proclib-setup.yml -v
 #
 #   3. Run the playbook with a custom ADCD version:
-#      ansible-playbook -i inventory.ini zos-proclib-setup.yml -e "adcd_ver=Z32A"
+#      ansible-playbook -i inventories/inventory.yml zos-proclib-setup.yml -e "adcd_ver=Z32A"
 #
 ################################################################################
 

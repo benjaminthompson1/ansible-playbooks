@@ -53,16 +53,16 @@
 #
 # Examples:
 #   1. Run the playbook with default settings:
-#      ansible-playbook -i inventory.ini enhanced_zos_housekeeping.yml
+#      ansible-playbook -i inventories/inventory.yml enhanced_zos_housekeeping.yml
 #
 #   2. Run the playbook with a custom wait time and temp file age:
-#      ansible-playbook -i inventory.ini enhanced_zos_housekeeping.yml -e "wait_time_s=180 temp_file_age_threshold=30d"
+#      ansible-playbook -i inventories/inventory.yml enhanced_zos_housekeeping.yml -e "wait_time_s=180 temp_file_age_threshold=30d"
 #
 #   3. Run the playbook skipping LOGREC and DCOLLECT jobs:
-#      ansible-playbook -i inventory.ini enhanced_zos_housekeeping.yml -e "skip_logrec=true skip_dcollect=true"
+#      ansible-playbook -i inventories/inventory.yml enhanced_zos_housekeeping.yml -e "skip_logrec=true skip_dcollect=true"
 #
 #   4. Run the playbook on a specific host:
-#      ansible-playbook -i inventory.ini enhanced_zos_housekeeping.yml -l zos_mainframe1
+#      ansible-playbook -i inventories/inventory.yml enhanced_zos_housekeeping.yml -l zos_mainframe1
 #
 ################################################################################
 
