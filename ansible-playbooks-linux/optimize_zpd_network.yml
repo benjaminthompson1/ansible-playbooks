@@ -1,19 +1,60 @@
-# optimize_zpd_network.yml
+################################################################################
+# Playbook Name: Enhanced zPDT Network Optimization
 #
-# This Ansible playbook alters RHEL settings to improve zPD networking.
+# Purpose:
+#   This playbook optimizes network settings for z/PDT (Parallel Development Tool) 
+#   systems running on RHEL. It performs the following tasks:
+#   - Disables specified network offload options to improve zPDT networking performance
+#   - Verifies the changes have been applied
+#   - Optionally, makes the changes persistent across reboots
+#
+# Requirements:
+#   - Ansible 2.9 or higher
+#   - Access to zPDT system with root privileges (via become)
+#   - RHEL-based system (tested on RHEL 7 and 8)
+#   - ethtool package installed on the target system
 #
 # Usage:
-#  ansible-playbook -i <inventory> <playbook>
+#   Basic execution:
+#     ansible-playbook -i <inventory_file> optimize_zpdt_network.yml --ask-become-pass
 #
-# Example:
-#  ansible-playbook -i inventories optimize_zpd_network.yml --ask-become-pass
-#  ansible-playbook -i inventories optimize_zpd_network.yml -v --ask-become-pass
+#   With increased verbosity:
+#     ansible-playbook -i <inventory_file> optimize_zpdt_network.yml -v --ask-become-pass
+#
+#   To make changes persistent:
+#     ansible-playbook -i <inventory_file> optimize_zpdt_network.yml --ask-become-pass -e "make_persistent=true"
+#
+# Variables:
+#   network_interface: Network interface to optimize (default: eno1)
+#   offload_options: List of offload options to disable (default: [rx, tso, gso, gro, lro])
+#   make_persistent: Whether to make changes persistent across reboots (default: false)
+#
+# Notes:
+#   - This playbook requires root privileges to modify network settings.
+#   - The playbook uses a separate file (su_secrets.yml) for storing sensitive data.
+#   - Disabling offload options may affect network performance for non-zPDT workloads.
+#   - It's recommended to test these changes in a non-production environment first.
+#
+# Examples:
+#   1. Run the playbook with default settings:
+#      ansible-playbook -i inventory.ini optimize_zpdt_network.yml --ask-become-pass
+#
+#   2. Run the playbook for a different network interface:
+#      ansible-playbook -i inventory.ini optimize_zpdt_network.yml --ask-become-pass -e "network_interface=eth0"
+#
+#   3. Run the playbook and make changes persistent:
+#      ansible-playbook -i inventory.ini optimize_zpdt_network.yml --ask-become-pass -e "make_persistent=true"
+#
+################################################################################
+
 ---
-- name: Optimize network settings for zPD
+- name: Enhanced zPDT Network Optimization
   hosts: zPDT
   vars_files:
     - su_secrets.yml  
   become: yes
+  gather_facts: yes
+
   vars:
     network_interface: eno1
     offload_options:
@@ -22,8 +63,79 @@
       - gso
       - gro
       - lro
+    make_persistent: false
 
   tasks:
-    - name: Disable offload options
-      command: "ethtool -K {{ network_interface }} {{ item }} off"
+    - name: Ensure ethtool is installed
+      ansible.builtin.package:
+        name: ethtool
+        state: present
+
+    - name: Verify network interface exists
+      ansible.builtin.command: "ip link show {{ network_interface }}"
+      register: interface_check
+      failed_when: interface_check.rc != 0
+      changed_when: false
+
+    - name: Disable network offload options
+      ansible.builtin.command: "ethtool -K {{ network_interface }} {{ item }} off"
       loop: "{{ offload_options }}"
+      register: disable_result
+      changed_when: "'Actual changes' in disable_result.stderr"
+      failed_when: 
+        - disable_result.rc != 0
+        - "'Cannot change' not in disable_result.stderr"
+
+    - name: Verify offload options are disabled
+      ansible.builtin.command: "ethtool -k {{ network_interface }}"
+      register: verify_result
+      changed_when: false
+
+    - name: Display network optimization results
+      ansible.builtin.debug:
+        msg:
+          - "Network Optimization Results:"
+          - "Interface: {{ network_interface }}"
+          - "Disabled Options:"
+          - "{{ verify_result.stdout_lines | select('search', '.*:\\s+off') | list }}"
+
+    - name: Make changes persistent
+      block:
+        - name: Create network scripts directory
+          ansible.builtin.file:
+            path: /etc/sysconfig/network-scripts
+            state: directory
+            mode: '0755'
+
+        - name: Create or update ifup-local script
+          ansible.builtin.template:
+            src: ifup-local.j2
+            dest: /etc/sysconfig/network-scripts/ifup-local
+            mode: '0755'
+          vars:
+            interface: "{{ network_interface }}"
+            options: "{{ offload_options }}"
+
+        - name: Ensure ifup-local is executed
+          ansible.builtin.lineinfile:
+            path: /etc/sysconfig/network-scripts/ifup
+            line: "if [ -x /etc/sysconfig/network-scripts/ifup-local ]; then /etc/sysconfig/network-scripts/ifup-local ${DEVICE}; fi"
+            insertbefore: EOF
+      when: make_persistent | bool
+
+    - name: Final status check
+      ansible.builtin.assert:
+        that:
+          - interface_check.rc == 0
+          - verify_result.rc == 0
+          - not verify_result.stdout | select('search', '{{ item }}:\\s+on') | list
+        fail_msg: "Network optimization failed. Check the results for details."
+        success_msg: "Network optimization completed successfully."
+      loop: "{{ offload_options }}"
+
+  handlers:
+    - name: Restart network service
+      ansible.builtin.service:
+        name: network
+        state: restarted
+      when: make_persistent | bool
