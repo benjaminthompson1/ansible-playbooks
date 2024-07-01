@@ -1,5 +1,5 @@
 ################################################################################
-# Playbook Name: Enhanced z/OS Housekeeping
+# Playbook Name: z/OS Housekeeping
 #
 # Purpose:
 #   This playbook automates routine housekeeping tasks on z/OS systems, including:
@@ -16,16 +16,16 @@
 #
 # Usage:
 #   Basic execution:
-#     ansible-playbook -i <inventory_file> enhanced_zos_housekeeping.yml
+#     ansible-playbook -i <inventory_file> zos_housekeeping.yml
 #
 #   With increased verbosity:
-#     ansible-playbook -i <inventory_file> enhanced_zos_housekeeping.yml -v
+#     ansible-playbook -i <inventory_file> zos_housekeeping.yml -v
 #
 #   Override specific variables:
-#     ansible-playbook -i <inventory_file> enhanced_zos_housekeeping.yml -e "wait_time_s=60 temp_file_age_threshold=30d"
+#     ansible-playbook -i <inventory_file> zos_housekeeping.yml -e "wait_time_s=60 temp_file_age_threshold=30d"
 #
 #   Run on a specific host or group:
-#     ansible-playbook -i <inventory_file> enhanced_zos_housekeeping.yml -l <host_or_group>
+#     ansible-playbook -i <inventory_file> zos_housekeeping.yml -l <host_or_group>
 #
 # Variables:
 #   cntl_hlq: High-level qualifier for JCL control datasets (default: IBMUSER.GIT.JCL.CNTL)
@@ -53,16 +53,16 @@
 #
 # Examples:
 #   1. Run the playbook with default settings:
-#      ansible-playbook -i inventories/inventory.yml enhanced_zos_housekeeping.yml
+#      ansible-playbook -i inventories/inventory.yml zos_housekeeping.yml
 #
 #   2. Run the playbook with a custom wait time and temp file age:
-#      ansible-playbook -i inventories/inventory.yml enhanced_zos_housekeeping.yml -e "wait_time_s=180 temp_file_age_threshold=30d"
+#      ansible-playbook -i inventories/inventory.yml zos_housekeeping.yml -e "wait_time_s=180 temp_file_age_threshold=30d"
 #
 #   3. Run the playbook skipping LOGREC and DCOLLECT jobs:
-#      ansible-playbook -i inventories/inventory.yml enhanced_zos_housekeeping.yml -e "skip_logrec=true skip_dcollect=true"
+#      ansible-playbook -i inventories/inventory.yml zos_housekeeping.yml -e "skip_logrec=true skip_dcollect=true"
 #
 #   4. Run the playbook on a specific host:
-#      ansible-playbook -i inventories/inventory.yml enhanced_zos_housekeeping.yml -l zos_mainframe1
+#      ansible-playbook -i inventories/inventory.yml zos_housekeeping.yml -l zos_mainframe1
 #
 ################################################################################
 
