@@ -180,7 +180,7 @@
               'Success' if (
                 logrec_result.jobs is defined and
                 logrec_result.jobs | length > 0 and
-                logrec_result.jobs[0].ret_code.code | string == '0000'
+                logrec_result.jobs[0].ret_code.code | int <= max_rc_logrec
               ) else 'Failed'
             )
           }}
@@ -193,7 +193,7 @@
               'Success' if (
                 dcollect_result.jobs is defined and
                 dcollect_result.jobs | length > 0 and
-                dcollect_result.jobs[0].ret_code.code | string == '0000'
+                dcollect_result.jobs[0].ret_code.code | int <= max_rc_dcollect
               ) else 'Failed'
             )
           }}
