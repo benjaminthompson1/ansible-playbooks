@@ -107,6 +107,11 @@
       when: not skip_logrec
       ignore_errors: yes
 
+    - name: Debug LOGREC job result
+      debug:
+        var: logrec_result
+      when: not skip_logrec
+
     - name: Submit DCOLLECT job
       zos_job_submit:
         src: "{{ cntl_hlq }}(DCOLLECT)"
@@ -116,6 +121,11 @@
       register: dcollect_result
       when: not skip_dcollect
       ignore_errors: yes
+
+    - name: Debug DCOLLECT job result
+      debug:
+        var: dcollect_result
+      when: not skip_dcollect
 
     - name: Execute JES2 purge
       zos_operator:
@@ -162,13 +172,39 @@
       when: not skip_dump_cleanup
       ignore_errors: yes
 
+    - name: Evaluate LOGREC job status
+      set_fact:
+        logrec_status: >-
+          {{
+            'Skipped' if skip_logrec else (
+              'Success' if (
+                logrec_result.jobs is defined and
+                logrec_result.jobs | length > 0 and
+                logrec_result.jobs[0].ret_code.code | string == '0000'
+              ) else 'Failed'
+            )
+          }}
+
+    - name: Evaluate DCOLLECT job status
+      set_fact:
+        dcollect_status: >-
+          {{
+            'Skipped' if skip_dcollect else (
+              'Success' if (
+                dcollect_result.jobs is defined and
+                dcollect_result.jobs | length > 0 and
+                dcollect_result.jobs[0].ret_code.code | string == '0000'
+              ) else 'Failed'
+            )
+          }}
+
     - name: Display task summary
       debug:
         msg: 
           - "z/OS Housekeeping Summary:"
           - "- Connectivity: {{ 'Success' if ping_result.ping == 'pong' else 'Failed' }}"
-          - "- LOGREC job: {{ 'Skipped' if skip_logrec else ('Success' if logrec_result.jobs[0].ret_code.code == '0000' else 'Failed') }}"
-          - "- DCOLLECT job: {{ 'Skipped' if skip_dcollect else ('Success' if dcollect_result.jobs[0].ret_code.code == '0000' else 'Failed') }}"
+          - "- LOGREC job: {{ logrec_status }}"
+          - "- DCOLLECT job: {{ dcollect_status }}"
           - "- JES2 purge: {{ 'Skipped' if skip_jes2_purge else ('Success' if jes2_purge_result.rc == 0 else 'Failed') }}"
           - "- Temp files deleted: {{ 'Skipped' if skip_temp_cleanup else (tmp_files_to_delete.matched | default(0)) }}"
           - "- DUMP datasets deleted: {{ 'Skipped' if skip_dump_cleanup else (delete_dump_datasets_result.results | default([]) | length) }}"
@@ -178,8 +214,8 @@
       assert:
         that:
           - ping_result.ping == "pong"
-          - skip_logrec or logrec_result.jobs[0].ret_code.code == "0000"
-          - skip_dcollect or dcollect_result.jobs[0].ret_code.code == "0000"
+          - logrec_status != "Failed"
+          - dcollect_status != "Failed"
           - skip_jes2_purge or jes2_purge_result.rc == 0
         fail_msg: "One or more housekeeping tasks failed. Please check the summary for details."
         success_msg: "All housekeeping tasks completed successfully."
