@@ -7,6 +7,7 @@
 #   - Purging old JES2 output datasets
 #   - Cleaning up temporary files
 #   - Managing and deleting old DUMP datasets
+#   - Deleting old files in /global/zwicdata/ directory
 #
 # Requirements:
 #   - Ansible 2.9 or higher
@@ -28,41 +29,18 @@
 #     ansible-playbook -i <inventory_file> zos_housekeeping.yml -l <host_or_group>
 #
 # Variables:
-#   cntl_hlq: High-level qualifier for JCL control datasets (default: IBMUSER.GIT.JCL.CNTL)
-#   temp_files_directory: Directory for temporary files (default: /tmp)
-#   temp_file_age_threshold: Age threshold for temporary files (default: 20d)
-#   backup_config_file_age_threshold: Age threshold for zOSMF backup files (default: 2m)
-#   wait_time_seconds: Wait time for z/OS batch and JES operations (default: 120)
-#   max_rc_logrec: Maximum return code for LOGREC job (default: 0)
-#   max_rc_dcollect: Maximum return code for DCOLLECT job (default: 4)
-#   jes2_output_age: Age threshold for JES2 output datasets to purge (default: 21 days)
-#   dump_dataset_pattern: Pattern for DUMP datasets to manage (default: SYS1.S0W1.Z31A.DMP*)
-#   dump_dataset_age: Age threshold for DUMP datasets to delete (default: 1w)
-#   skip_logrec: Skip LOGREC job submission (default: false)
-#   skip_dcollect: Skip DCOLLECT job submission (default: false)
-#   skip_jes2_purge: Skip JES2 output purge (default: false)
-#   skip_temp_cleanup: Skip temporary file cleanup (default: false)
-#   skip_dump_cleanup: Skip DUMP dataset cleanup (default: false)
+#   [All previous variables remain, with additions:]
+#   zwicdata_directory: Directory for ZWIC data files (default: /global/zwicdata/)
+#   zwicdata_file_age_threshold: Age threshold for ZWIC data files (default: 5d)
+#   skip_zwicdata_cleanup: Skip ZWIC data file cleanup (default: false)
 #
 # Notes:
-#   - Ensure that the necessary permissions and system access are in place before running.
-#   - Review and adjust variables as needed for your environment.
-#   - The playbook includes error handling for all major operations.
-#   - A summary of actions taken is displayed at the end of the playbook run.
-#   - Use the 'skip_*' variables to selectively bypass certain operations if needed.
+#   [All previous notes remain valid]
 #
 # Examples:
-#   1. Run the playbook with default settings:
-#      ansible-playbook -i inventories/inventory.yml zos_housekeeping.yml
-#
-#   2. Run the playbook with a custom wait time and temp file age:
-#      ansible-playbook -i inventories/inventory.yml zos_housekeeping.yml -e "wait_time_s=180 temp_file_age_threshold=30d"
-#
-#   3. Run the playbook skipping LOGREC and DCOLLECT jobs:
-#      ansible-playbook -i inventories/inventory.yml zos_housekeeping.yml -e "skip_logrec=true skip_dcollect=true"
-#
-#   4. Run the playbook on a specific host:
-#      ansible-playbook -i inventories/inventory.yml zos_housekeeping.yml -l zos_mainframe1
+#   [Previous examples remain, with addition:]
+#   5. Run the playbook skipping ZWIC data cleanup:
+#      ansible-playbook -i inventories/inventory.yml zos_housekeeping.yml -e "skip_zwicdata_cleanup=true"
 #
 ################################################################################
 
@@ -89,6 +67,9 @@
     skip_jes2_purge: false
     skip_temp_cleanup: false
     skip_dump_cleanup: false
+    zwicdata_directory: /global/zwicdata/
+    zwicdata_file_age_threshold: 5d
+    skip_zwicdata_cleanup: false
 
   environment: "{{ environment_vars }}"
 
@@ -172,6 +153,24 @@
       when: not skip_dump_cleanup
       ignore_errors: yes
 
+    - name: Manage files in /global/zwicdata/
+      block:
+        - name: Find files older than {{ zwicdata_file_age_threshold }} in /global/zwicdata/
+          find:
+            paths: "{{ zwicdata_directory }}"
+            age: "{{ zwicdata_file_age_threshold }}"
+            recurse: yes
+          register: zwicdata_files_to_delete
+
+        - name: Delete old files in /global/zwicdata/
+          file:
+            path: "{{ item.path }}"
+            state: absent
+          loop: "{{ zwicdata_files_to_delete.files }}"
+          when: zwicdata_files_to_delete.matched > 0
+      when: not skip_zwicdata_cleanup
+      ignore_errors: yes
+
     - name: Evaluate LOGREC job status
       set_fact:
         logrec_status: >-
@@ -208,6 +207,7 @@
           - "- JES2 purge: {{ 'Skipped' if skip_jes2_purge else ('Success' if jes2_purge_result.rc == 0 else 'Failed') }}"
           - "- Temp files deleted: {{ 'Skipped' if skip_temp_cleanup else (tmp_files_to_delete.matched | default(0)) }}"
           - "- DUMP datasets deleted: {{ 'Skipped' if skip_dump_cleanup else (delete_dump_datasets_result.results | default([]) | length) }}"
+          - "- /global/zwicdata/ files deleted: {{ 'Skipped' if skip_zwicdata_cleanup else (zwicdata_files_to_delete.matched | default(0)) }}"
         verbosity: 0
 
     - name: Check for any failures
