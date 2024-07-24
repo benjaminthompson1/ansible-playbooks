@@ -17,16 +17,16 @@
 #
 # Usage:
 #   Basic execution:
-#     ansible-playbook -i <inventory_file> zos_housekeeping.yml
+#     ansible-playbook -i inventories/inventory.yml zos_housekeeping.yml
 #
 #   With increased verbosity:
-#     ansible-playbook -i <inventory_file> zos_housekeeping.yml -v
+#     ansible-playbook -i inventories/inventory.yml zos_housekeeping.yml -v
 #
 #   Override specific variables:
-#     ansible-playbook -i <inventory_file> zos_housekeeping.yml -e "wait_time_s=60 temp_file_age_threshold=30d"
+#     ansible-playbook -i inventories/inventory.yml zos_housekeeping.yml -e "wait_time_s=60 temp_file_age_threshold=30d"
 #
 #   Run on a specific host or group:
-#     ansible-playbook -i <inventory_file> zos_housekeeping.yml -l <host_or_group>
+#     ansible-playbook -i inventories/inventory.yml zos_housekeeping.yml -l <host_or_group>
 #
 # Variables:
 #   [All previous variables remain, with additions:]
