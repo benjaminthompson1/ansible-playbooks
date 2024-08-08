@@ -34,8 +34,10 @@
 ---
 - name: Set up zOS Housekeeping Cron Job
   hosts: zPDT
+  vars_files:
+    - su_secrets.yml  
+  become: yes
   gather_facts: yes
-  become: yes  # This allows Ansible to use sudo for elevated privileges
 
   tasks:
     - name: Create cron job for ZOS Housekeeping
