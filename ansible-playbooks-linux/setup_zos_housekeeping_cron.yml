@@ -1,0 +1,48 @@
+################################################################################
+# Playbook Name: Set up zOS Housekeeping Cron Job
+#
+# Purpose:
+#   This playbook automates the setup of a cron job for ZOS housekeeping tasks on a zPDT system.
+#   It performs the following tasks:
+#   - Creates a cron job scheduled to run at 7 AM on Monday, Wednesday, and Friday
+#   - Sets up the cron job to execute another Ansible playbook (zos_housekeeping.yml)
+#   - Ensures the cron job runs with appropriate user permissions
+#
+# Requirements:
+#   - Ansible 2.9 or higher
+#   - Access to zPDT system with appropriate permissions
+#   - The zos_housekeeping.yml playbook must exist at the specified path
+#
+# Usage:
+#   Basic execution:
+#     ansible-playbook -i inventories/inventory.yml setup_zos_housekeeping_cron.yml
+#
+#   With increased verbosity:
+#     ansible-playbook -i inventories/inventory.yml setup_zos_housekeeping_cron.yml -v
+#
+# Variables:
+#   No user-definable variables in this playbook. All parameters are hard-coded.
+#
+# Notes:
+#   - Ensure that the necessary permissions and system access are in place before running.
+#   - The playbook uses privilege escalation (become: yes) to create the cron job.
+#   - The cron job is set to run as the 'ibmsys1' user. Adjust if necessary.
+#   - Verify that the paths in the cron job command are correct for your environment.
+#
+################################################################################
+
+---
+- name: Set up zOS Housekeeping Cron Job
+  hosts: zPDT
+  gather_facts: yes
+  become: yes  # This allows Ansible to use sudo for elevated privileges
+
+  tasks:
+    - name: Create cron job for ZOS Housekeeping
+      cron:
+        name: "ZOS Housekeeping"
+        minute: "0"
+        hour: "7"
+        weekday: "1,3,5"
+        job: "/usr/bin/ansible-playbook -i /home/ibmsys1/GitHub/ansible-playbooks/ansible-playbooks-zos/inventories/inventory.yml /home/ibmsys1/GitHub/ansible-playbooks/ansible-playbooks-zos/zos_housekeeping.yml"
+        user: ibmsys1  # Replace with the appropriate user who should run the cron job
