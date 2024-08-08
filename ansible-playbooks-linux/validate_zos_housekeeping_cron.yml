@@ -1,0 +1,100 @@
+################################################################################
+# Playbook Name: Validate zOS Housekeeping Cron Job Execution
+#
+# Purpose:
+#   This playbook checks whether the zOS Housekeeping cron job has run successfully.
+#   It performs the following validations:
+#   - Checks system logs for cron job execution
+#   - Examines the cron job's output file (if configured)
+#   - Verifies the cron daemon's status
+#   - Inspects the cron job's last run time
+#
+# Requirements:
+#   - Ansible 2.9 or higher
+#   - Access to zPDT system with appropriate permissions
+#   - Sudo access on the target system
+#
+# Usage:
+#   Basic execution (with sudo password prompt):
+#     ansible-playbook -i inventories/inventory.yml validate_zos_housekeeping_cron.yml --ask-become-pass
+#
+#   With increased verbosity:
+#     ansible-playbook -i inventories/inventory.yml validate_zos_housekeeping_cron.yml --ask-become-pass -v
+#
+# Variables:
+#   cron_job_name: Name of the cron job to validate (default: "zOS Housekeeping")
+#   cron_output_file: Path to the cron job's output file (default: "/var/log/zos_housekeeping_cron.log")
+#   log_file: System log file to check (default: "/var/log/cron")
+#
+# Notes:
+#   - Ensure that the necessary permissions and system access are in place before running.
+#   - The playbook uses privilege escalation (become: yes) for certain tasks.
+#   - Use the --ask-become-pass option when running the playbook to provide the sudo password.
+#
+################################################################################
+---
+- name: Validate zOS Housekeeping Cron Job Execution
+  hosts: zPDT
+  become: yes
+  gather_facts: yes
+  vars:
+    cron_job_name: "zOS Housekeeping"
+    cron_output_file: "/var/log/zos_housekeeping_cron.log"
+    log_file: "/var/log/cron"
+
+  tasks:
+    - name: Check system logs for cron job execution
+      command: grep "{{ cron_job_name }}" {{ log_file }}
+      register: log_check
+      ignore_errors: yes
+      changed_when: false
+
+    - name: Display log check results
+      debug:
+        var: log_check.stdout_lines
+      when: log_check.rc == 0
+
+    - name: Check cron job output file
+      stat:
+        path: "{{ cron_output_file }}"
+      register: output_file
+
+    - name: Display cron job output file contents
+      command: tail -n 20 {{ cron_output_file }}
+      register: output_content
+      when: output_file.stat.exists
+      changed_when: false
+
+    - name: Show cron job output
+      debug:
+        var: output_content.stdout_lines
+      when: output_file.stat.exists
+
+    - name: Check cron daemon status
+      command: systemctl status crond
+      register: crond_status
+      changed_when: false
+
+    - name: Display cron daemon status
+      debug:
+        var: crond_status.stdout_lines
+
+    - name: Get last run time of cron job
+      command: run-parts --test /etc/cron.d | grep "{{ cron_job_name }}"
+      register: last_run
+      ignore_errors: yes
+      changed_when: false
+
+    - name: Display last run time
+      debug:
+        var: last_run.stdout_lines
+      when: last_run.rc == 0
+
+    - name: Summarize findings
+      debug:
+        msg: 
+          - "Cron job '{{ cron_job_name }}' validation results:"
+          - "- Found in system logs: {{ 'Yes' if log_check.rc == 0 else 'No' }}"
+          - "- Output file exists: {{ 'Yes' if output_file.stat.exists else 'No' }}"
+          - "- Cron daemon is active: {{ 'Yes' if 'active (running)' in crond_status.stdout else 'No' }}"
+          - "- Last run time found: {{ 'Yes' if last_run.rc == 0 else 'No' }}"
