@@ -12,16 +12,17 @@
 #   - Ansible 2.9 or higher
 #   - Access to zPDT system with appropriate permissions
 #   - The zos_housekeeping.yml playbook must exist at the specified path
+#   - Sudo access on the target system
 #
 # Usage:
-#   Basic execution:
-#     ansible-playbook -i inventories/inventory.yml setup_zos_housekeeping_cron.yml
+#   Basic execution (with sudo password prompt):
+#     ansible-playbook -i inventories/inventory.yml setup_zos_housekeeping_cron.yml --ask-become-pass
 #
 #   With increased verbosity:
-#     ansible-playbook -i inventories/inventory.yml setup_zos_housekeeping_cron.yml -v
+#     ansible-playbook -i inventories/inventory.yml setup_zos_housekeeping_cron.yml --ask-become-pass -v
 #
 #   With custom variables:
-#     ansible-playbook -i inventories/inventory.yml setup_zos_housekeeping_cron.yml -e "cron_minute=30 cron_hour=8 cron_weekday=1,4,5"
+#     ansible-playbook -i inventories/inventory.yml setup_zos_housekeeping_cron.yml --ask-become-pass -e "cron_minute=30 cron_hour=8 cron_weekday=1,4,5"
 #
 # Variables:
 #   cron_minute: Minute when the cron job should run (default: "0")
@@ -35,6 +36,7 @@
 # Notes:
 #   - Ensure that the necessary permissions and system access are in place before running.
 #   - The playbook uses privilege escalation (become: yes) to create the cron job.
+#   - Use the --ask-become-pass option when running the playbook to provide the sudo password.
 #   - Verify that the paths in the cron job command are correct for your environment.
 #   - The su_secrets.yml file should contain any sensitive variables (e.g., passwords) needed for execution.
 #
