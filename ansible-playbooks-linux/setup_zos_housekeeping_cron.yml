@@ -33,13 +33,6 @@
 #   inventory_file: Path to the inventory file (default: "/home/ibmsys1/GitHub/ansible-playbooks/ansible-playbooks-zos/inventories/inventory.yml")
 #   housekeeping_playbook: Path to the housekeeping playbook (default: "/home/ibmsys1/GitHub/ansible-playbooks/ansible-playbooks-zos/zos_housekeeping.yml")
 #
-# Notes:
-#   - Ensure that the necessary permissions and system access are in place before running.
-#   - The playbook uses privilege escalation (become: yes) to create the cron job.
-#   - Use the --ask-become-pass option when running the playbook to provide the sudo password.
-#   - Verify that the paths in the cron job command are correct for your environment.
-#   - The su_secrets.yml file should contain any sensitive variables (e.g., passwords) needed for execution.
-#
 ################################################################################
 ---
 - name: Set up zOS Housekeeping Cron Job
