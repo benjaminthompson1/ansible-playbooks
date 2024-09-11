@@ -51,21 +51,32 @@
     log_file: "/var/log/cron"
 
   tasks:
+    - name: Check if log file exists
+      stat:
+        path: "{{ log_file }}"
+      register: log_file_stat
+
+    - name: Display log file status
+      debug:
+        msg: "Log file {{ log_file }} exists: {{ log_file_stat.stat.exists }}"
+
     - name: Check system logs for cron job execution
-      command: grep "{{ cron_job_name }}" {{ log_file }}
+      shell: grep "{{ cron_job_name }}" {{ log_file }} || echo "No matches found"
       register: log_check
-      ignore_errors: yes
       changed_when: false
 
     - name: Display log check results
       debug:
         var: log_check.stdout_lines
-      when: log_check.rc == 0
 
     - name: Check cron job output file
       stat:
         path: "{{ cron_output_file }}"
       register: output_file
+
+    - name: Display cron job output file status
+      debug:
+        msg: "Cron job output file {{ cron_output_file }} exists: {{ output_file.stat.exists }}"
 
     - name: Display cron job output file contents
       command: tail -n 20 {{ cron_output_file }}
@@ -87,6 +98,15 @@
       debug:
         var: crond_status.stdout_lines
 
+    - name: List crontab entries
+      shell: for user in $(cut -f1 -d: /etc/passwd); do echo "User: $user"; sudo crontab -u $user -l 2>/dev/null | grep "{{ cron_job_name }}" || echo "No matching cron job found"; done
+      register: crontab_entries
+      changed_when: false
+
+    - name: Display crontab entries
+      debug:
+        var: crontab_entries.stdout_lines
+
     - name: Get last run time of cron job
       command: run-parts --test /etc/cron.d | grep "{{ cron_job_name }}"
       register: last_run
@@ -100,9 +120,11 @@
 
     - name: Summarize findings
       debug:
-        msg: 
+        msg:
           - "Cron job '{{ cron_job_name }}' validation results:"
-          - "- Found in system logs: {{ 'Yes' if log_check.rc == 0 else 'No' }}"
+          - "- Log file exists: {{ 'Yes' if log_file_stat.stat.exists else 'No' }}"
+          - "- Found in system logs: {{ 'Yes' if 'No matches found' not in log_check.stdout else 'No' }}"
           - "- Output file exists: {{ 'Yes' if output_file.stat.exists else 'No' }}"
           - "- Cron daemon is active: {{ 'Yes' if 'active (running)' in crond_status.stdout else 'No' }}"
+          - "- Crontab entry found: {{ 'Yes' if 'No matching cron job found' not in crontab_entries.stdout else 'No' }}"
           - "- Last run time found: {{ 'Yes' if last_run.rc == 0 else 'No' }}"
