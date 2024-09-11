@@ -1,35 +1,43 @@
 ################################################################################
-# Playbook Name: Validate zOS Housekeeping Cron Job Execution
+# Playbook: Validate zOS Housekeeping Cron Job Execution
 #
-# Purpose:
-#   This playbook checks whether the zOS Housekeeping cron job has run successfully.
-#   It performs the following validations:
-#   - Checks system logs for cron job execution
-#   - Examines the cron job's output file (if configured)
-#   - Verifies the cron daemon's status
-#   - Inspects the cron job's last run time
+# Purpose: Checks whether the zOS Housekeeping cron job has run successfully.
 #
 # Requirements:
-#   - Ansible 2.9 or higher
-#   - Access to zPDT system with appropriate permissions
-#   - Sudo access on the target system
+# - Ansible 2.9+
+# - Access to zPDT system with sudo privileges
+# - Configured zOS Housekeeping cron job
 #
 # Usage:
-#   Basic execution (with sudo password prompt):
-#     ansible-playbook -i inventories/inventory.yml validate_zos_housekeeping_cron.yml --ask-become-pass
-#
-#   With increased verbosity:
-#     ansible-playbook -i inventories/inventory.yml validate_zos_housekeeping_cron.yml --ask-become-pass -v
+# ansible-playbook -i inventories/inventory.yml validate_zos_housekeeping_cron.yml --ask-become-pass
 #
 # Variables:
-#   cron_job_name: Name of the cron job to validate (default: "zOS Housekeeping")
-#   cron_output_file: Path to the cron job's output file (default: "/var/log/zos_housekeeping_cron.log")
-#   log_file: System log file to check (default: "/var/log/cron")
+# cron_job_name: Name of the cron job (default: "zOS Housekeeping")
+# cron_output_file: Path to cron job's output file (default: "/var/log/zos_housekeeping_cron.log")
+# log_file: System log file to check (default: "/var/log/cron")
+#
+# Key Tasks:
+# 1. Check system logs for cron job execution
+# 2. Examine cron job's output file
+# 3. Verify cron daemon status
+# 4. Inspect cron job's last run time
+# 5. Summarize findings
+#
+# Error Handling:
+# - Uses ignore_errors for non-critical checks
+# - Displays available information even if some checks fail
 #
 # Notes:
-#   - Ensure that the necessary permissions and system access are in place before running.
-#   - The playbook uses privilege escalation (become: yes) for certain tasks.
-#   - Use the --ask-become-pass option when running the playbook to provide the sudo password.
+# - Requires sudo access for certain tasks
+# - Use --ask-become-pass when running the playbook
+# - Provides a summary of all validation checks at the end
+#
+# Examples:
+#   1. Run with default settings:
+#      ansible-playbook -i inventories/inventory.yml validate_zos_housekeeping_cron.yml --ask-become-pass
+#
+#   2. Run with increased verbosity:
+#      ansible-playbook -i inventories/inventory.yml validate_zos_housekeeping_cron.yml --ask-become-pass -v
 #
 ################################################################################
 ---

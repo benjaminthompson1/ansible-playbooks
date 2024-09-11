@@ -1,46 +1,46 @@
 ################################################################################
-# Playbook Name: Enhanced zPDT Volume Provisioning
+# Playbook: Enhanced zPDT Volume Provisioning
 #
-# Purpose:
-#   This playbook automates the creation of volumes for z/PDT (Parallel Development Tool) 
-#   systems. It performs the following tasks:
-#   - Creates 3390-27 volumes as specified
-#   - Creates 3390-9 volumes as specified
-#   - Verifies the creation of each volume
-#   - Provides a summary of the provisioning process
+# Purpose: Automates the creation of volumes for z/PDT systems.
 #
 # Requirements:
-#   - Ansible 2.9 or higher
-#   - Access to zPDT system with appropriate permissions
-#   - alcckd command available on the target system
-#   - Sufficient disk space in the destination directory for the volumes
+# - Ansible 2.9+
+# - Access to zPDT system with appropriate permissions
+# - alcckd command available on the target system
+# - Sufficient disk space for volumes
 #
 # Usage:
-#   Basic execution:
-#     ansible-playbook -i <inventory_file> provision_volumes.yml
-#
-#   With increased verbosity:
-#     ansible-playbook -i <inventory_file> provision_volumes.yml -v
+# ansible-playbook -i <inventory_file> provision_volumes.yml
 #
 # Variables:
-#   dest_dir: Destination directory for the volumes (default: "/home/ibmsys1/volumes-z31a")
-#   volumes_3390_27: List of 3390-27 volumes to create
-#   volumes_3390_9: List of 3390-9 volumes to create
+# dest_dir: Destination directory for volumes (default: "/home/ibmsys1/volumes-z31a")
+# volumes_3390_27: List of 3390-27 volumes to create
+# volumes_3390_9: List of 3390-9 volumes to create
+#
+# Key Tasks:
+# 1. Ensure destination directory exists
+# 2. Create 3390-27 volumes
+# 3. Create 3390-9 volumes
+# 4. Verify volume creation
+# 5. Display provisioning results and total volume size
+#
+# Error Handling:
+# - Fails if volume creation command returns non-zero
+# - Verifies existence of each created volume
 #
 # Notes:
-#   - Ensure that the necessary permissions and system access are in place before running.
-#   - The playbook uses the alcckd command to create the volumes.
-#   - Existing volumes with the same names will be overwritten.
-#   - The playbook includes error handling for volume creation.
+# - Existing volumes with the same names will be overwritten
+# - Uses alcckd command for volume creation
+# - Calculates and displays total provisioned volume size
 #
 # Examples:
-#   1. Run the playbook with default settings:
+#   1. Run with default settings:
 #      ansible-playbook -i inventories/inventory.yml provision_volumes.yml
 #
-#   2. Run the playbook with verbose output:
+#   2. Run with verbose output:
 #      ansible-playbook -i inventories/inventory.yml provision_volumes.yml -v
 #
-#   3. Run the playbook with a custom destination directory:
+#   3. Run with custom destination directory:
 #      ansible-playbook -i inventories/inventory.yml provision_volumes.yml -e "dest_dir=/custom/volume/path"
 #
 ################################################################################

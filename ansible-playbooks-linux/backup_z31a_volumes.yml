@@ -1,38 +1,37 @@
 ################################################################################
-# Playbook Name: Enhanced z31a Volume Backup
+# Playbook: Enhanced z31a Volume Backup
 #
-# Purpose:
-#   This playbook automates the backup process of z31a volumes on a zPDT system.
-#   It performs the following tasks:
-#   - Checks the RHEL version of the system
-#   - Verifies the existence of the source directory
-#   - Creates the destination directory if it doesn't exist
-#   - Archives the z31a volumes using tar with fast xz compression
-#   - Verifies the creation of the archive
-#   - Displays a success message with the RHEL version
+# Purpose: Automates backup of z31a volumes on zPDT systems.
 #
 # Requirements:
-#   - Ansible 2.9 or higher
-#   - Access to zPDT system with appropriate permissions
-#   - Sufficient disk space in the destination directory for the backup
+# - Ansible 2.9+
+# - zPDT system access
+# - Sufficient disk space
+# - 'xz' utility installed
 #
 # Usage:
-#   Basic execution:
-#     ansible-playbook -i <inventory_file> backup_z31a_volumes.yml
-#
-#   With increased verbosity:
-#     ansible-playbook -i <inventory_file> backup_z31a_volumes.yml -v
+# ansible-playbook -i <inventory_file> backup_z31a_volumes.yml
 #
 # Variables:
-#   src_dir: Source directory containing z31a volumes (default: "/home/ibmsys1/volumes-z31a")
-#   dest_dir: Destination directory for the backup (default: "/home/ibmsys1/volumes-backup")
-#   archive_name: Name of the archive file (default: "volumes-z31a-YYYYMMDD.tar.xz")
+# src_dir: Source directory (default: "/home/ibmsys1/volumes-z31a")
+# dest_dir: Destination directory (default: "/home/ibmsys1/volumes-backup")
+# archive_name: Archive file name (default: "volumes-z31a-YYYYMMDD.tar.xz")
+#
+# Key Tasks:
+# 1. Check RHEL version
+# 2. Verify source directory
+# 3. Create destination directory
+# 4. Archive volumes with fast xz compression
+# 5. Verify archive creation
+# 6. Display backup summary
+#
+# Error Handling:
+# - Fails if source directory is missing
+# - Checks for successful archive creation
 #
 # Notes:
-#   - Ensure that the necessary permissions and system access are in place before running.
-#   - The playbook uses the current date in the archive filename.
-#   - Fast xz compression is used to balance between compression ratio and speed.
-#   - The playbook includes error handling for critical operations.
+# - Uses fast xz compression for balance of speed and compression
+# - Ensure proper permissions for source and destination directories
 #
 # Examples:
 #   1. Run the playbook with default settings:

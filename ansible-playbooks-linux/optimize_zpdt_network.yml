@@ -1,48 +1,48 @@
 ################################################################################
-# Playbook Name: Enhanced zPDT Network Optimization
+# Playbook: Enhanced zPDT Network Optimization
 #
-# Purpose:
-#   This playbook optimizes network settings for z/PDT (Parallel Development Tool) 
-#   systems running on RHEL. It performs the following tasks:
-#   - Disables specified network offload options to improve zPDT networking performance
-#   - Verifies the changes have been applied
-#   - Optionally, makes the changes persistent across reboots
+# Purpose: Optimizes network settings for z/PDT systems running on RHEL.
 #
 # Requirements:
-#   - Ansible 2.9 or higher
-#   - Access to zPDT system with root privileges (via become)
-#   - RHEL-based system (tested on RHEL 7 and 8)
-#   - ethtool package installed on the target system
+# - Ansible 2.9+
+# - Root access to zPDT system
+# - RHEL-based system (tested on RHEL 7 and 8)
+# - ethtool package
 #
 # Usage:
-#   Basic execution:
-#     ansible-playbook -i <inventory_file> optimize_zpdt_network.yml --ask-become-pass
-#
-#   With increased verbosity:
-#     ansible-playbook -i <inventory_file> optimize_zpdt_network.yml -v --ask-become-pass
-#
-#   To make changes persistent:
-#     ansible-playbook -i <inventory_file> optimize_zpdt_network.yml --ask-become-pass -e "make_persistent=true"
+# ansible-playbook -i <inventory_file> optimize_zpdt_network.yml --ask-become-pass
 #
 # Variables:
-#   network_interface: Network interface to optimize (default: eno1)
-#   offload_options: List of offload options to disable (default: [rx, tso, gso, gro, lro])
-#   make_persistent: Whether to make changes persistent across reboots (default: false)
+# network_interface: Network interface to optimize (default: eno1)
+# offload_options: List of offload options to disable (default: [rx, tso, gso, gro, lro])
+# make_persistent: Whether to make changes persistent across reboots (default: false)
+#
+# Key Tasks:
+# 1. Ensure ethtool is installed
+# 2. Verify network interface exists
+# 3. Disable specified network offload options
+# 4. Verify offload options are disabled
+# 5. Display network optimization results
+# 6. Make changes persistent (optional)
+#
+# Error Handling:
+# - Fails if network interface doesn't exist
+# - Checks for successful disabling of offload options
 #
 # Notes:
-#   - This playbook requires root privileges to modify network settings.
-#   - The playbook uses a separate file (su_secrets.yml) for storing sensitive data.
-#   - Disabling offload options may affect network performance for non-zPDT workloads.
-#   - It's recommended to test these changes in a non-production environment first.
+# - Requires root privileges to modify network settings
+# - Uses su_secrets.yml for storing sensitive data
+# - May affect network performance for non-zPDT workloads
+# - Test in non-production environment first
 #
 # Examples:
-#   1. Run the playbook with default settings:
+#   1. Run with default settings:
 #      ansible-playbook -i inventories/inventory.yml optimize_zpdt_network.yml --ask-become-pass
 #
-#   2. Run the playbook for a different network interface:
+#   2. Run for a different network interface:
 #      ansible-playbook -i inventories/inventory.yml optimize_zpdt_network.yml --ask-become-pass -e "network_interface=eth0"
 #
-#   3. Run the playbook and make changes persistent:
+#   3. Run and make changes persistent:
 #      ansible-playbook -i inventories/inventory.yml optimize_zpdt_network.yml --ask-become-pass -e "make_persistent=true"
 #
 ################################################################################
