@@ -61,7 +61,7 @@
         msg: "Log file {{ log_file }} exists: {{ log_file_stat.stat.exists }}"
 
     - name: Check system logs for cron job execution
-      shell: grep "{{ cron_job_name }}" {{ log_file }} || echo "No matches found"
+      shell: "grep {{ cron_job_name | quote }} {{ log_file }} || echo 'No matches found'"
       register: log_check
       changed_when: false
 
@@ -79,7 +79,7 @@
         msg: "Cron job output file {{ cron_output_file }} exists: {{ output_file.stat.exists }}"
 
     - name: Display cron job output file contents
-      command: tail -n 20 {{ cron_output_file }}
+      command: "tail -n 20 {{ cron_output_file }}"
       register: output_content
       when: output_file.stat.exists
       changed_when: false
@@ -99,7 +99,11 @@
         var: crond_status.stdout_lines
 
     - name: List crontab entries
-      shell: for user in $(cut -f1 -d: /etc/passwd); do echo "User: $user"; sudo crontab -u $user -l 2>/dev/null | grep "{{ cron_job_name }}" || echo "No matching cron job found"; done
+      shell: |
+        for user in $(cut -f1 -d: /etc/passwd); do 
+          echo "User: $user"
+          sudo crontab -u "$user" -l 2>/dev/null | grep {{ cron_job_name | quote }} || echo "No matching cron job found"
+        done
       register: crontab_entries
       changed_when: false
 
@@ -108,7 +112,7 @@
         var: crontab_entries.stdout_lines
 
     - name: Get last run time of cron job
-      command: run-parts --test /etc/cron.d | grep "{{ cron_job_name }}"
+      shell: "run-parts --test /etc/cron.d | grep {{ cron_job_name | quote }}"
       register: last_run
       ignore_errors: yes
       changed_when: false
