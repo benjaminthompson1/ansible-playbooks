@@ -5,6 +5,9 @@
     - ibm.ibm_zosmf
   gather_facts: no
 
+  vars:
+    zmf_port: 10443
   tasks:
-    - include_role :
+    - name: Include zmf_swmgmt_zos_system_uuid role
+      include_role:
         name: zmf_swmgmt_zos_system_uuid
