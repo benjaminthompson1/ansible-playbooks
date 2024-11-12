@@ -8,6 +8,8 @@
   vars:
     zmf_port: 10443
     zmf_host: s0w1.dal-ebis.ihost.com
+    zmf_user: IBMUSER
+    zmf_password: sys1
   tasks:
     - name: Include zmf_swmgmt_zos_system_uuid role
       include_role:
