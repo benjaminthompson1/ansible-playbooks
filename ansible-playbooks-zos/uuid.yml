@@ -1,0 +1,10 @@
+---
+- name: Retrieving the z/OS system UUID
+  hosts: z31a_s0w1
+  collections:
+    - ibm.ibm_zosmf
+  gather_facts: no
+
+  tasks:
+    - include_role :
+        name: zmf_swmgmt_zos_system_uuid
