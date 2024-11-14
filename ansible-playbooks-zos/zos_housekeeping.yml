@@ -48,15 +48,11 @@
         cmd: "\\$P O JQ,ALL,A>{{ jes2_output_age }}"
       register: jes2_purge
 
-    - name: Clean up temp files
-      zos_unix_file:
-        path: "{{ temp_files_directory }}"
-        age: "{{ temp_file_age }}"
-        state: absent
-        type: file
-        recurse: yes
+    - name: Clean up temp files using shell command
+      zos_shell:
+        cmd: "find {{ temp_files_directory }} -type f -mtime +{{ temp_file_age | regex_replace('d$','') }} -delete"
       register: temp_cleanup
-
+      
     - name: Find old dumps
       zos_find:
         patterns:
@@ -70,14 +66,11 @@
         state: absent
       loop: "{{ dump_files.files }}"
       when: dump_files.files | length > 0
+      register: dumps_deleted
 
-    - name: Clean up zwicdata files
-      zos_unix_file:
-        path: "{{ zwicdata_dir }}"
-        age: "{{ zwicdata_age }}"
-        state: absent
-        type: file
-        recurse: yes
+    - name: Clean up zwicdata files using shell command
+      zos_shell:
+        cmd: "find {{ zwicdata_dir }} -type f -mtime +{{ zwicdata_age | regex_replace('d$','') }} -delete"
       register: zwicdata_cleanup
 
     - name: Display summary
