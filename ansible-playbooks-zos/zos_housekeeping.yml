@@ -67,20 +67,22 @@
       when: not skip_temp_cleanup
       ignore_errors: yes
 
-    - name: Find old dumps
-      zos_find:
-        patterns:
-          - "{{ dump_pattern }}"
-        age: "{{ dump_age }}"
-      register: dump_files
+    - name: Manage dump datasets
+      block:
+        - name: Find old dumps
+          zos_find:
+            patterns:
+              - "{{ dump_pattern }}"
+            age: "{{ dump_age }}"
+          register: dump_results
 
-    - name: Delete old dumps
-      zos_data_set:
-        name: "{{ item.name }}"
-        state: absent
-      loop: "{{ dump_files.files }}"
-      when: dump_files.files | length > 0
-      register: dumps_deleted
+        - name: Delete old dumps
+          zos_data_set:
+            name: "{{ item }}"
+            state: absent
+          loop: "{{ dump_results.data_sets | default([]) }}"
+          when: dump_results.data_sets is defined and dump_results.data_sets | length > 0
+      ignore_errors: yes
 
     - name: Manage zwicdata files
       block:
@@ -106,5 +108,5 @@
           - Job submissions: {{ 'Success' if job_results is success else 'Failed' }}
           - JES2 purge: {{ 'Success' if jes2_purge is success else 'Failed' }}
           - Temp files found: {{ tmp_files_to_delete.matched | default(0) }}
-          - Dumps cleaned: {{ dump_files.files | length }} dumps found and processed
+          - Dumps found: {{ (dump_results.data_sets | default([])) | length }}
           - Zwicdata files found: {{ zwicdata_files_to_delete.matched | default(0) }}
