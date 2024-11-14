@@ -34,14 +34,14 @@
 
     - name: Submit and monitor jobs
       zos_job_submit:
-        src: "{{ cntl_hlq }}({{ item.job }})"
+        src: "{{ cntl_hlq }}({{ item.job_name }})"
         location: data_set
         wait_time_s: "{{ wait_time_s }}"
         max_rc: "{{ item.max_rc }}"
       loop:
-        - { job: 'LOGREC', max_rc: "{{ max_rc_logrec }}" }
-        - { job: 'DCOLLECT', max_rc: "{{ max_rc_dcollect }}" }
-        - { job: 'IFASMFDL', max_rc: "{{ max_rc_smf }}" }
+        - { job_name: 'LOGREC', max_rc: "{{ max_rc_logrec }}" }
+        - { job_name: 'DCOLLECT', max_rc: "{{ max_rc_dcollect }}" }
+        - { job_name: 'IFASMFDL', max_rc: "{{ max_rc_smf }}" }
       register: job_results
 
     - name: Purge old JES2 output
@@ -51,14 +51,14 @@
 
     - name: Manage temporary files
       block:
-        - name: Find tmp files older than {{ temp_file_age }}
+        - name: Find temp files older than {{ temp_file_age }}
           find:
             paths: "{{ temp_files_directory }}"
             age: "{{ temp_file_age }}"
             recurse: yes
           register: tmp_files_to_delete
 
-        - name: Delete old tmp files
+        - name: Delete old temp files
           file:
             path: "{{ item.path }}"
             state: absent
@@ -66,6 +66,7 @@
           when: tmp_files_to_delete.matched > 0
       when: not skip_temp_cleanup
       ignore_errors: yes
+      notify: Log Temporary File Deletion
 
     - name: Manage dump datasets
       block:
@@ -83,6 +84,7 @@
           loop: "{{ dump_results.data_sets | default([]) }}"
           when: dump_results.data_sets is defined and dump_results.data_sets | length > 0
       ignore_errors: yes
+      notify: Log Dump Deletion
 
     - name: Manage zwicdata files
       block:
@@ -100,6 +102,7 @@
           loop: "{{ zwicdata_files_to_delete.files }}"
           when: zwicdata_files_to_delete.matched > 0
       ignore_errors: yes
+      notify: Log Zwicdata File Deletion
 
     - name: Display summary
       debug:
@@ -110,3 +113,16 @@
           - Temp files found: {{ tmp_files_to_delete.matched | default(0) }}
           - Dumps found: {{ (dump_results.data_sets | default([])) | length }}
           - Zwicdata files found: {{ zwicdata_files_to_delete.matched | default(0) }}
+
+  handlers:
+    - name: Log Temporary File Deletion
+      debug:
+        msg: "Deleted {{ tmp_files_to_delete.matched }} temporary files."
+
+    - name: Log Dump Deletion
+      debug:
+        msg: "Deleted {{ dump_results.data_sets | length }} dump datasets."
+
+    - name: Log Zwicdata File Deletion
+      debug:
+        msg: "Deleted {{ zwicdata_files_to_delete.matched }} zwicdata files."
