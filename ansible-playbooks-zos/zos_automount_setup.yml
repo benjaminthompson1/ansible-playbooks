@@ -1,50 +1,7 @@
 ################################################################################
-# Playbook Name: z/OS Automount Setup
-#
-# Purpose:
-#   This playbook automates the setup of the USS Automount facility for z/OS.
-#   It performs the following tasks:
-#   - Backs up the existing /etc/rc file
-#   - Configures the automount facility in /etc/rc
-#   - Creates and configures /etc/auto.master
-#   - Creates and configures /etc/u.map with ZFS attributes
-#   - Defines a catalog alias for OMVS
-#
-# Requirements:
-#   - Ansible 2.9 or higher
-#   - IBM z/OS Core Collection (ibm.ibm_zos_core) installed
-#   - Access to z/OS system with appropriate permissions
-#   - Proper setup of Ansible inventory file with z/OS target information
-#
-# Usage:
-#   Basic execution:
-#     ansible-playbook -i <inventory_file> zos_automount_setup.yml
-#
-#   With increased verbosity:
-#     ansible-playbook -i <inventory_file> zos_automount_setup.yml -v
-#
-# Variables:
-#   adcd_ver: ADCD version (default: Z31A)
-#   rc_backup_path: Backup path for /etc/rc (default: /tmp/rc-backup)
-#   auto_master_path: Path to auto.master file (default: /etc/auto.master)
-#   u_map_path: Path to u.map file (default: /etc/u.map)
-#
-# Notes:
-#   - Ensure that the necessary permissions and system access are in place before running.
-#   - The playbook will modify system files. Ensure you have appropriate backups.
-#   - Debug messages are displayed only in verbose mode (-v).
-#   - The playbook includes error handling for critical operations.
-#
-# Examples:
-#   1. Run the playbook with default settings:
-#      ansible-playbook -i inventories/inventory.yml zos_automount_setup.yml
-#
-#   2. Run the playbook with verbose output:
-#      ansible-playbook -i inventories/inventory.yml zos_automount_setup.yml -v
-#
-#   3. Run the playbook with a custom ADCD version:
-#      ansible-playbook -i inventories/inventory.yml zos_automount_setup.yml -e "adcd_ver=Z32A"
-#
+# Playbook: z/OS Automount Setup
+# Purpose: Configures USS Automount facility and related files
+# Usage: ansible-playbook -i <inventory_file> zos_automount.yml
 ################################################################################
 
 ---
@@ -65,100 +22,44 @@
   tasks:
     - name: Verify connectivity
       zos_ping:
-      register: zos_ping_result
 
-    - name: Display ping response
-      debug:
-        var: zos_ping_result
-        verbosity: 1
+    - name: Backup /etc/rc file
+      zos_copy:
+        src: /etc/rc
+        dest: "{{ rc_backup_path }}"
+        remote_src: true
 
-    - name: Backup and configure /etc/rc
-      block:
-        - name: Backup /etc/rc file
-          zos_copy:
-            src: /etc/rc
-            dest: "{{ rc_backup_path }}"
-            remote_src: true
-          register: rc_backup_result
+    - name: Configure automount in /etc/rc
+      zos_blockinfile:
+        path: /etc/rc
+        insertafter: "chmod 1755 /dev"
+        block: |
+          # Start the automount facility
+          /usr/sbin/automount
 
-        - name: Configure automount facility in /etc/rc
-          zos_blockinfile:
-            path: /etc/rc
-            insertafter: "chmod 1755 /dev"
-            block: |
-              # Start the automount facility
-              /usr/sbin/automount
-          register: rc_config_result
+    - name: Create /etc/auto.master
+      copy:
+        content: "/u/automount      {{ u_map_path }}"
+        dest: "{{ auto_master_path }}"
 
-      rescue:
-        - name: Handle /etc/rc configuration errors
-          debug:
-            msg: "Error occurred during /etc/rc configuration: {{ ansible_failed_result }}"
-          failed_when: true
-
-    - name: Configure automount files
-      block:
-        - name: Create and configure /etc/auto.master
-          copy:
-            content: "/u/automount      {{ u_map_path }}"
-            dest: "{{ auto_master_path }}"
-          register: auto_master_result
-
-        - name: Create and configure /etc/u.map
-          copy:
-            content: |
-              name                             *
-              type                             ZFS
-              filesystem                       OMVS.<uc_name>.&SYSNAME..ZFS
-              mode                             rdwr
-              duration                         30
-              delay                            10
-              allocany space(1,1) cyl unit(disk) pathperm(775) euid ucat
-            dest: "{{ u_map_path }}"
-          register: u_map_result
-
-      rescue:
-        - name: Handle automount file configuration errors
-          debug:
-            msg: "Error occurred during automount file configuration: {{ ansible_failed_result }}"
-          failed_when: true
+    - name: Create /etc/u.map
+      copy:
+        content: |
+          name                             *
+          type                             ZFS
+          filesystem                       OMVS.<uc_name>.&SYSNAME..ZFS
+          mode                             rdwr
+          duration                         30
+          delay                            10
+          allocany space(1,1) cyl unit(disk) pathperm(775) euid ucat
+        dest: "{{ u_map_path }}"
 
     - name: Define OMVS catalog alias
       zos_tso_command:
         commands:
           - DEFINE ALIAS (NAME('OMVS') RELATE('USERCAT.{{ adcd_ver }}.USER'))
       ignore_errors: true
-      register: omvs_alias_result
 
-    - name: Display task results
+    - name: Display setup completion
       debug:
-        msg:
-          - "/etc/rc backup result: {{ rc_backup_result }}"
-          - "/etc/rc configuration result: {{ rc_config_result }}"
-          - "auto.master configuration result: {{ auto_master_result }}"
-          - "u.map configuration result: {{ u_map_result }}"
-          - "OMVS alias definition result: {{ omvs_alias_result }}"
-        verbosity: 1
-
-    - name: Display task summary
-      debug:
-        msg:
-          - "z/OS Automount Setup Summary:"
-          - "- Connectivity check: {{ 'Successful' if zos_ping_result.ping == 'pong' else 'Failed' }}"
-          - "- /etc/rc backup: {{ 'Successful' if rc_backup_result.changed else 'Failed' }}"
-          - "- /etc/rc configuration: {{ 'Updated' if rc_config_result.changed else 'No changes required' }}"
-          - "- auto.master configuration: {{ 'Created/Updated' if auto_master_result.changed else 'No changes required' }}"
-          - "- u.map configuration: {{ 'Created/Updated' if u_map_result.changed else 'No changes required' }}"
-          - "- OMVS alias definition: {{ 'Successful' if omvs_alias_result.rc == 0 else 'Failed or already exists' }}"
-        verbosity: 0
-
-    - name: Final status check
-      assert:
-        that:
-          - zos_ping_result.ping == "pong"
-          - rc_backup_result is success
-          - rc_config_result is success
-          - auto_master_result is success
-          - u_map_result is success
-        fail_msg: "z/OS Automount setup failed. Check the summary for details."
-        success_msg: "z/OS Automount setup completed successfully."
+        msg: "Automount setup completed: /etc/rc updated, auto.master and u.map created"

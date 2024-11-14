@@ -1,39 +1,6 @@
 ################################################################################
-# Playbook Name: Enhanced z/OS Ping
-#
-# Purpose:
-#   This playbook performs a ping operation on a z/OS system using the zos_ping
-#   module from the IBM z/OS Core Collection. It demonstrates various ways to
-#   display debug information based on verbosity levels and boolean flags.
-#
-# Requirements:
-#   - Ansible 2.9 or higher
-#   - IBM z/OS Core Collection (ibm.ibm_zos_core) installed
-#   - Access to z/OS system with appropriate permissions
-#   - Proper setup of Ansible inventory file with z/OS target information
-#
-# Usage:
-#   Basic execution:
-#     ansible-playbook -i <inventory_file> zos_ping.yml
-#
-#   With increased verbosity:
-#     ansible-playbook -i <inventory_file> zos_ping.yml -v
-#     ansible-playbook -i <inventory_file> zos_ping.yml -vv
-#
-#   With boolean debug flag:
-#     ansible-playbook -i <inventory_file> zos_ping.yml -e "boolean_debug=true"
-#
-#   With enable_debug flag:
-#     ansible-playbook -i <inventory_file> zos_ping.yml -e "enable_debug=yes"
-#
-# Variables:
-#   boolean_debug: Boolean flag to enable additional debugging (default: false)
-#   enable_debug: String flag to enable additional debugging (default: "no")
-#
-# Notes:
-#   - This playbook uses the zos_ping module which requires the zos_ssh connection.
-#   - Debug messages are displayed based on verbosity levels and debug flags.
-#   - The playbook demonstrates different ways to control debug output.
+# Playbook: z/OS Ping
+# Purpose: Tests connectivity to z/OS system
 #
 # Examples:
 #   1. Run the playbook with default settings:
@@ -47,7 +14,6 @@
 #
 #   4. Run the playbook with enable_debug set to yes:
 #      ansible-playbook -i inventories/inventory.yml zos_ping.yml -e "enable_debug=yes"
-#
 ################################################################################
 
 ---

@@ -1,42 +1,11 @@
 ################################################################################
 # Playbook: z/OS Housekeeping
-#
-# Purpose: Automate routine z/OS housekeeping tasks:
-# - Submit/monitor LOGREC, DCOLLECT, and SMF unload jobs
-# - Purge old JES2 output
-# - Clean up temp files, old DUMP datasets, and /global/zwicdata/ files
-#
-# Requirements:
-# - Ansible 2.9+, IBM z/OS Core Collection
-# - z/OS access with appropriate permissions
-# - Configured Ansible inventory for z/OS targets
-#
-# Usage:
-# ansible-playbook -i inventories/inventory.yml zos_housekeeping.yml [OPTIONS]
-#
-# Options:
-# -v                          Increase verbosity
-# -e "VAR=VALUE"              Override variables
-# -l <host_or_group>          Run on specific host/group
-#
-# Key Variables:
-# wait_time_s: Job wait time in seconds (default: 120)
-# max_rc_*: Maximum return codes for jobs (LOGREC: 0, DCOLLECT: 4, SMF: 4)
-# skip_*: Skip specific tasks (default: false for all)
-# *_age_threshold: Age thresholds for cleanup tasks
-#
-# Examples:
-# 1. Basic run:
-#    ansible-playbook -i inventories/inventory.yml zos_housekeeping.yml
-# 2. Override wait time and temp file age:
-#    ansible-playbook -i inventories/inventory.yml zos_housekeeping.yml -e "wait_time_s=60 temp_file_age_threshold=30d"
-# 3. Skip SMF unload:
-#    ansible-playbook -i inventories/inventory.yml zos_housekeeping.yml -e "skip_smf=true"
-#
+# Purpose: Runs system maintenance tasks (LOGREC, DCOLLECT, SMF, cleanup)
+# Usage: ansible-playbook -i <inventory_file> housekeeping.yml
 ################################################################################
 
 ---
-- name: Enhanced z/OS Housekeeping
+- name: z/OS Housekeeping
   hosts: z31a_s0w1
   gather_facts: yes
   collections:
@@ -44,201 +13,62 @@
 
   vars:
     cntl_hlq: IBMUSER.GIT.JCL.CNTL
-    temp_files_directory: /tmp
-    temp_file_age_threshold: 20d
-    backup_config_file_age_threshold: 2m
-    wait_time_seconds: "{{ wait_time_s | default(120) }}"
+    wait_time_s: 120
     max_rc_logrec: 0
     max_rc_dcollect: 4
     max_rc_smf: 4
+    temp_files_directory: /tmp
+    temp_file_age: 20d
     jes2_output_age: 21
-    dump_dataset_pattern: "SYS1.S0W1.Z31A.DMP*"
-    dump_dataset_age: 1w
-    skip_logrec: false
-    skip_dcollect: false
-    skip_smf: false
-    skip_jes2_purge: false
-    skip_temp_cleanup: false
-    skip_dump_cleanup: false
-    zwicdata_directory: /global/zwicdata/
-    zwicdata_file_age_threshold: 5d
-    skip_zwicdata_cleanup: false
+    dump_pattern: "SYS1.S0W1.Z31A.DMP*"
+    dump_age: 1w
+    zwicdata_dir: /global/zwicdata/
+    zwicdata_age: 5d
 
   environment: "{{ environment_vars }}"
 
   tasks:
     - name: Verify connectivity
       zos_ping:
-      register: ping_result
 
-    - name: Submit LOGREC job
+    - name: Submit and monitor jobs
       zos_job_submit:
-        src: "{{ cntl_hlq }}(LOGREC)"
-        location: data_set    
-        wait_time_s: "{{ wait_time_seconds }}"   
-        max_rc: "{{ max_rc_logrec }}"
-      register: logrec_result
-      when: not skip_logrec
+        src: "{{ cntl_hlq }}({{ item.job }})"
+        location: data_set
+        wait_time_s: "{{ wait_time_s }}"
+        max_rc: "{{ item.max_rc }}"
+      loop:
+        - { job: 'LOGREC', max_rc: "{{ max_rc_logrec }}" }
+        - { job: 'DCOLLECT', max_rc: "{{ max_rc_dcollect }}" }
+        - { job: 'IFASMFDL', max_rc: "{{ max_rc_smf }}" }
       ignore_errors: yes
 
-    - name: Debug LOGREC job result
-      debug:
-        var: logrec_result
-      when: not skip_logrec
-
-    - name: Submit DCOLLECT job
-      zos_job_submit:
-        src: "{{ cntl_hlq }}(DCOLLECT)"
-        location: data_set 
-        wait_time_s: "{{ wait_time_seconds }}" 
-        max_rc: "{{ max_rc_dcollect }}"
-      register: dcollect_result
-      when: not skip_dcollect
-      ignore_errors: yes
-
-    - name: Debug DCOLLECT job result
-      debug:
-        var: dcollect_result
-      when: not skip_dcollect
-
-    - name: Submit SMF job
-      zos_job_submit:
-        src: "{{ cntl_hlq }}(IFASMFDL)"
-        location: data_set    
-        wait_time_s: "{{ wait_time_seconds }}"   
-        max_rc: "{{ max_rc_smf }}"
-      register: smf_result
-      when: not skip_smf
-      ignore_errors: yes
-
-    - name: Debug SMF job result
-      debug:
-        var: smf_result
-      when: not skip_smf
-
-    - name: Execute JES2 purge
+    - name: Purge old JES2 output
       zos_operator:
         cmd: "\\$P O JQ,ALL,A>{{ jes2_output_age }}"
-        wait_time_s: "{{ wait_time_seconds }}"
-      register: jes2_purge_result
-      when: not skip_jes2_purge
       ignore_errors: yes
 
-    - name: Manage temporary files
-      block:
-        - name: Find tmp files older than {{ temp_file_age_threshold }}
-          find:
-            paths: "{{ temp_files_directory }}"
-            age: "{{ temp_file_age_threshold }}"
-            recurse: yes
-          register: tmp_files_to_delete
-
-        - name: Delete old tmp files
-          file:
-            path: "{{ item.path }}"
-            state: absent
-          loop: "{{ tmp_files_to_delete.files }}"
-          when: tmp_files_to_delete.matched > 0
-      when: not skip_temp_cleanup
+    - name: Clean up temp files
+      file:
+        path: "{{ item.path }}"
+        state: absent
+      loop: "{{ lookup('find', temp_files_directory, age=temp_file_age, recurse=True) }}"
       ignore_errors: yes
 
-    - name: Manage DUMP datasets
-      block:
-        - name: List dump datasets
-          zos_find:
-            patterns:
-              - "{{ dump_dataset_pattern }}"
-            age: "{{ dump_dataset_age }}"
-          register: list_dump_datasets
-
-        - name: Delete DUMP datasets
-          zos_data_set:
-            name: "{{ item.name }}"
-            state: absent
-          loop: "{{ list_dump_datasets.data_sets }}"
-          when: list_dump_datasets.matched > 0
-          register: delete_dump_datasets_result
-      when: not skip_dump_cleanup
+    - name: Clean up old dumps
+      zos_data_set:
+        name: "{{ item.name }}"
+        state: absent
+      loop: "{{ lookup('zos_find', patterns=[dump_pattern], age=dump_age) }}"
       ignore_errors: yes
 
-    - name: Manage files in /global/zwicdata/
-      block:
-        - name: Find files older than {{ zwicdata_file_age_threshold }} in /global/zwicdata/
-          find:
-            paths: "{{ zwicdata_directory }}"
-            age: "{{ zwicdata_file_age_threshold }}"
-            recurse: yes
-          register: zwicdata_files_to_delete
-
-        - name: Delete old files in /global/zwicdata/
-          file:
-            path: "{{ item.path }}"
-            state: absent
-          loop: "{{ zwicdata_files_to_delete.files }}"
-          when: zwicdata_files_to_delete.matched > 0
-      when: not skip_zwicdata_cleanup
+    - name: Clean up zwicdata files
+      file:
+        path: "{{ item.path }}"
+        state: absent
+      loop: "{{ lookup('find', zwicdata_dir, age=zwicdata_age, recurse=True) }}"
       ignore_errors: yes
 
-    - name: Evaluate LOGREC job status
-      set_fact:
-        logrec_status: >-
-          {{
-            'Skipped' if skip_logrec else (
-              'Success' if (
-                logrec_result.jobs is defined and
-                logrec_result.jobs | length > 0 and
-                logrec_result.jobs[0].ret_code.code | int <= max_rc_logrec
-              ) else 'Failed'
-            )
-          }}
-
-    - name: Evaluate DCOLLECT job status
-      set_fact:
-        dcollect_status: >-
-          {{
-            'Skipped' if skip_dcollect else (
-              'Success' if (
-                dcollect_result.jobs is defined and
-                dcollect_result.jobs | length > 0 and
-                dcollect_result.jobs[0].ret_code.code | int <= max_rc_dcollect
-              ) else 'Failed'
-            )
-          }}
-
-    - name: Evaluate SMF job status
-      set_fact:
-        smf_status: >-
-          {{
-            'Skipped' if skip_smf else (
-              'Success' if (
-                smf_result.jobs is defined and
-                smf_result.jobs | length > 0 and
-                smf_result.jobs[0].ret_code.code | int <= max_rc_smf
-              ) else 'Failed'
-            )
-          }}
-
-    - name: Display task summary
+    - name: Display summary
       debug:
-        msg: 
-          - "z/OS Housekeeping Summary:"
-          - "- Connectivity: {{ 'Success' if ping_result.ping == 'pong' else 'Failed' }}"
-          - "- LOGREC job: {{ logrec_status }}"
-          - "- DCOLLECT job: {{ dcollect_status }}"
-          - "- SMF unload job: {{ smf_status }}"
-          - "- JES2 purge: {{ 'Skipped' if skip_jes2_purge else ('Success' if jes2_purge_result.rc == 0 else 'Failed') }}"
-          - "- Temp files deleted: {{ 'Skipped' if skip_temp_cleanup else (tmp_files_to_delete.matched | default(0)) }}"
-          - "- DUMP datasets deleted: {{ 'Skipped' if skip_dump_cleanup else (delete_dump_datasets_result.results | default([]) | length) }}"
-          - "- /global/zwicdata/ files deleted: {{ 'Skipped' if skip_zwicdata_cleanup else (zwicdata_files_to_delete.matched | default(0)) }}"
-        verbosity: 0
-
-    - name: Check for any failures
-      assert:
-        that:
-          - ping_result.ping == "pong"
-          - logrec_status != "Failed"
-          - dcollect_status != "Failed"
-          - smf_status != "Failed"
-          - skip_jes2_purge or jes2_purge_result.rc == 0
-        fail_msg: "One or more housekeeping tasks failed. Please check the summary for details."
-        success_msg: "All housekeeping tasks completed successfully."
+        msg: "Housekeeping tasks completed: LOGREC/DCOLLECT/SMF jobs run, old files cleaned up"

@@ -1,45 +1,7 @@
 ################################################################################
-# Playbook Name: RMF Configuration
-#
-# Purpose:
-#   This playbook automates the configuration of Resource Measurement Facility (RMF)
-#   on a z/OS system. It performs the following tasks:
-#   - Copies and modifies the ERBRMF00 member in PARMLIB
-#   - Updates VTAMALL to start RMF I, II, and III
-#   - Updates SHUTALL to stop RMF during shutdown
-#
-# Requirements:
-#   - Ansible 2.9 or higher
-#   - IBM z/OS Core Collection (ibm.ibm_zos_core) installed
-#   - Access to z/OS system with appropriate permissions
-#   - Proper setup of Ansible inventory file with z/OS target information
-#
-# Usage:
-#   Basic execution:
-#     ansible-playbook -i <inventory_file> rmf_configuration.yml
-#
-#   With increased verbosity:
-#     ansible-playbook -i <inventory_file> rmf_configuration.yml -v
-#
-# Variables:
-#   adcd_ver: ADCD version (default: Z31A)
-#
-# Notes:
-#   - Ensure that the necessary permissions and system access are in place before running.
-#   - This playbook is tailored for zPDT environments and disables certain RMF functions.
-#   - Debug messages are displayed only in verbose mode (-v).
-#   - The playbook includes error handling for critical operations.
-#
-# Examples:
-#   1. Run the playbook with default settings:
-#      ansible-playbook -i inventories/inventory.yml rmf_configuration.yml
-#
-#   2. Run the playbook with verbose output:
-#      ansible-playbook -i inventories/inventory.yml rmf_configuration.yml -v
-#
-#   3. Run the playbook with a custom ADCD version:
-#      ansible-playbook -i inventories/inventory.yml rmf_configuration.yml -e "adcd_ver=Z32A"
-#
+# Playbook: RMF Configuration
+# Purpose: Configures RMF on z/OS system (ERBRMF00, VTAMALL, SHUTALL)
+# Usage: ansible-playbook -i <inventory_file> rmf_config.yml
 ################################################################################
 
 ---
@@ -57,84 +19,40 @@
   tasks:
     - name: Verify connectivity
       zos_ping:
-      register: zos_ping_result
 
-    - name: Display ping response
-      debug:
-        var: zos_ping_result
-        verbosity: 1
+    - name: Copy ERBRMF00 to USER PARMLIB
+      zos_copy:
+        src: SYS1.PARMLIB(ERBRMF00)
+        dest: "USER.{{ adcd_ver }}.PARMLIB(ERBRMF00)"
+        remote_src: true
 
-    - name: Configure ERBRMF00
-      block:
-        - name: Copy ERBRMF00 from SYS1 to USER PARMLIB
-          zos_copy:
-            src: SYS1.PARMLIB(ERBRMF00)
-            dest: "USER.{{ adcd_ver }}.PARMLIB(ERBRMF00)"
-            remote_src: true
-          register: copy_result
-
-        - name: Update ERBRMF00 parameters
-          zos_lineinfile:
-            src: "USER.{{ adcd_ver }}.PARMLIB(ERBRMF00)"
-            regexp: "{{ item.regexp }}"
-            line: "{{ item.line }}"
-          loop:
-            - { regexp: '^  CACHE', line: '  NOCACHE                    /* CACHE   STATISTICS                   */' }
-            - { regexp: '^  CHAN', line: '  NOCHAN                     /* CHANNEL STATISTICS                   */' }
-            - { regexp: '^  CRYPTO', line: '  NOCRYPTO                   /* CRYPTO STATISTICS                    */' }
-            - { regexp: '^  IOQ\(DASD\)', line: '  IOQ(NODASD)                /* DASD I/O QUEUEING MEASURED           */' }
-          register: erbrmf00_update_result
-      rescue:
-        - name: Handle ERBRMF00 configuration errors
-          debug:
-            msg: "Error occurred during ERBRMF00 configuration: {{ ansible_failed_result }}"
-          failed_when: true
+    - name: Update ERBRMF00 parameters
+      zos_lineinfile:
+        src: "USER.{{ adcd_ver }}.PARMLIB(ERBRMF00)"
+        regexp: "{{ item.regexp }}"
+        line: "{{ item.line }}"
+      loop:
+        - { regexp: '^  CACHE', line: '  NOCACHE                    /* CACHE   STATISTICS                   */' }
+        - { regexp: '^  CHAN', line: '  NOCHAN                     /* CHANNEL STATISTICS                   */' }
+        - { regexp: '^  CRYPTO', line: '  NOCRYPTO                   /* CRYPTO STATISTICS                    */' }
+        - { regexp: '^  IOQ\(DASD\)', line: '  IOQ(NODASD)                /* DASD I/O QUEUEING MEASURED           */' }
 
     - name: Configure VTAMALL for RMF start
       zos_blockinfile:
         src: "USER.{{ adcd_ver }}.PARMLIB(VTAMALL)"
         insertafter: "S TN3270"
-        marker: "/* {mark} ANSIBLE MANAGED BLOCK */"
         block: |
           S RMF,,,(SMFBUF(RECTYPE(70:78)))
           PAUSE 10
           F RMF,START AB
           F RMF,START III
-      register: vtamall_update_result
 
     - name: Configure SHUTALL for RMF stop
       zos_lineinfile:
         src: "USER.{{ adcd_ver }}.PARMLIB(SHUTALL)"
         insertbefore: '^P TSO'
         line: 'P RMF'
-      register: shutall_update_result
 
-    - name: Display task results
+    - name: Display configuration summary
       debug:
-        msg:
-          - "ERBRMF00 copy result: {{ copy_result }}"
-          - "ERBRMF00 update result: {{ erbrmf00_update_result }}"
-          - "VTAMALL update result: {{ vtamall_update_result }}"
-          - "SHUTALL update result: {{ shutall_update_result }}"
-        verbosity: 1
-
-    - name: Display task summary
-      debug:
-        msg:
-          - "RMF Configuration Summary:"
-          - "- Connectivity check: {{ 'Successful' if zos_ping_result.ping == 'pong' else 'Failed' }}"
-          - "- ERBRMF00 configuration: {{ 'Updated' if erbrmf00_update_result.changed else 'No changes required' }}"
-          - "- VTAMALL configuration: {{ 'Updated' if vtamall_update_result.changed else 'No changes required' }}"
-          - "- SHUTALL configuration: {{ 'Updated' if shutall_update_result.changed else 'No changes required' }}"
-        verbosity: 0
-
-    - name: Final status check
-      assert:
-        that:
-          - zos_ping_result.ping == "pong"
-          - copy_result is success
-          - erbrmf00_update_result is success
-          - vtamall_update_result is success
-          - shutall_update_result is success
-        fail_msg: "RMF configuration failed. Check the summary for details."
-        success_msg: "RMF configuration completed successfully."
+        msg: "RMF configuration completed: ERBRMF00, VTAMALL, and SHUTALL updated"

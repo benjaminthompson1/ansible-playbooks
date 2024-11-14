@@ -1,50 +1,7 @@
 ################################################################################
-# Playbook Name: SMP/E ZFS Setup
-#
-# Purpose:
-#   This playbook automates the setup of an SMP/E ZFS on a z/OS system. It performs the following tasks:
-#   - Unmounts the existing SMPE.SMPNTS.ZFS if it exists
-#   - Defines a catalog alias for SMPE
-#   - Creates a new SMPE.SMPNTS.ZFS
-#   - Creates a directory for mounting the ZFS
-#   - Mounts the new SMPE.SMPNTS.ZFS
-#
-# Requirements:
-#   - Ansible 2.9 or higher
-#   - IBM z/OS Core Collection (ibm.ibm_zos_core) installed
-#   - Access to z/OS system with appropriate permissions
-#   - Proper setup of Ansible inventory file with z/OS target information
-#
-# Usage:
-#   Basic execution:
-#     ansible-playbook -i <inventory_file> smpe_zfs_setup.yml
-#
-#   With increased verbosity:
-#     ansible-playbook -i <inventory_file> smpe_zfs_setup.yml -v
-#
-# Variables:
-#   adcd_ver: ADCD version (default: Z31A)
-#   zfs_name: Name of the ZFS to be created (default: SMPE.SMPNTS.ZFS)
-#   mount_point: Directory where the ZFS will be mounted (default: /u/smpe/smpnts)
-#   primary_space: Primary space allocation for ZFS in cylinders (default: 100)
-#   secondary_space: Secondary space allocation for ZFS in cylinders (default: 50)
-#
-# Notes:
-#   - Ensure that the necessary permissions and system access are in place before running.
-#   - The playbook will attempt to unmount the existing ZFS if it exists.
-#   - Debug messages are displayed only in verbose mode (-v).
-#   - The playbook includes error handling for critical operations.
-#
-# Examples:
-#   1. Run the playbook with default settings:
-#      ansible-playbook -i inventories/inventory.yml smpe_zfs_setup.yml
-#
-#   2. Run the playbook with verbose output:
-#      ansible-playbook -i inventories/inventory.yml smpe_zfs_setup.yml -v
-#
-#   3. Run the playbook with custom ZFS size:
-#      ansible-playbook -i inventories/inventory.yml smpe_zfs_setup.yml -e "primary_space=200 secondary_space=100"
-#
+# Playbook: SMP/E ZFS Setup
+# Purpose: Creates and mounts SMP/E ZFS filesystem on z/OS
+# Usage: ansible-playbook -i <inventory_file> smpe_zfs.yml
 ################################################################################
 
 ---
@@ -66,88 +23,42 @@
   tasks:
     - name: Verify connectivity
       zos_ping:
-      register: zos_ping_result
 
-    - name: Display ping response
-      debug:
-        var: zos_ping_result
-        verbosity: 1
-
-    - name: Unmount existing ZFS
+    - name: Unmount existing ZFS if present
       zos_mount:
         src: "{{ zfs_name }}"
         path: "{{ mount_point }}"
         fs_type: ZFS
         state: unmounted
       ignore_errors: true
-      register: unmount_result
 
     - name: Define SMPE catalog alias
       zos_tso_command:
         commands:
           - DEFINE ALIAS (NAME('SMPE') RELATE('USERCAT.{{ adcd_ver }}.USER'))
       ignore_errors: true
-      register: alias_result
 
-    - name: Setup SMP/E ZFS
-      block:
-        - name: Create ZFS
-          zos_data_set:
-            name: "{{ zfs_name }}"
-            type: zfs
-            space_primary: "{{ primary_space }}"
-            space_secondary: "{{ secondary_space }}"
-            space_type: cyl
-            replace: yes
-          register: zfs_create_result
+    - name: Create ZFS
+      zos_data_set:
+        name: "{{ zfs_name }}"
+        type: zfs
+        space_primary: "{{ primary_space }}"
+        space_secondary: "{{ secondary_space }}"
+        space_type: cyl
+        replace: yes
 
-        - name: Create mount point directory
-          file:
-            path: "{{ mount_point }}"
-            state: directory
-          register: dir_create_result
+    - name: Create mount point directory
+      file:
+        path: "{{ mount_point }}"
+        state: directory
 
-        - name: Mount ZFS
-          zos_mount:
-            src: "{{ zfs_name }}"
-            path: "{{ mount_point }}"
-            fs_type: ZFS
-            state: mounted
-          register: mount_result
-      rescue:
-        - name: Handle ZFS setup errors
-          debug:
-            msg: "Error occurred during ZFS setup: {{ ansible_failed_result }}"
-          failed_when: true
+    - name: Mount ZFS
+      zos_mount:
+        src: "{{ zfs_name }}"
+        path: "{{ mount_point }}"
+        fs_type: ZFS
+        state: mounted
 
-    - name: Display task results
+    - name: Display setup summary
       debug:
-        msg:
-          - "Unmount existing ZFS result: {{ unmount_result }}"
-          - "Define SMPE alias result: {{ alias_result }}"
-          - "Create ZFS result: {{ zfs_create_result }}"
-          - "Create directory result: {{ dir_create_result }}"
-          - "Mount ZFS result: {{ mount_result }}"
-        verbosity: 1
-
-    - name: Display task summary
-      debug:
-        msg:
-          - "SMP/E ZFS Setup Summary:"
-          - "- Connectivity check: {{ 'Successful' if zos_ping_result.ping == 'pong' else 'Failed' }}"
-          - "- Unmount existing ZFS: {{ 'Successful' if unmount_result.rc == 0 else 'Failed or not necessary' }}"
-          - "- Define SMPE alias: {{ 'Successful' if alias_result.rc == 0 else 'Failed or already exists' }}"
-          - "- Create ZFS: {{ 'Successful' if zfs_create_result.changed else 'Failed' }}"
-          - "- Create mount point: {{ 'Successful' if dir_create_result.changed else 'Already exists' }}"
-          - "- Mount ZFS: {{ 'Successful' if mount_result.changed else 'Failed' }}"
-        verbosity: 0
-
-    - name: Final status check
-      assert:
-        that:
-          - zos_ping_result.ping == "pong"
-          - zfs_create_result is success
-          - dir_create_result is success
-          - mount_result is success
-        fail_msg: "SMP/E ZFS setup failed. Check the summary for details."
-        success_msg: "SMP/E ZFS setup completed successfully."
+        msg: "SMP/E ZFS setup completed: ZFS created and mounted at {{ mount_point }}"

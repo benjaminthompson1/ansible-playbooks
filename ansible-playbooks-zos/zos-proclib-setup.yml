@@ -1,49 +1,11 @@
 ################################################################################
-# Playbook Name: Enhanced z/OS PROCLIB Setup
-#
-# Purpose:
-#   This playbook automates the setup of various PROCLIB members on a z/OS system.
-#   It performs the following tasks:
-#   - Copies and updates VTAMALL procedure
-#   - Copies and updates SHUTALL procedure
-#   - Copies DBSPROCD procedure for Db2 V13
-#
-# Requirements:
-#   - Ansible 2.9 or higher
-#   - IBM z/OS Core Collection (ibm.ibm_zos_core) installed
-#   - Access to z/OS system with appropriate permissions
-#   - Proper setup of Ansible inventory file with z/OS target information
-#
-# Usage:
-#   Basic execution:
-#     ansible-playbook -i <inventory_file> zos-proclib-setup.yml
-#
-#   With increased verbosity:
-#     ansible-playbook -i <inventory_file> zos-proclib-setup.yml -v
-#
-# Variables:
-#   adcd_ver: ADCD version (default: Z31A)
-#
-# Notes:
-#   - Ensure that the necessary permissions and system access are in place before running.
-#   - This playbook modifies PROCLIB members. Ensure you have appropriate backups.
-#   - Debug messages are displayed only in verbose mode (-v).
-#   - The playbook includes error handling for critical operations.
-#
-# Examples:
-#   1. Run the playbook with default settings:
-#      ansible-playbook -i inventories/inventory.yml zos-proclib-setup.yml
-#
-#   2. Run the playbook with verbose output:
-#      ansible-playbook -i inventories/inventory.yml zos-proclib-setup.yml -v
-#
-#   3. Run the playbook with a custom ADCD version:
-#      ansible-playbook -i inventories/inventory.yml zos-proclib-setup.yml -e "adcd_ver=Z32A"
-#
+# Playbook: z/OS PROCLIB Setup
+# Purpose: Configures VTAMALL, SHUTALL, and DBSPROCD procedures
+# Usage: ansible-playbook -i <inventory_file> proclib_setup.yml
 ################################################################################
 
 ---
-- name: Enhanced z/OS PROCLIB Setup
+- name: z/OS PROCLIB Setup
   hosts: z31a_s0w1
   collections:
     - ibm.ibm_zos_core
@@ -57,97 +19,26 @@
   tasks:
     - name: Verify connectivity
       zos_ping:
-      register: zos_ping_result
 
-    - name: Display ping response
+    - name: Copy PROCLIB members
+      zos_copy:
+        src: "ADCD.{{ adcd_ver }}.PROCLIB({{ item }})"
+        dest: "USER.{{ adcd_ver }}.PROCLIB({{ item }})"
+        remote_src: true
+      loop:
+        - VTAMALL
+        - SHUTALL
+        - DBSPROCD
+
+    - name: Update PARMLIB DD statements
+      zos_lineinfile:
+        src: "USER.{{ adcd_ver }}.PROCLIB({{ item }})"
+        regexp: '^//PARMLIB'
+        line: '//PARMLIB  DD  DSN=USER.&SYSVER..PARMLIB(&M),DISP=SHR'
+      loop:
+        - VTAMALL
+        - SHUTALL
+
+    - name: Display completion message
       debug:
-        var: zos_ping_result
-        verbosity: 1
-
-    - name: Setup VTAMALL procedure
-      block:
-        - name: Copy VTAMALL from ADCD to USER
-          zos_copy:
-            src: "ADCD.{{ adcd_ver }}.PROCLIB(VTAMALL)"
-            dest: "USER.{{ adcd_ver }}.PROCLIB(VTAMALL)"
-            remote_src: true
-          register: vtamall_copy_result
-
-        - name: Update PARMLIB DD for VTAMALL
-          zos_lineinfile:
-            src: "USER.{{ adcd_ver }}.PROCLIB(VTAMALL)"
-            regexp: '^//PARMLIB'
-            line: '//PARMLIB  DD  DSN=USER.&SYSVER..PARMLIB(&M),DISP=SHR'
-          register: vtamall_update_result
-      rescue:
-        - name: Handle VTAMALL setup errors
-          debug:
-            msg: "Error occurred during VTAMALL setup: {{ ansible_failed_result }}"
-          failed_when: true
-
-    - name: Setup SHUTALL procedure
-      block:
-        - name: Copy SHUTALL from ADCD to USER
-          zos_copy:
-            src: "ADCD.{{ adcd_ver }}.PROCLIB(SHUTALL)"
-            dest: "USER.{{ adcd_ver }}.PROCLIB(SHUTALL)"
-            remote_src: true
-          register: shutall_copy_result
-
-        - name: Update PARMLIB DD for SHUTALL
-          zos_lineinfile:
-            src: "USER.{{ adcd_ver }}.PROCLIB(SHUTALL)"
-            regexp: '^//PARMLIB'
-            line: '//PARMLIB  DD  DSN=USER.&SYSVER..PARMLIB(&M),DISP=SHR'
-          register: shutall_update_result
-      rescue:
-        - name: Handle SHUTALL setup errors
-          debug:
-            msg: "Error occurred during SHUTALL setup: {{ ansible_failed_result }}"
-          failed_when: true
-
-    - name: Setup DBSPROCD procedure for Db2 V13
-      block:
-        - name: Copy DBSPROCD from ADCD to USER
-          zos_copy:
-            src: "ADCD.{{ adcd_ver }}.PROCLIB(DBSPROCD)"
-            dest: "USER.{{ adcd_ver }}.PROCLIB(DBSPROCD)"
-            remote_src: true
-          register: dbsprocd_copy_result
-      rescue:
-        - name: Handle DBSPROCD setup errors
-          debug:
-            msg: "Error occurred during DBSPROCD setup: {{ ansible_failed_result }}"
-          failed_when: true
-
-    - name: Display task results
-      debug:
-        msg:
-          - "VTAMALL copy result: {{ vtamall_copy_result }}"
-          - "VTAMALL update result: {{ vtamall_update_result }}"
-          - "SHUTALL copy result: {{ shutall_copy_result }}"
-          - "SHUTALL update result: {{ shutall_update_result }}"
-          - "DBSPROCD copy result: {{ dbsprocd_copy_result }}"
-        verbosity: 1
-
-    - name: Display task summary
-      debug:
-        msg:
-          - "z/OS PROCLIB Setup Summary:"
-          - "- Connectivity check: {{ 'Successful' if zos_ping_result.ping == 'pong' else 'Failed' }}"
-          - "- VTAMALL procedure: {{ 'Updated' if vtamall_copy_result.changed or vtamall_update_result.changed else 'No changes required' }}"
-          - "- SHUTALL procedure: {{ 'Updated' if shutall_copy_result.changed or shutall_update_result.changed else 'No changes required' }}"
-          - "- DBSPROCD procedure: {{ 'Copied' if dbsprocd_copy_result.changed else 'Already exists' }}"
-        verbosity: 0
-
-    - name: Final status check
-      assert:
-        that:
-          - zos_ping_result.ping == "pong"
-          - vtamall_copy_result is success
-          - vtamall_update_result is success
-          - shutall_copy_result is success
-          - shutall_update_result is success
-          - dbsprocd_copy_result is success
-        fail_msg: "z/OS PROCLIB setup failed. Check the summary for details."
-        success_msg: "z/OS PROCLIB setup completed successfully."
+        msg: "PROCLIB setup completed: VTAMALL, SHUTALL, and DBSPROCD configured"

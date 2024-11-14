@@ -1,16 +1,21 @@
+################################################################################
+# Playbook: Get z/OS UUID via z/OSMF
+# Usage: ansible-playbook -i <inventory_file> get_uuid.yml
+################################################################################
+
 ---
-- name: Retrieving the z/OS system UUID
+- name: Get z/OS UUID
   hosts: z31a_s0w1
   collections:
     - ibm.ibm_zosmf
   gather_facts: no
 
   vars:
-    zmf_port: 10443
     zmf_host: s0w1.dal-ebis.ihost.com
+    zmf_port: 10443
     zmf_user: IBMUSER
     zmf_password: sys1
+
   tasks:
-    - name: Include zmf_swmgmt_zos_system_uuid role
-      include_role:
+    - include_role:
         name: zmf_swmgmt_zos_system_uuid
