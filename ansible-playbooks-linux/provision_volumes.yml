@@ -1,52 +1,17 @@
 ################################################################################
-# Playbook: Enhanced zPDT Volume Provisioning
-#
-# Purpose: Automates the creation of volumes for z/PDT systems.
+# Creates volumes for z/PDT systems
 #
 # Requirements:
 # - Ansible 2.9+
-# - Access to zPDT system with appropriate permissions
-# - alcckd command available on the target system
-# - Sufficient disk space for volumes
+# - alcckd command available
 #
 # Usage:
-# ansible-playbook -i <inventory_file> provision_volumes.yml
-#
-# Variables:
-# dest_dir: Destination directory for volumes (default: "/home/ibmsys1/volumes-z31a")
-# volumes_3390_27: List of 3390-27 volumes to create
-# volumes_3390_9: List of 3390-9 volumes to create
-#
-# Key Tasks:
-# 1. Ensure destination directory exists
-# 2. Create 3390-27 volumes
-# 3. Create 3390-9 volumes
-# 4. Verify volume creation
-# 5. Display provisioning results and total volume size
-#
-# Error Handling:
-# - Fails if volume creation command returns non-zero
-# - Verifies existence of each created volume
-#
-# Notes:
-# - Existing volumes with the same names will be overwritten
-# - Uses alcckd command for volume creation
-# - Calculates and displays total provisioned volume size
-#
-# Examples:
-#   1. Run with default settings:
-#      ansible-playbook -i inventories/inventory.yml provision_volumes.yml
-#
-#   2. Run with verbose output:
-#      ansible-playbook -i inventories/inventory.yml provision_volumes.yml -v
-#
-#   3. Run with custom destination directory:
-#      ansible-playbook -i inventories/inventory.yml provision_volumes.yml -e "dest_dir=/custom/volume/path"
-#
+# ansible-playbook -i inventory.yml provision_volumes.yml
+# Optional: -e "dest_dir=/custom/volume/path"
 ################################################################################
 
 ---
-- name: Enhanced zPDT Volume Provisioning
+- name: zPDT Volume Provisioning
   hosts: zPDT
   gather_facts: yes
 
@@ -87,31 +52,4 @@
         path: "{{ dest_dir }}/{{ item }}"
       loop: "{{ volumes_3390_27 + volumes_3390_9 }}"
       register: volume_check
-
-    - name: Display volume provisioning results
-      ansible.builtin.debug:
-        msg:
-          - "Volume Provisioning Results:"
-          - "Destination Directory: {{ dest_dir }}"
-          - "3390-27 Volumes:"
-          - "{{ volumes_3390_27 | map('regex_replace', '^(.*)$', '  - \\1: {{ \"Created\" if dest_dir + \"/\\1\" in volume_check.results | map(attribute=\"stat.path\") | list else \"Failed\" }}') | list }}"
-          - "3390-9 Volumes:"
-          - "{{ volumes_3390_9 | map('regex_replace', '^(.*)$', '  - \\1: {{ \"Created\" if dest_dir + \"/\\1\" in volume_check.results | map(attribute=\"stat.path\") | list else \"Failed\" }}') | list }}"
-
-    - name: Calculate total volume size
-      ansible.builtin.set_fact:
-        total_size_gb: "{{ 
-          (volumes_3390_27 | length * 27) + 
-          (volumes_3390_9 | length * 9) 
-        }}"
-
-    - name: Display total volume size
-      ansible.builtin.debug:
-        msg: "Total volume size: {{ total_size_gb }} GB"
-
-    - name: Final status check
-      ansible.builtin.assert:
-        that:
-          - volume_check.results | map(attribute="stat.exists") | list | unique | first
-        fail_msg: "Volume provisioning failed. Check the results for details."
-        success_msg: "Volume provisioning completed successfully. Total size: {{ total_size_gb }} GB"
+      failed_when: not volume_check.stat.exists

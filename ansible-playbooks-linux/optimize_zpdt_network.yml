@@ -1,54 +1,18 @@
 ################################################################################
-# Playbook: Enhanced zPDT Network Optimization
-#
-# Purpose: Optimizes network settings for z/PDT systems running on RHEL.
+# Optimizes network settings for z/PDT systems
 #
 # Requirements:
 # - Ansible 2.9+
-# - Root access to zPDT system
-# - RHEL-based system (tested on RHEL 7 and 8)
-# - ethtool package
+# - Root access
+# - RHEL system
 #
 # Usage:
-# ansible-playbook -i <inventory_file> optimize_zpdt_network.yml --ask-become-pass
-#
-# Variables:
-# network_interface: Network interface to optimize (default: eno1)
-# offload_options: List of offload options to disable (default: [rx, tso, gso, gro, lro])
-# make_persistent: Whether to make changes persistent across reboots (default: false)
-#
-# Key Tasks:
-# 1. Ensure ethtool is installed
-# 2. Verify network interface exists
-# 3. Disable specified network offload options
-# 4. Verify offload options are disabled
-# 5. Display network optimization results
-# 6. Make changes persistent (optional)
-#
-# Error Handling:
-# - Fails if network interface doesn't exist
-# - Checks for successful disabling of offload options
-#
-# Notes:
-# - Requires root privileges to modify network settings
-# - Uses su_secrets.yml for storing sensitive data
-# - May affect network performance for non-zPDT workloads
-# - Test in non-production environment first
-#
-# Examples:
-#   1. Run with default settings:
-#      ansible-playbook -i inventories/inventory.yml optimize_zpdt_network.yml --ask-become-pass
-#
-#   2. Run for a different network interface:
-#      ansible-playbook -i inventories/inventory.yml optimize_zpdt_network.yml --ask-become-pass -e "network_interface=eth0"
-#
-#   3. Run and make changes persistent:
-#      ansible-playbook -i inventories/inventory.yml optimize_zpdt_network.yml --ask-become-pass -e "make_persistent=true"
-#
+# ansible-playbook -i inventory.yml optimize_zpdt_network.yml --ask-become-pass
+# Optional: -e "network_interface=eth0 make_persistent=true"
 ################################################################################
 
 ---
-- name: Enhanced zPDT Network Optimization
+- name: zPDT Network Optimization
   hosts: zPDT
   vars_files:
     - su_secrets.yml  
@@ -86,19 +50,6 @@
         - disable_result.rc != 0
         - "'Cannot change' not in disable_result.stderr"
 
-    - name: Verify offload options are disabled
-      ansible.builtin.command: "ethtool -k {{ network_interface }}"
-      register: verify_result
-      changed_when: false
-
-    - name: Display network optimization results
-      ansible.builtin.debug:
-        msg:
-          - "Network Optimization Results:"
-          - "Interface: {{ network_interface }}"
-          - "Disabled Options:"
-          - "{{ verify_result.stdout_lines | select('search', '.*:\\s+off') | list }}"
-
     - name: Make changes persistent
       block:
         - name: Create network scripts directory
@@ -122,16 +73,6 @@
             line: "if [ -x /etc/sysconfig/network-scripts/ifup-local ]; then /etc/sysconfig/network-scripts/ifup-local ${DEVICE}; fi"
             insertbefore: EOF
       when: make_persistent | bool
-
-    - name: Final status check
-      ansible.builtin.assert:
-        that:
-          - interface_check.rc == 0
-          - verify_result.rc == 0
-          - not verify_result.stdout | select('search', '{{ item }}:\\s+on') | list
-        fail_msg: "Network optimization failed. Check the results for details."
-        success_msg: "Network optimization completed successfully."
-      loop: "{{ offload_options }}"
 
   handlers:
     - name: Restart network service

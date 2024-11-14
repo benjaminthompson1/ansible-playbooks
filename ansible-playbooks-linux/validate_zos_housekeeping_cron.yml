@@ -1,45 +1,10 @@
 ################################################################################
-# Playbook: Validate zOS Housekeeping Cron Job Execution
-#
-# Purpose: Checks whether the zOS Housekeeping cron job has run successfully.
-#
-# Requirements:
-# - Ansible 2.9+
-# - Access to zPDT system with sudo privileges
-# - Configured zOS Housekeeping cron job
+# Validates zOS Housekeeping cron job execution status
 #
 # Usage:
-# ansible-playbook -i inventories/inventory.yml validate_zos_housekeeping_cron.yml --ask-become-pass
-#
-# Variables:
-# cron_job_name: Name of the cron job (default: "zOS Housekeeping")
-# cron_output_file: Path to cron job's output file (default: "/var/log/zos_housekeeping_cron.log")
-# log_file: System log file to check (default: "/var/log/cron")
-#
-# Key Tasks:
-# 1. Check system logs for cron job execution
-# 2. Examine cron job's output file
-# 3. Verify cron daemon status
-# 4. Inspect cron job's last run time
-# 5. Summarize findings
-#
-# Error Handling:
-# - Uses ignore_errors for non-critical checks
-# - Displays available information even if some checks fail
-#
-# Notes:
-# - Requires sudo access for certain tasks
-# - Use --ask-become-pass when running the playbook
-# - Provides a summary of all validation checks at the end
-#
-# Examples:
-#   1. Run with default settings:
-#      ansible-playbook -i inventories/inventory.yml validate_zos_housekeeping_cron.yml --ask-become-pass
-#
-#   2. Run with increased verbosity:
-#      ansible-playbook -i inventories/inventory.yml validate_zos_housekeeping_cron.yml --ask-become-pass -v
-#
+# ansible-playbook -i inventory.yml validate_zos_housekeeping_cron.yml --ask-become-pass
 ################################################################################
+
 ---
 - name: Validate zOS Housekeeping Cron Job Execution
   hosts: zPDT
@@ -51,32 +16,15 @@
     log_file: "/var/log/cron"
 
   tasks:
-    - name: Check if log file exists
-      stat:
-        path: "{{ log_file }}"
-      register: log_file_stat
-
-    - name: Display log file status
-      debug:
-        msg: "Log file {{ log_file }} exists: {{ log_file_stat.stat.exists }}"
-
     - name: Check system logs for cron job execution
       shell: "grep {{ cron_job_name | quote }} {{ log_file }} || echo 'No matches found'"
       register: log_check
       changed_when: false
 
-    - name: Display log check results
-      debug:
-        var: log_check.stdout_lines
-
     - name: Check cron job output file
       stat:
         path: "{{ cron_output_file }}"
       register: output_file
-
-    - name: Display cron job output file status
-      debug:
-        msg: "Cron job output file {{ cron_output_file }} exists: {{ output_file.stat.exists }}"
 
     - name: Display cron job output file contents
       command: "tail -n 20 {{ cron_output_file }}"
@@ -84,51 +32,10 @@
       when: output_file.stat.exists
       changed_when: false
 
-    - name: Show cron job output
-      debug:
-        var: output_content.stdout_lines
-      when: output_file.stat.exists
-
-    - name: Check cron daemon status
-      command: systemctl status crond
-      register: crond_status
-      changed_when: false
-
-    - name: Display cron daemon status
-      debug:
-        var: crond_status.stdout_lines
-
     - name: List crontab entries
       shell: |
         for user in $(cut -f1 -d: /etc/passwd); do 
-          echo "User: $user"
-          sudo crontab -u "$user" -l 2>/dev/null | grep {{ cron_job_name | quote }} || echo "No matching cron job found"
+          crontab -u "$user" -l 2>/dev/null | grep {{ cron_job_name | quote }} || true
         done
       register: crontab_entries
       changed_when: false
-
-    - name: Display crontab entries
-      debug:
-        var: crontab_entries.stdout_lines
-
-    - name: Get last run time of cron job
-      shell: "run-parts --test /etc/cron.d | grep {{ cron_job_name | quote }}"
-      register: last_run
-      ignore_errors: yes
-      changed_when: false
-
-    - name: Display last run time
-      debug:
-        var: last_run.stdout_lines
-      when: last_run.rc == 0
-
-    - name: Summarize findings
-      debug:
-        msg:
-          - "Cron job '{{ cron_job_name }}' validation results:"
-          - "- Log file exists: {{ 'Yes' if log_file_stat.stat.exists else 'No' }}"
-          - "- Found in system logs: {{ 'Yes' if 'No matches found' not in log_check.stdout else 'No' }}"
-          - "- Output file exists: {{ 'Yes' if output_file.stat.exists else 'No' }}"
-          - "- Cron daemon is active: {{ 'Yes' if 'active (running)' in crond_status.stdout else 'No' }}"
-          - "- Crontab entry found: {{ 'Yes' if 'No matching cron job found' not in crontab_entries.stdout else 'No' }}"
-          - "- Last run time found: {{ 'Yes' if last_run.rc == 0 else 'No' }}"
