@@ -24,6 +24,7 @@
     dump_age: 1w
     zwicdata_dir: /global/zwicdata/
     zwicdata_age: 5d
+    skip_temp_cleanup: false
 
   environment: "{{ environment_vars }}"
 
@@ -48,11 +49,24 @@
         cmd: "\\$P O JQ,ALL,A>{{ jes2_output_age }}"
       register: jes2_purge
 
-    - name: Clean up temp files using shell command
-      zos_shell:
-        cmd: "find {{ temp_files_directory }} -type f -mtime +{{ temp_file_age | regex_replace('d$','') }} -delete"
-      register: temp_cleanup
-      
+    - name: Manage temporary files
+      block:
+        - name: Find tmp files older than {{ temp_file_age }}
+          find:
+            paths: "{{ temp_files_directory }}"
+            age: "{{ temp_file_age }}"
+            recurse: yes
+          register: tmp_files_to_delete
+
+        - name: Delete old tmp files
+          file:
+            path: "{{ item.path }}"
+            state: absent
+          loop: "{{ tmp_files_to_delete.files }}"
+          when: tmp_files_to_delete.matched > 0
+      when: not skip_temp_cleanup
+      ignore_errors: yes
+
     - name: Find old dumps
       zos_find:
         patterns:
@@ -68,10 +82,22 @@
       when: dump_files.files | length > 0
       register: dumps_deleted
 
-    - name: Clean up zwicdata files using shell command
-      zos_shell:
-        cmd: "find {{ zwicdata_dir }} -type f -mtime +{{ zwicdata_age | regex_replace('d$','') }} -delete"
-      register: zwicdata_cleanup
+    - name: Manage zwicdata files
+      block:
+        - name: Find old zwicdata files
+          find:
+            paths: "{{ zwicdata_dir }}"
+            age: "{{ zwicdata_age }}"
+            recurse: yes
+          register: zwicdata_files_to_delete
+
+        - name: Delete old zwicdata files
+          file:
+            path: "{{ item.path }}"
+            state: absent
+          loop: "{{ zwicdata_files_to_delete.files }}"
+          when: zwicdata_files_to_delete.matched > 0
+      ignore_errors: yes
 
     - name: Display summary
       debug:
@@ -79,6 +105,6 @@
           Housekeeping tasks completed:
           - Job submissions: {{ 'Success' if job_results is success else 'Failed' }}
           - JES2 purge: {{ 'Success' if jes2_purge is success else 'Failed' }}
-          - Temp cleanup: {{ 'Success' if temp_cleanup is success else 'Failed' }}
+          - Temp files found: {{ tmp_files_to_delete.matched | default(0) }}
           - Dumps cleaned: {{ dump_files.files | length }} dumps found and processed
-          - Zwicdata cleanup: {{ 'Success' if zwicdata_cleanup is success else 'Failed' }}
+          - Zwicdata files found: {{ zwicdata_files_to_delete.matched | default(0) }}
