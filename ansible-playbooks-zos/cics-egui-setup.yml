@@ -1,55 +1,12 @@
 ################################################################################
-# Playbook Name: CICS EGUI Setup
-#
-# Purpose:
-#   This playbook automates the setup of the CICS EGUI environment on a z/OS system.
-#   It performs the following tasks:
-#   - Verifies connectivity to the target host
-#   - Creates and defines VSAM data sets for catalog and configuration
-#   - Submits CICS system definition for zOffice
-#   - Configures the CICS SIP by adding DFLTUSER
+# Sets up CICS EGUI environment on z/OS
 #
 # Requirements:
-#   - Ansible 2.9 or higher
-#   - IBM z/OS Core Collection (ibm.ibm_zos_core) installed
-#   - Access to z/OS system with appropriate permissions
-#   - Proper setup of Ansible inventory file with z/OS target information
-#   - JCL members (DFH$ECAT, DFH$ECNF, CICSCSD) available in IBMUSER.GIT.JCL.CNTL
-#   - Access to DFH610.SYSIN(DFH$SIP1) for CICS SIP configuration
+# - IBM z/OS Core Collection
+# - JCL members in IBMUSER.GIT.JCL.CNTL
 #
 # Usage:
-#   Basic execution:
-#     ansible-playbook -i <inventory_file> cics_egui_setup.yml
-#
-#   With increased verbosity:
-#     ansible-playbook -i <inventory_file> cics_egui_setup.yml -v
-#
-#   Run on a specific host or group:
-#     ansible-playbook -i <inventory_file> cics_egui_setup.yml -l <host_or_group>
-#
-# Variables:
-#   jcl_library: High-level qualifier for JCL control datasets (default: IBMUSER.GIT.JCL.CNTL)
-#   wait_time_seconds: Wait time for z/OS batch jobs (default: 120)
-#   max_rc: Maximum allowed return code for jobs (default: 0)
-#   cics_sip_dataset: Dataset name for CICS SIP configuration (default: DFH610.SYSIN(DFH$SIP1))
-#   dfltuser: Default user to be added to CICS SIP (default: IBMUSER)
-#
-# Notes:
-#   - Ensure that the necessary permissions and system access are in place before running.
-#   - Review and adjust variables as needed for your environment.
-#   - The playbook includes error handling for job submissions and configuration changes.
-#   - A summary of actions taken is displayed at the end of the playbook run.
-#
-# Examples:
-#   1. Run the playbook with default settings:
-#      ansible-playbook -i inventories/inventory.yml cics_egui_setup.yml
-#
-#   2. Run the playbook with verbose output:
-#      ansible-playbook -i inventories/inventory.yml cics_egui_setup.yml -v
-#
-#   3. Run the playbook on a specific host:
-#      ansible-playbook -i inventories/inventory.yml cics_egui_setup.yml -l zos_mainframe1
-#
+# ansible-playbook -i inventory.yml cics_egui_setup.yml
 ################################################################################
 
 ---
@@ -71,12 +28,6 @@
   tasks:
     - name: Verify connectivity
       zos_ping:
-      register: zos_ping_result
-
-    - name: Display ping response
-      debug:
-        var: zos_ping_result
-        verbosity: 1
 
     - name: Create and define VSAM data sets
       block:
@@ -86,7 +37,6 @@
             location: DATA_SET
             wait_time_s: "{{ wait_time_seconds }}"
             max_rc: "{{ max_rc }}"
-          register: dfhecat_result
 
         - name: Submit DFH$ECNF job
           zos_job_submit:
@@ -94,11 +44,6 @@
             location: DATA_SET
             wait_time_s: "{{ wait_time_seconds }}"
             max_rc: "{{ max_rc }}"
-          register: dfhecnf_result
-      rescue:
-        - name: Log VSAM data set creation errors
-          debug:
-            msg: "Error occurred during VSAM data set creation: {{ ansible_failed_result }}"
 
     - name: Submit CICS system definition for zOffice
       zos_job_submit:
@@ -106,19 +51,9 @@
         location: DATA_SET
         wait_time_s: "{{ wait_time_seconds }}"
         max_rc: "{{ max_rc }}"
-      register: cicscsd_result
 
     - name: Configure CICS SIP
       zos_lineinfile:
         src: "{{ cics_sip_dataset }}"
         insertbefore: '^*TCPIP=YES'
         line: 'DFLTUSER={{ dfltuser }}                          ANSIBLE ADDED {{ dfltuser }}'
-      register: sip_config_result
-
-    - name: Display task results
-      debug:
-        msg:
-          - "VSAM Catalog creation result: {{ dfhecat_result }}"
-          - "VSAM Configuration creation result: {{ dfhecnf_result }}"
-          - "CICS System Definition result: {{ cicscsd_result }}"
-          - "CICS SIP Configuration result: {{ sip_config_result }}"
