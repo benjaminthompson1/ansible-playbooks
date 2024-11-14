@@ -1,10 +1,10 @@
 ################################################################################
-# Playbook: Get z/OS UUID via z/OSMF
-# Usage: ansible-playbook -i inventories/inventory.yml get_uuid.yml
+# Playbook: POST z/OS UUID via z/OSMF
+# Usage: ansible-playbook -i inventories/inventory.yml post_uuid.yml
 ################################################################################
 
 ---
-- name: Get z/OS UUID
+- name: POST z/OS UUID
   hosts: z31a_s0w1
   collections:
     - ibm.ibm_zosmf
@@ -20,7 +20,7 @@
     - name: Verify z/OSMF connectivity
       uri:
         url: "https://{{ zmf_host }}:{{ zmf_port }}/zosmf/info"
-        method: GET
+        method: POST
         validate_certs: false
         user: "{{ zmf_user }}"
         password: "{{ zmf_password }}"
