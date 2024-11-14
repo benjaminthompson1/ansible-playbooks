@@ -1,7 +1,7 @@
 ################################################################################
 # Playbook: Dataset Commander Setup
 # Purpose: Updates DBSPROCD procedure with Dataset Commander libraries
-# Usage: ansible-playbook -i <inventory_file> dsc_setup.yml
+# Usage: ansible-playbook -i inventories/inventory.yml zos_dataset_commander_customization.yml
 ################################################################################
 
 ---

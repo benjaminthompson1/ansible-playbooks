@@ -2,7 +2,7 @@
 # Validates zOS Housekeeping cron job execution status
 #
 # Usage:
-# ansible-playbook -i inventory.yml validate_zos_housekeeping_cron.yml --ask-become-pass
+# ansible-playbook -i inventories/inventory.yml validate_zos_housekeeping_cron.yml --ask-become-pass
 ################################################################################
 
 ---

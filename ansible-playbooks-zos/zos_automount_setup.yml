@@ -1,7 +1,7 @@
 ################################################################################
 # Playbook: z/OS Automount Setup
 # Purpose: Configures USS Automount facility and related files
-# Usage: ansible-playbook -i <inventory_file> zos_automount.yml
+# Usage: ansible-playbook -i inventories/inventory.yml zos_automount_setup.yml
 ################################################################################
 
 ---

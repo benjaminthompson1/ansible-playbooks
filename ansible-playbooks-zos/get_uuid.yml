@@ -1,6 +1,6 @@
 ################################################################################
 # Playbook: Get z/OS UUID via z/OSMF
-# Usage: ansible-playbook -i <inventory_file> get_uuid.yml
+# Usage: ansible-playbook -i inventories/inventory.yml get_uuid.yml
 ################################################################################
 
 ---

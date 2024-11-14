@@ -7,7 +7,7 @@
 # - RHEL system
 #
 # Usage:
-# ansible-playbook -i inventory.yml optimize_zpdt_network.yml --ask-become-pass
+# ansible-playbook -i inventories/inventory.yml optimize_zpdt_network.yml --ask-become-pass
 # Optional: -e "network_interface=eth0 make_persistent=true"
 ################################################################################
 

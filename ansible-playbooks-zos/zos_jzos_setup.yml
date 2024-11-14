@@ -1,7 +1,7 @@
 ################################################################################
 # Playbook: JZOS Setup
 # Purpose: Sets up JZOS Batch Launcher by copying required components
-# Usage: ansible-playbook -i <inventory_file> jzos_setup.yml
+# Usage: ansible-playbook -i inventories/inventory.yml zos_jzos_setup.yml
 ################################################################################
 
 ---

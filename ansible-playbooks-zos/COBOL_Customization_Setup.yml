@@ -6,7 +6,7 @@
 # - COBOL compiler installed
 #
 # Usage:
-# ansible-playbook -i inventory.yml COBOL_Customization_Setup.yml
+# ansible-playbook -i inventories/inventory.yml COBOL_Customization_Setup.yml
 ################################################################################
 
 ---

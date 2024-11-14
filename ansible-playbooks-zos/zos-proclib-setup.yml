@@ -1,7 +1,7 @@
 ################################################################################
 # Playbook: z/OS PROCLIB Setup
 # Purpose: Configures VTAMALL, SHUTALL, and DBSPROCD procedures
-# Usage: ansible-playbook -i <inventory_file> proclib_setup.yml
+# Usage: ansible-playbook -i inventories/inventory.yml zos_proclib_setup.yml
 ################################################################################
 
 ---

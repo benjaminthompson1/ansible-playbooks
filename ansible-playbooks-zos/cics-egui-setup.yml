@@ -6,7 +6,7 @@
 # - JCL members in IBMUSER.GIT.JCL.CNTL
 #
 # Usage:
-# ansible-playbook -i inventory.yml cics_egui_setup.yml
+# ansible-playbook -i inventories/inventory.yml cics_egui_setup.yml
 ################################################################################
 
 ---

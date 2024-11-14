@@ -1,7 +1,7 @@
 ################################################################################
 # Playbook: SMP/E ZFS Setup
 # Purpose: Creates and mounts SMP/E ZFS filesystem on z/OS
-# Usage: ansible-playbook -i <inventory_file> smpe_zfs.yml
+# Usage: ansible-playbook -i inventories/inventory.yml smpe_zfs_setup.yml
 ################################################################################
 
 ---

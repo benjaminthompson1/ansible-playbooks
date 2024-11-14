@@ -1,7 +1,7 @@
 ################################################################################
 # Playbook: z/OS Housekeeping
 # Purpose: Runs system maintenance tasks (LOGREC, DCOLLECT, SMF, cleanup)
-# Usage: ansible-playbook -i <inventory_file> housekeeping.yml
+# Usage: ansible-playbook -i inventories/inventory.yml zos_housekeeping.yml
 ################################################################################
 
 ---

@@ -2,7 +2,7 @@
 # Sets up cron job for zOS housekeeping tasks
 #
 # Usage:
-# ansible-playbook -i inventory.yml setup_zos_housekeeping_cron.yml --ask-become-pass
+# ansible-playbook -i inventories/inventory.yml setup_zos_housekeeping_cron.yml --ask-become-pass
 # Optional: -e "cron_minute=30 cron_hour=8 cron_weekday=1,4,5"
 ################################################################################
 

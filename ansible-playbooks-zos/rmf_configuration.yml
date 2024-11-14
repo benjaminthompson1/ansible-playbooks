@@ -1,7 +1,7 @@
 ################################################################################
 # Playbook: RMF Configuration
 # Purpose: Configures RMF on z/OS system (ERBRMF00, VTAMALL, SHUTALL)
-# Usage: ansible-playbook -i <inventory_file> rmf_config.yml
+# Usage: ansible-playbook -i inventories/inventory.yml rmf_configuration.yml
 ################################################################################
 
 ---

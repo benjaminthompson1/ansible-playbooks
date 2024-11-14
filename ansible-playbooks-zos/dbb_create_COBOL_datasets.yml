@@ -1,7 +1,7 @@
 ################################################################################
 # Playbook: DBB COBOL Dataset Creation
 # Purpose: Creates required DBB datasets for COBOL development on z/OS
-# Usage: ansible-playbook -i <inventory_file> dbb_datasets.yml
+# Usage: ansible-playbook -i inventories/inventory.yml dbb_create_COBOL_datasets.yml
 ################################################################################
 
 ---

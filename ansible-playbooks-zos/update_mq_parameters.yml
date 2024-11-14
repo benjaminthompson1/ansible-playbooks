@@ -1,7 +1,7 @@
 ################################################################################
 # Playbook: MQ Parameter Update
 # Purpose: Updates MQ parameters and manages queue manager CSQ9
-# Usage: ansible-playbook -i <inventory_file> update_mq.yml
+# Usage: ansible-playbook -i inventories/inventory.yml update_mq_parameters.yml
 ################################################################################
 
 ---

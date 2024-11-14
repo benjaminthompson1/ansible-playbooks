@@ -2,7 +2,7 @@
 # Copies IBMPRODS member from ADCD to USER ISPPLIB for DB2 V13
 #
 # Usage:
-# ansible-playbook -i inventory.yml copy_ibmprods_ispplib.yml
+# ansible-playbook -i inventories/inventory.yml copy_ibmprods_ispplib.yml
 ################################################################################
 
 ---

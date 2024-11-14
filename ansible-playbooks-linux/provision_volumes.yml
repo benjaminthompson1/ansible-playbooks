@@ -6,7 +6,7 @@
 # - alcckd command available
 #
 # Usage:
-# ansible-playbook -i inventory.yml provision_volumes.yml
+# ansible-playbook -i inventories/inventory.yml provision_volumes.yml
 # Optional: -e "dest_dir=/custom/volume/path"
 ################################################################################
 

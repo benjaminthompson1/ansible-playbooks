@@ -1,7 +1,7 @@
 ################################################################################
 # Playbook: z/OS Configuration Tasks
 # Purpose: Sets up JOBCARD REXX and modifies DBSPROC procedures
-# Usage: ansible-playbook -i <inventory_file> zos_config.yml
+# Usage: ansible-playbook -i inventories/inventory.yml create_jobcard_rexx.yml
 ################################################################################
 
 ---
