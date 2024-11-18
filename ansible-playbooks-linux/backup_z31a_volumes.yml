@@ -6,7 +6,7 @@
 # - xz utility
 #
 # Usage:
-# ansible-playbook -i inventory.yml backup_z31a_volumes.yml
+# ansible-playbook -i inventories/inventory.yml backup_z31a_volumes.yml
 #
 # Optional variables override:
 # ansible-playbook -i inventories/inventory.yml backup_z31a_volumes.yml -e "src_dir=/custom/source dest_dir=/custom/backup"
