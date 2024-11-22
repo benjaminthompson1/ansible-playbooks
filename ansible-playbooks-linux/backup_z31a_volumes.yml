@@ -53,5 +53,5 @@
       ansible.builtin.file:
         path: "{{ item.path }}"
         state: absent
-      with_items: "{{ backup_files.files | sort(attribute='mtime') | list | reverse | slice(keep_backups | int) }}"
+      loop: "{{ backup_files.files | sort(attribute='mtime') | list | reverse[keep_backups:] }}"
       when: backup_files.files | length > keep_backups | int
