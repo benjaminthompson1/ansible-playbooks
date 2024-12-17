@@ -16,13 +16,11 @@
 - name: z31a Volume Backup
   hosts: zPDT
   gather_facts: yes
-
   vars:
     src_dir: "/home/ibmsys1/volumes-z31a"
     dest_dir: "/home/ibmsys1/volumes-backup"
     archive_name: "volumes-z31a-{{ ansible_date_time.date | replace('-', '') }}.tar.xz"
-    keep_backups: 4
-
+    keep_backups: 2
   tasks:
     - name: Verify source directory exists
       ansible.builtin.stat:
@@ -53,5 +51,5 @@
       ansible.builtin.file:
         path: "{{ item.path }}"
         state: absent
-      loop: "{{ backup_files.files | sort(attribute='mtime') | list | reverse[keep_backups:] }}"
+      loop: "{{ (backup_files.files | sort(attribute='mtime') | list | reverse)[keep_backups:] }}"
       when: backup_files.files | length > keep_backups | int
