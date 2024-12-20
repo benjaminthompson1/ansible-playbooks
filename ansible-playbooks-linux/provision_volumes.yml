@@ -16,13 +16,12 @@
   gather_facts: yes
 
   vars:
-    dest_dir: "/home/ibmsys1/volumes-z31a"
-    volumes_3390_27:
-      - a3usr2
-      - a3usr3
-      - a3usr4
-      - a3usr5
-      - a3zcx2
+    dest_dir: "/home/ibmsys1/volumes-z31c"
+    volumes_3390_54:
+      - c3usr2
+      - c3usr3
+      - c3usr4
+      - c3zcx2
     volumes_3390_9:
       - work0a
 
@@ -33,12 +32,12 @@
         state: directory
         mode: '0755'
 
-    - name: Create 3390-27 volumes
-      ansible.builtin.command: "alcckd {{ dest_dir }}/{{ item }} -d3390-27"
-      loop: "{{ volumes_3390_27 }}"
-      register: create_3390_27_result
-      failed_when: create_3390_27_result.rc != 0
-      changed_when: create_3390_27_result.rc == 0
+    - name: Create 3390-54 volumes
+      ansible.builtin.command: "alcckd {{ dest_dir }}/{{ item }} -d3390-54"
+      loop: "{{ volumes_3390_54 }}"
+      register: create_3390_54_result
+      failed_when: create_3390_54_result.rc != 0
+      changed_when: create_3390_54_result.rc == 0
 
     - name: Create 3390-9 volumes
       ansible.builtin.command: "alcckd {{ dest_dir }}/{{ item }} -d3390-9"
@@ -50,6 +49,6 @@
     - name: Verify volume creation
       ansible.builtin.stat:
         path: "{{ dest_dir }}/{{ item }}"
-      loop: "{{ volumes_3390_27 + volumes_3390_9 }}"
+      loop: "{{ volumes_3390_54 + volumes_3390_9 }}"
       register: volume_check
       failed_when: not volume_check.stat.exists
