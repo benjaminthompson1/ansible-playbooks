@@ -15,18 +15,15 @@
 #   4. Run the playbook with enable_debug set to yes:
 #      ansible-playbook -i inventories/inventory.yml zos_ping.yml -e "enable_debug=yes"
 ################################################################################
-
 ---
 - name: Enhanced z/OS Ping
   hosts: z31c_s0w1
   collections:
     - ibm.ibm_zos_core
   gather_facts: no
-
   vars:
     boolean_debug: false
     enable_debug: "no"
-
   tasks:
     - name: Perform z/OS ping
       zos_ping:
@@ -62,7 +59,6 @@
           - "z/OS Ping Summary:"
           - "- Ping status: {{ 'Successful' if zos_ping_result.ping == 'pong' else 'Failed' }}"
           - "- Host: {{ inventory_hostname }}"
-          - "- Module: {{ zos_ping_result.invocation.module_name }}"
           - "- Boolean debug: {{ boolean_debug }}"
           - "- Enable debug: {{ enable_debug }}"
 
