@@ -1,5 +1,5 @@
-PYZ: "/usr/lpp/IBM/cyp/v3r12/pyz"
-ZOAU: "/usr/lpp/IBM/zoautil"
+PYZ: "Z31C/usr/lpp/IBM/cyp/v3r12/pyz"
+ZOAU: "/Z31C/usr/lpp/IBM/zoautil"
 
 ################################################################################
 # Do not configure, variable substituion will correctly set the
@@ -14,7 +14,7 @@ ansible_python_interpreter: "{{ PYZ }}/bin/python3.12"
 environment_vars:
   _BPXK_AUTOCVT: "ON"
   ZOAU_HOME: "{{ ZOAU }}"
-  PYTHONPATH: "{{ ZOAU }}/lib/3.12"
+  PYTHONPATH: "{{ ZOAU }}/lib:{{ PYZ }}/lib:{{ PYZ }}/lib/python3.12:{{ PYZ }}/lib/python3.12/lib-dynload:{{ PYZ }}/lib/python3.12/site-packages"
   LIBPATH: "{{ ZOAU }}/lib:{{ PYZ }}/lib:/lib:/usr/lib:."
   PATH: "{{ ZOAU }}/bin:{{ PYZ }}/bin:/bin:/var/bin:/usr/sbin"
   _CEE_RUNOPTS: "FILETAG(AUTOCVT,AUTOTAG) POSIX(ON)"
