@@ -58,7 +58,7 @@
         type: "zfs"
         space_primary: "{{ primary_space }}"
         space_secondary: "{{ secondary_space }}"
-        space_type: CYL
+        space_type: cyl
         replace: yes
       register: zfs_creation
       
@@ -93,8 +93,8 @@
           - "SMP/E ZFS setup completed successfully:"
           - "- ZFS dataset: {{ zfs_name }}"
           - "- Mount point: {{ mount_point }}"
-          - "- Primary space: {{ primary_space }} CYL"
-          - "- Secondary space: {{ secondary_space }} CYL"
+          - "- Primary space: {{ primary_space }} cyl"
+          - "- Secondary space: {{ secondary_space }} cyl"
       when: mount_result is success
       
     - name: Display setup failure
