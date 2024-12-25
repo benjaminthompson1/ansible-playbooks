@@ -1,6 +1,5 @@
 ################################################################################
 # Playbook: SMP/E ZFS Setup
-# Purpose: Creates and mounts SMP/E ZFS filesystem on z/OS
 ################################################################################
 ---
 - name: SMP/E ZFS Setup
@@ -18,9 +17,6 @@
     # Default permissions for mount point
     dir_mode: '0755'
     
-    # Timeout settings
-    mount_timeout: 300
-    command_timeout: 60
   environment: "{{ environment_vars }}"
   pre_tasks:
     - name: Verify connectivity
@@ -33,14 +29,6 @@
         path: "{{ mount_point }}"
       register: mount_point_stat
       
-    - name: Check if ZFS dataset exists
-      zos_data_set:
-        name: "{{ zfs_name }}"
-        state: present
-        type: "zfs"
-      register: zfs_exists
-      ignore_errors: true
-      
   tasks:
     - name: Unmount existing ZFS if present
       zos_mount:
@@ -49,17 +37,23 @@
         fs_type: "zfs"
         state: unmounted
       ignore_errors: true
-      when: not zfs_exists.failed
         
-    - name: Create ZFS
+    - name: Create ZFS dataset
       zos_data_set:
         name: "{{ zfs_name }}"
         type: "zfs"
         space_primary: "{{ primary_space }}"
         space_secondary: "{{ secondary_space }}"
-        space_type: cyl
+        space_type: "cyl"
+        state: present
         replace: yes
-      register: zfs_creation
+      register: dataset_create
+      
+    - name: Format ZFS
+      zos_tso_command:
+        commands:
+          - "IOEAGFMT -aggregate '{{ zfs_name }}' -compat"
+      register: format_result
       
     - name: Create mount point directory
       file:
@@ -92,8 +86,8 @@
           - "SMP/E ZFS setup completed successfully:"
           - "- ZFS dataset: {{ zfs_name }}"
           - "- Mount point: {{ mount_point }}"
-          - "- Primary space: {{ primary_space }} cyl"
-          - "- Secondary space: {{ secondary_space }} cyl"
+          - "- Primary space: {{ primary_space }} CYL"
+          - "- Secondary space: {{ secondary_space }} CYL"
       when: mount_result is success
       
     - name: Display setup failure
