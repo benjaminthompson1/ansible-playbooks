@@ -1,5 +1,14 @@
 ################################################################################
 # Playbook: SMP/E ZFS Setup
+# Purpose: Creates and mounts SMP/E ZFS filesystem on z/OS
+# Usage: ansible-playbook -i inventories/inventory.yml smpe_zfs_setup.yml
+# Prerequisites: 
+#   - IBM z/OS Core collection installed
+#   - Valid z/OS credentials configured
+#   - Appropriate permissions for ZFS operations
+################################################################################
+################################################################################
+# Playbook: SMP/E ZFS Setup
 ################################################################################
 ---
 - name: SMP/E ZFS Setup
@@ -31,23 +40,23 @@
       
   tasks:
     - name: Unmount existing ZFS if present
-      zos_mount:
-        src: "{{ zfs_name }}"
-        path: "{{ mount_point }}"
-        fs_type: "zfs"
-        state: unmounted
+      zos_tso_command:
+        commands: 
+          - "UNMOUNT FILESYSTEM('{{ zfs_name }}')"
       ignore_errors: true
         
-    - name: Create ZFS dataset
-      zos_data_set:
-        name: "{{ zfs_name }}"
-        type: "zfs"
-        space_primary: "{{ primary_space }}"
-        space_secondary: "{{ secondary_space }}"
-        space_type: "cyl"
-        state: present
-        replace: yes
-      register: dataset_create
+    - name: Delete existing ZFS if present
+      zos_tso_command:
+        commands:
+          - "DELETE '{{ zfs_name }}'"
+      ignore_errors: true
+        
+    - name: Create ZFS using TSO command
+      zos_tso_command:
+        commands: 
+          - "DEFINE CLUSTER(NAME('{{ zfs_name }}') LINEAR ZFS CYL({{ primary_space }} {{ secondary_space }}))"
+      register: define_result
+      ignore_errors: true
       
     - name: Format ZFS
       zos_tso_command:
