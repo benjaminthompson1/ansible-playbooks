@@ -1,19 +1,16 @@
 ---
-PYZ: "/Z31C/usr/lpp/IBM/cyp/v3r12/pyz"
 ZOAU: "/Z31C/usr/lpp/IBM/zoautil"
-
-ansible_python_interpreter: "{{ PYZ }}/bin/python3.12"
+PYZ: "/Z31C/usr/lpp/IBM/cyp/v3r12/pyz"
 
 environment_vars:
-  ZOAU_HOME: "{{ ZOAU }}"
-  PATH: "{{ ZOAU }}/bin:{{ PYZ }}/bin:/bin:/usr/sbin:/usr/lpp/java/J8.0_64/bin:${PATH}"
-  LIBPATH: "{{ ZOAU }}/lib:{{ PYZ }}/lib:/lib:/usr/lib:${LIBPATH}"
-  PYTHONPATH: "{{ PYZ }}:{{ ZOAU }}/lib/3.12"
-  PYTHON_HOME: "{{ PYZ }}"
-  CLASSPATH: "{{ ZOAU }}/lib/*:${CLASSPATH}"
   _BPXK_AUTOCVT: "ON"
+  ZOAU_HOME: "{{ ZOAU }}"
+  PYTHONPATH: "{{ ZOAU }}/lib"
+  LIBPATH: "{{ ZOAU }}/lib:{{ PYZ }}/lib:/lib:/usr/lib:."
+  PATH: "{{ ZOAU }}/bin:{{ PYZ }}/bin:/bin:/var/bin"
   _CEE_RUNOPTS: "FILETAG(AUTOCVT,AUTOTAG) POSIX(ON)"
   _TAG_REDIR_ERR: "txt"
   _TAG_REDIR_IN: "txt"
   _TAG_REDIR_OUT: "txt"
   LANG: "C"
+  PYTHONSTDINENCODING: "cp1047"
