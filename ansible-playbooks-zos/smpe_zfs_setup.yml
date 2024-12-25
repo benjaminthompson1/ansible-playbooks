@@ -10,7 +10,6 @@
   gather_facts: no
   vars:
     # System configuration
-    adcd_ver: Z31A
     zfs_name: SMPE.SMPNTS.ZFS
     mount_point: /u/smpe/smpnts
     primary_space: 100
