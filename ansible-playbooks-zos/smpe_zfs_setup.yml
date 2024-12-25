@@ -1,11 +1,6 @@
 ################################################################################
 # Playbook: SMP/E ZFS Setup
 # Purpose: Creates and mounts SMP/E ZFS filesystem on z/OS
-# Usage: ansible-playbook -i inventories/inventory.yml smpe_zfs_setup.yml
-# Prerequisites: 
-#   - IBM z/OS Core collection installed
-#   - Valid z/OS credentials configured
-#   - Appropriate permissions for ZFS operations
 ################################################################################
 ---
 - name: SMP/E ZFS Setup
@@ -13,7 +8,6 @@
   collections:
     - ibm.ibm_zos_core
   gather_facts: no
-
   vars:
     # System configuration
     adcd_ver: Z31A
@@ -28,9 +22,7 @@
     # Timeout settings
     mount_timeout: 300
     command_timeout: 60
-
   environment: "{{ environment_vars }}"
-
   pre_tasks:
     - name: Verify connectivity
       zos_ping:
@@ -43,44 +35,40 @@
       register: mount_point_stat
       
     - name: Check if ZFS dataset exists
-      zos_data_set:
+      zos_data_set_facts:
         name: "{{ zfs_name }}"
-        state: present
       register: zfs_exists
       ignore_errors: true
-
   tasks:
     - name: Unmount existing ZFS if present
       zos_mount:
         src: "{{ zfs_name }}"
         path: "{{ mount_point }}"
-        fs_type: ZFS
+        fs_type: "zfs"  # Changed to lowercase
         state: unmounted
-        timeout: "{{ mount_timeout }}"
       ignore_errors: true
-      when: zfs_exists.changed == false
+      when: zfs_exists.exists
       
     - name: Define SMPE catalog alias
       zos_tso_command:
         commands:
-          - DEFINE ALIAS (NAME('SMPE') RELATE('USERCAT.{{ adcd_ver }}.USER'))
-        timeout: "{{ command_timeout }}"
+          - "DEFINE ALIAS (NAME('SMPE') RELATE('USERCAT.{{ adcd_ver }}.USER'))"
       register: alias_result
       ignore_errors: true
       failed_when: 
-        - alias_result.failed
-        - '"IDC3013I" not in alias_result.output'  # Ignore if alias already exists
-
+        - alias_result is failed
+        - '"IDC3013I" not in alias_result.cmd_resp'  # Changed to cmd_resp
+        
     - name: Create ZFS
       zos_data_set:
         name: "{{ zfs_name }}"
-        type: zfs
+        type: ZFS
         space_primary: "{{ primary_space }}"
         space_secondary: "{{ secondary_space }}"
-        space_type: cyl
+        space_type: CYL
         replace: yes
       register: zfs_creation
-
+      
     - name: Create mount point directory
       file:
         path: "{{ mount_point }}"
@@ -88,25 +76,24 @@
         mode: "{{ dir_mode }}"
         recurse: yes
       when: not mount_point_stat.stat.exists
-
+      
     - name: Mount ZFS
       zos_mount:
         src: "{{ zfs_name }}"
         path: "{{ mount_point }}"
-        fs_type: ZFS
+        fs_type: "zfs"  # Changed to lowercase
         state: mounted
-        timeout: "{{ mount_timeout }}"
       register: mount_result
       retries: 3
       delay: 10
       until: mount_result is not failed
-
+      
   post_tasks:
     - name: Verify ZFS mount
       shell: df -k "{{ mount_point }}"
       register: df_result
       failed_when: mount_point not in df_result.stdout
-
+      
     - name: Display setup summary
       debug:
         msg: 
@@ -116,7 +103,7 @@
           - "- Primary space: {{ primary_space }} CYL"
           - "- Secondary space: {{ secondary_space }} CYL"
       when: mount_result is success
-
+      
     - name: Display setup failure
       debug:
         msg: "SMP/E ZFS setup failed. Check previous task results for details."
