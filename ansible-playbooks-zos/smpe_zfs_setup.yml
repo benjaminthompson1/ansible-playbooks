@@ -38,7 +38,7 @@
       zos_data_set:
         name: "{{ zfs_name }}"
         state: present
-        type: ZFS
+        type: "zfs"
       register: zfs_exists
       ignore_errors: true
       
@@ -51,21 +51,11 @@
         state: unmounted
       ignore_errors: true
       when: not zfs_exists.failed
-      
-    - name: Define SMPE catalog alias
-      zos_tso_command:
-        commands:
-          - "DEFINE ALIAS (NAME('SMPE') RELATE('USERCAT.{{ adcd_ver }}.USER'))"
-      register: alias_result
-      ignore_errors: true
-      failed_when: 
-        - alias_result is failed
-        - '"IDC3013I" not in alias_result.cmd_resp'
         
     - name: Create ZFS
       zos_data_set:
         name: "{{ zfs_name }}"
-        type: ZFS
+        type: "zfs"
         space_primary: "{{ primary_space }}"
         space_secondary: "{{ secondary_space }}"
         space_type: CYL
