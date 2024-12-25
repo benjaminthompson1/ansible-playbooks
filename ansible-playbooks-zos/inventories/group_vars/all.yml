@@ -1,12 +1,12 @@
 ---
-PYZ: "/usr/lpp/IBM/cyp/v3r12/pyz"
-ZOAU: "/usr/lpp/IBM/zoautil"
+PYZ: "/Z31C/usr/lpp/IBM/cyp/v3r12/pyz"
+ZOAU: "/Z31C/usr/lpp/IBM/zoautil"
 
 ansible_python_interpreter: "{{ PYZ }}/bin/python3"
 
 environment_vars:
   ZOAU_HOME: "{{ ZOAU }}"
-  PATH: "{{ ZOAU }}/bin:{{ PYZ }}/bin:/bin:/usr/sbin:/usr/lpp/java/J8.0/bin:${PATH}"
+  PATH: "{{ ZOAU }}/bin:{{ PYZ }}/bin:/bin:/usr/sbin:/usr/lpp/java/J8.0_64/bin:${PATH}"
   LIBPATH: "{{ ZOAU }}/lib:{{ PYZ }}/lib:/lib:/usr/lib:${LIBPATH}"
   PYTHONPATH: "{{ PYZ }}:{{ ZOAU }}/lib/3.12"
   PYTHON_HOME: "{{ PYZ }}"
