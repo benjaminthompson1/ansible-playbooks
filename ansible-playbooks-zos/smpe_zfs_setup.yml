@@ -7,9 +7,6 @@
 #   - Valid z/OS credentials configured
 #   - Appropriate permissions for ZFS operations
 ################################################################################
-################################################################################
-# Playbook: SMP/E ZFS Setup
-################################################################################
 ---
 - name: SMP/E ZFS Setup
   hosts: z31c_s0w1
@@ -17,17 +14,17 @@
     - ibm.ibm_zos_core
   gather_facts: no
   vars:
-    # System configuration
     zfs_name: SMPE.SMPNTS.ZFS
     mount_point: /u/smpe/smpnts
     primary_space: 100
     secondary_space: 50
-    
-    # Default permissions for mount point
     dir_mode: '0755'
+    max_retries: 3
+    retry_delay: 10
     
   environment: "{{ environment_vars }}"
-  pre_tasks:
+  
+  tasks:
     - name: Verify connectivity
       zos_ping:
       register: ping_result
@@ -38,31 +35,32 @@
         path: "{{ mount_point }}"
       register: mount_point_stat
       
-  tasks:
-    - name: Unmount existing ZFS if present
-      zos_tso_command:
-        commands: 
-          - "UNMOUNT FILESYSTEM('{{ zfs_name }}')"
+    - name: Unmount and delete existing ZFS if present
+      block:
+        - name: Unmount existing ZFS
+          zos_tso_command:
+            commands: 
+              - "UNMOUNT FILESYSTEM('{{ zfs_name }}')"
+          
+        - name: Delete existing ZFS
+          zos_tso_command:
+            commands:
+              - "DELETE '{{ zfs_name }}'"
       ignore_errors: true
         
-    - name: Delete existing ZFS if present
-      zos_tso_command:
-        commands:
-          - "DELETE '{{ zfs_name }}'"
-      ignore_errors: true
-        
-    - name: Create ZFS using TSO command
-      zos_tso_command:
-        commands: 
-          - "DEFINE CLUSTER(NAME('{{ zfs_name }}') LINEAR ZFS CYL({{ primary_space }} {{ secondary_space }}))"
-      register: define_result
-      ignore_errors: true
-      
-    - name: Format ZFS
-      zos_tso_command:
-        commands:
-          - "IOEAGFMT -aggregate '{{ zfs_name }}' -compat"
-      register: format_result
+    - name: Create and format ZFS
+      block:
+        - name: Create ZFS using TSO command
+          zos_tso_command:
+            commands: 
+              - "DEFINE CLUSTER(NAME('{{ zfs_name }}') LINEAR ZFS CYL({{ primary_space }} {{ secondary_space }}))"
+          register: define_result
+          
+        - name: Format ZFS
+          zos_tso_command:
+            commands:
+              - "IOEAGFMT -aggregate '{{ zfs_name }}' -compat"
+          register: format_result
       
     - name: Create mount point directory
       file:
@@ -79,11 +77,10 @@
         fs_type: "zfs"
         state: mounted
       register: mount_result
-      retries: 3
-      delay: 10
+      retries: "{{ max_retries }}"
+      delay: "{{ retry_delay }}"
       until: mount_result is not failed
       
-  post_tasks:
     - name: Verify ZFS mount
       shell: df -k "{{ mount_point }}"
       register: df_result
