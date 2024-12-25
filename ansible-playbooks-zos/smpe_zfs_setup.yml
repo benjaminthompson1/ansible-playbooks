@@ -19,87 +19,33 @@
     mount_point: /u/smpe/smpnts
     primary_cylinders: 100
     secondary_cylinders: 50
-    dir_mode: '0755'
-    max_retries: 3
-    retry_delay: 10
-
-  environment: "{{ environment_vars }}"
 
   tasks:
-    - name: Verify connectivity
-      zos_ping:
-      register: ping_result
-      failed_when: ping_result.failed
+    - name: Create ZFS dataset
+      zos_data_set:
+        name: "{{ zfs_name }}"
+        type: zfs
+        space_primary: "{{ primary_cylinders }}"
+        space_secondary: "{{ secondary_cylinders }}"
+        space_type: cyl
+        state: present
 
-    - name: Check if ZFS already exists
-      zos_tso_command:
-        commands:
-          - "LISTCAT ENTRIES('{{ zfs_name }}')"
-      register: zfs_check
-      ignore_errors: true
-
-    - name: Unmount existing ZFS if present
-      zos_tso_command:
-        commands: 
-          - "UNMOUNT FILESYSTEM('{{ zfs_name }}')"
-      when: not zfs_check.failed
-      ignore_errors: true
-
-    - name: Delete existing ZFS if present
-      zos_tso_command:
-        commands:
-          - "DELETE '{{ zfs_name }}'"
-      when: not zfs_check.failed
-      ignore_errors: true
-
-    - name: Create ZFS using TSO command
-      zos_tso_command:
-        commands: 
-          - "DEFINE CLUSTER(NAME('{{ zfs_name }}') LINEAR ZFS CYL({{ primary_cylinders }} {{ secondary_cylinders }}))"
-      register: define_result
-      when: zfs_check.failed
-
-    - name: Format ZFS
-      zos_tso_command:
-        commands:
-          - "IOEAGFMT -aggregate '{{ zfs_name }}' -compat"
+    - name: Format the ZFS
+      zos_mvs_raw:
+        pgm: IOEAGFMT
+        parm: "-aggregate {{ zfs_name }} -compat"
       register: format_result
-      when: zfs_check.failed or define_result.changed
 
     - name: Create mount point directory
       file:
         path: "{{ mount_point }}"
         state: directory
-        mode: "{{ dir_mode }}"
-        recurse: yes
+        mode: '0755'
 
-    - name: Mount ZFS
+    - name: Mount the ZFS
       zos_mount:
         src: "{{ zfs_name }}"
         path: "{{ mount_point }}"
-        fs_type: "zfs"
-        state: mounted
-      register: mount_result
-      retries: "{{ max_retries }}"
-      delay: "{{ retry_delay }}"
-      until: mount_result is not failed
-
-    - name: Verify ZFS mount
-      shell: df -k "{{ mount_point }}"
-      register: df_result
-      failed_when: mount_point not in df_result.stdout
-
-    - name: Display setup summary
-      debug:
-        msg: 
-          - "SMP/E ZFS setup completed successfully:"
-          - "- ZFS dataset: {{ zfs_name }}"
-          - "- Mount point: {{ mount_point }}"
-          - "- Primary space: {{ primary_cylinders }} CYL"
-          - "- Secondary space: {{ secondary_cylinders }} CYL"
-      when: mount_result is success
-
-    - name: Display setup failure
-      debug:
-        msg: "SMP/E ZFS setup failed. Check previous task results for details."
-      when: mount_result is failed
+        fs_type: ZFS
+        state: present
+        persistent: yes
