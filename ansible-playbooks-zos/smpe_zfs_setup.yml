@@ -35,19 +35,22 @@
       register: mount_point_stat
       
     - name: Check if ZFS dataset exists
-      zos_data_set_facts:
+      zos_data_set:
         name: "{{ zfs_name }}"
+        state: present
+        type: ZFS
       register: zfs_exists
       ignore_errors: true
+      
   tasks:
     - name: Unmount existing ZFS if present
       zos_mount:
         src: "{{ zfs_name }}"
         path: "{{ mount_point }}"
-        fs_type: "zfs"  # Changed to lowercase
+        fs_type: "zfs"
         state: unmounted
       ignore_errors: true
-      when: zfs_exists.exists
+      when: not zfs_exists.failed
       
     - name: Define SMPE catalog alias
       zos_tso_command:
@@ -57,7 +60,7 @@
       ignore_errors: true
       failed_when: 
         - alias_result is failed
-        - '"IDC3013I" not in alias_result.cmd_resp'  # Changed to cmd_resp
+        - '"IDC3013I" not in alias_result.cmd_resp'
         
     - name: Create ZFS
       zos_data_set:
@@ -81,7 +84,7 @@
       zos_mount:
         src: "{{ zfs_name }}"
         path: "{{ mount_point }}"
-        fs_type: "zfs"  # Changed to lowercase
+        fs_type: "zfs"
         state: mounted
       register: mount_result
       retries: 3
