@@ -15,7 +15,7 @@ environment_vars:
   _BPXK_AUTOCVT: "ON"
   ZOAU_HOME: "{{ ZOAU }}"
   PYTHONPATH: "{{ PYZ }}:{{ ZOAU }}/lib"
-  LIBPATH: "{{ PYZ }}/lib"
+  LIBPATH: "{{ PYZ }}/lib:{{ ZOAU }}/lib"
   PATH: "{{ ZOAU }}/bin:{{ PYZ }}/bin:/bin:/var/bin:/usr/sbin"
   _CEE_RUNOPTS: "FILETAG(AUTOCVT,AUTOTAG) POSIX(ON)"
   _TAG_REDIR_ERR: "txt"
