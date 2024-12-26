@@ -11,11 +11,11 @@
   gather_facts: no
   
   environment: "{{ environment_vars }}"
-
+  
   vars:
     adcd_ver: Z31C
   tasks:
-     - name: Define NSPI alias
+    - name: Define NSPI alias
       zos_tso_command:
         commands:
           - "DEFINE ALIAS (NAME(NSPI) RELATE(USERCAT.{{ adcd_ver }}.PRODS))"
