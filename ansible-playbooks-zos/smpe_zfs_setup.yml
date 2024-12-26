@@ -14,6 +14,7 @@
     - ibm.ibm_zos_core
   gather_facts: no
 
+  environment: "{{ environment_vars }}"
   vars:
     zfs_name: SMPE.SMPNTS.ZFS
     mount_point: /u/smpe/smpnts
