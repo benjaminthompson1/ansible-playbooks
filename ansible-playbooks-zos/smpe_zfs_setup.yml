@@ -13,7 +13,6 @@
   collections:
     - ibm.ibm_zos_core
   gather_facts: no
-
   environment: "{{ environment_vars }}"
   vars:
     zfs_name: SMPE.SMPNTS.ZFS
@@ -31,10 +30,10 @@
       check_mode: yes
 
     - name: Check if mount point exists
-      stat:
-        path: "{{ mount_point }}"
-      register: mount_point_check
-      failed_when: mount_point_check.stat.exists and not mount_point_check.stat.isdir
+      shell: "test -d {{ mount_point }}"
+      register: dir_check
+      failed_when: false
+      changed_when: false
 
     - name: Create ZFS dataset
       zos_data_set:
@@ -46,9 +45,7 @@
         state: present
       when: not zfs_check.changed
       register: zfs_create_result
-      failed_when: 
-        - zfs_create_result.failed is defined
-        - zfs_create_result.failed
+      failed_when: zfs_create_result.failed | default(false)
 
     - name: Format the ZFS
       zos_mvs_raw:
@@ -63,24 +60,22 @@
         path: "{{ mount_point }}"
         state: directory
         mode: '0755'
-      when: not mount_point_check.stat.exists
+      when: dir_check.rc != 0
       register: dir_create_result
       failed_when: dir_create_result.failed | default(false)
 
-    # Simplified mount check
     - name: Check if filesystem is mounted
       shell: df -k "{{ mount_point }}" | grep "{{ zfs_name }}"
       register: mount_status
       failed_when: false
       changed_when: false
 
-    # Modified mount task
     - name: Mount the ZFS
       zos_mount:
         src: "{{ zfs_name }}"
         path: "{{ mount_point }}"
-        fs_type: ZFS
-        state: present
+        fs_type: zfs
+        state: mounted
         persistent: true
       when: mount_status.rc != 0
       register: mount_result
