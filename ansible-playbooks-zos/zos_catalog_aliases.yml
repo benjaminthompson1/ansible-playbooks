@@ -12,34 +12,37 @@
   
   vars:
     adcd_ver: Z31C
-
   tasks:
+    - name: Debug environment
+      debug:
+        msg: "PYTHONPATH={{ ansible_env.PYTHONPATH }} LIBPATH={{ ansible_env.LIBPATH }}"
+
     - name: Define NSPI alias
       zos_tso_command:
         commands:
           - "DEFINE ALIAS (NAME(NSPI) RELATE(USERCAT.{{ adcd_ver }}.PRODS))"
       register: nspi_result
-
+    
     - name: Display NSPI result
       debug:
         var: nspi_result.output
-
+    
     - name: Define SYS3 alias
       zos_tso_command:
         commands:
           - "DEFINE ALIAS (NAME(SYS3) RELATE(USERCAT.{{ adcd_ver }}.PRODS))"
       register: sys3_result
-
+    
     - name: Display SYS3 result
       debug:
         var: sys3_result.output
-
+    
     - name: Define SMPE alias
       zos_tso_command:
         commands:
           - "DEFINE ALIAS (NAME(SMPE) RELATE(USERCAT.{{ adcd_ver }}.PRODS))"
       register: smpe_result
-
+    
     - name: Display SMPE result
       debug:
         var: smpe_result.output
