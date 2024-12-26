@@ -13,7 +13,6 @@
   collections:
     - ibm.ibm_zos_core
   gather_facts: no
-  
   environment: "{{ environment_vars }}"
   vars:
     zfs_name: SMPE.SMPNTS.ZFS
@@ -55,9 +54,7 @@
         pgm: IOEAGFMT
         parm: "-aggregate {{ zfs_name }} -compat"
       register: format_result
-      failed_when: 
-        - format_result.rc > 4
-        - format_result.stderr | length > 0
+      failed_when: format_result.rc > 4
       when: not zfs_check.changed
 
     - name: Create mount point directory if it doesn't exist
@@ -67,43 +64,33 @@
         mode: '0755'
       when: not mount_point_check.stat.exists
       register: dir_create_result
-      failed_when:
-        - dir_create_result.failed is defined
-        - dir_create_result.failed
+      failed_when: dir_create_result.failed | default(false)
 
-    - name: Check if ZFS is already mounted
-      zos_mount:
-        src: "{{ zfs_name }}"
-        path: "{{ mount_point }}"
-        fs_type: ZFS
-        state: present
-      check_mode: yes
-      register: mount_check
+    # Simplified mount check
+    - name: Check if filesystem is mounted
+      shell: df -k "{{ mount_point }}" | grep "{{ zfs_name }}"
+      register: mount_status
       failed_when: false
+      changed_when: false
 
+    # Modified mount task
     - name: Mount the ZFS
       zos_mount:
         src: "{{ zfs_name }}"
         path: "{{ mount_point }}"
         fs_type: ZFS
         state: present
-        persistent: yes
-      when: not mount_check.changed
+        persistent: true
+      when: mount_status.rc != 0
       register: mount_result
-      failed_when:
-        - mount_result.failed is defined
-        - mount_result.failed
 
     - name: Verify mount was successful
-      stat:
-        path: "{{ mount_point }}"
+      shell: df -k "{{ mount_point }}" | grep "{{ zfs_name }}"
       register: final_mount_check
-      failed_when: 
-        - not final_mount_check.stat.exists
-        - not final_mount_check.stat.isdir
-        - not final_mount_check.stat.ismount
+      failed_when: final_mount_check.rc != 0
+      changed_when: false
 
     - name: Display completion status
       debug:
         msg: "ZFS setup completed successfully. Mounted at {{ mount_point }}"
-      when: final_mount_check.stat.ismount
+      when: final_mount_check.rc == 0
