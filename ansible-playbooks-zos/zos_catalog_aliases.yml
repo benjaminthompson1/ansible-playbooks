@@ -13,9 +13,10 @@
   vars:
     adcd_ver: Z31C
   tasks:
-    - name: Debug environment
+    - name: Debug environment with lookup
       debug:
-        msg: "PYTHONPATH={{ ansible_env.PYTHONPATH }} LIBPATH={{ ansible_env.LIBPATH }}"
+        msg: "PYTHONPATH={{ lookup('env', 'PYTHONPATH') | default('not set') }} LIBPATH={{ lookup('env', 'LIBPATH') | default('not set') }}"
+
 
     - name: Define NSPI alias
       zos_tso_command:
