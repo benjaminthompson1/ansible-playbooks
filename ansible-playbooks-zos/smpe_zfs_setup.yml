@@ -13,7 +13,7 @@
   collections:
     - ibm.ibm_zos_core
   gather_facts: no
-
+  
   environment: "{{ environment_vars }}"
   vars:
     zfs_name: SMPE.SMPNTS.ZFS
@@ -22,6 +22,20 @@
     secondary_cylinders: 50
 
   tasks:
+    - name: Check if ZFS dataset already exists
+      zos_data_set:
+        name: "{{ zfs_name }}"
+        state: present
+      register: zfs_check
+      failed_when: false
+      check_mode: yes
+
+    - name: Check if mount point exists
+      stat:
+        path: "{{ mount_point }}"
+      register: mount_point_check
+      failed_when: mount_point_check.stat.exists and not mount_point_check.stat.isdir
+
     - name: Create ZFS dataset
       zos_data_set:
         name: "{{ zfs_name }}"
@@ -30,18 +44,42 @@
         space_secondary: "{{ secondary_cylinders }}"
         space_type: cyl
         state: present
+      when: not zfs_check.changed
+      register: zfs_create_result
+      failed_when: 
+        - zfs_create_result.failed is defined
+        - zfs_create_result.failed
 
     - name: Format the ZFS
       zos_mvs_raw:
         pgm: IOEAGFMT
         parm: "-aggregate {{ zfs_name }} -compat"
       register: format_result
+      failed_when: 
+        - format_result.rc > 4
+        - format_result.stderr | length > 0
+      when: not zfs_check.changed
 
-    - name: Create mount point directory
+    - name: Create mount point directory if it doesn't exist
       file:
         path: "{{ mount_point }}"
         state: directory
         mode: '0755'
+      when: not mount_point_check.stat.exists
+      register: dir_create_result
+      failed_when:
+        - dir_create_result.failed is defined
+        - dir_create_result.failed
+
+    - name: Check if ZFS is already mounted
+      zos_mount:
+        src: "{{ zfs_name }}"
+        path: "{{ mount_point }}"
+        fs_type: ZFS
+        state: present
+      check_mode: yes
+      register: mount_check
+      failed_when: false
 
     - name: Mount the ZFS
       zos_mount:
@@ -50,3 +88,22 @@
         fs_type: ZFS
         state: present
         persistent: yes
+      when: not mount_check.changed
+      register: mount_result
+      failed_when:
+        - mount_result.failed is defined
+        - mount_result.failed
+
+    - name: Verify mount was successful
+      stat:
+        path: "{{ mount_point }}"
+      register: final_mount_check
+      failed_when: 
+        - not final_mount_check.stat.exists
+        - not final_mount_check.stat.isdir
+        - not final_mount_check.stat.ismount
+
+    - name: Display completion status
+      debug:
+        msg: "ZFS setup completed successfully. Mounted at {{ mount_point }}"
+      when: final_mount_check.stat.ismount
