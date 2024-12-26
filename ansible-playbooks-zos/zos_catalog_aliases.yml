@@ -10,15 +10,12 @@
     - ibm.ibm_zos_core
   gather_facts: no
   
+  environment: "{{ environment_vars }}"
+
   vars:
     adcd_ver: Z31C
   tasks:
-    - name: Debug environment with lookup
-      debug:
-        msg: "PYTHONPATH={{ lookup('env', 'PYTHONPATH') | default('not set') }} LIBPATH={{ lookup('env', 'LIBPATH') | default('not set') }}"
-
-
-    - name: Define NSPI alias
+     - name: Define NSPI alias
       zos_tso_command:
         commands:
           - "DEFINE ALIAS (NAME(NSPI) RELATE(USERCAT.{{ adcd_ver }}.PRODS))"
