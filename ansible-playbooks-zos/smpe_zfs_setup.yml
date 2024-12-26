@@ -81,7 +81,7 @@
             fs_type: zfs
             state: mounted
             persistent:
-              data_store: "USER.Z31C.PARMLIB(BPXPRMZZ)"  
+              data_store: "USER.Z31C.PARMLIB(BPXPRMZZ)"
           when: mount_status.output | regex_search(zfs_name) is none
           register: mount_result
     
