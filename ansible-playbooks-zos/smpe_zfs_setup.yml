@@ -22,24 +22,7 @@
     secondary_cylinders: 50
     parmlib_dataset: USER.Z31C.PARMLIB(BPXPRMZZ)
 
-  tasks:
-    - name: Check ZFS and directory status
-      block:
-        - name: Verify ZFS dataset status
-          zos_data_set:
-            name: "{{ zfs_name }}"
-            state: present
-          check_mode: yes
-          register: zfs_status
-
-        - name: Verify mount point directory
-          zos_mvs_raw:
-            program: BPXBATCH
-            parm: 'SH ls -d {{ mount_point }}'
-          register: dir_status
-          failed_when: false
-          changed_when: false
-      
+  tasks:   
     - name: Setup ZFS environment
       block:
         - name: Create and format ZFS
