@@ -20,6 +20,7 @@
     mount_point: /u/smpe/smpnts
     primary_cylinders: 100
     secondary_cylinders: 50
+    parmlib_dataset: USER.Z31C.PARMLIB(BPXPRMZZ)
 
   tasks:
     - name: Create ZFS dataset
@@ -30,7 +31,6 @@
         space_secondary: "{{ secondary_cylinders }}"
         space_type: cyl
         state: present
-      ignore_errors: True
 
     - name: Create mount point directory
       zos_mvs_raw:
@@ -43,3 +43,5 @@
         path: "{{ mount_point }}"
         fs_type: zfs
         state: mounted
+        persistent:
+          data_store: "{{ parmlib_dataset }}"
