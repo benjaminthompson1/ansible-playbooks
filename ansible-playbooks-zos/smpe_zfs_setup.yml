@@ -43,5 +43,3 @@
         path: "{{ mount_point }}"
         fs_type: zfs
         state: mounted
-        persistent:
-          data_store: "{{ parmlib_dataset }}"
