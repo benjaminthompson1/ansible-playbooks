@@ -26,11 +26,10 @@
     - name: Create ZFS dataset
       zos_data_set:
         name: "{{ zfs_name }}"
-        type: ZFS
+        type: zfs
         space_primary: "{{ primary_cylinders }}"
         space_secondary: "{{ secondary_cylinders }}"
-        space_type: CYL
-        record_format: U
+        space_type: cyl
         state: present
 
     - name: Create mount point directory
@@ -42,7 +41,7 @@
       zos_mount:
         src: "{{ zfs_name }}"
         path: "{{ mount_point }}"
-        fs_type: ZFS
+        fs_type: zfs
         state: mounted
         persistent:
           data_store: "{{ parmlib_dataset }}"
