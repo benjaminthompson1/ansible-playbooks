@@ -13,5 +13,4 @@ environment_vars:
   _TAG_REDIR_IN: "txt"
   _TAG_REDIR_OUT: "txt"
   LANG: "C"
-  _ENCODE_FILE_NEW: "IBM-1047"
   PYTHONSTDINENCODING: "cp1047"
