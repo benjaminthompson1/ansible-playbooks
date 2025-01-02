@@ -8,93 +8,104 @@
 #   - Appropriate permissions for ZFS operations
 ################################################################################
 ---
-    - name: SMP/E ZFS Setup
-      hosts: z31c_s0w1
-      collections:
-        - ibm.ibm_zos_core
-      gather_facts: no
+- name: SMP/E ZFS Setup
+  hosts: z31c_s0w1
+  collections:
+    - ibm.ibm_zos_core
+  gather_facts: no
+  environment: "{{ environment_vars }}"
+  
+  vars:
+    zfs_name: SMPE.SMPNTS.ZFS
+    mount_point: /u/smpe/smpnts
+    primary_cylinders: 100
+    secondary_cylinders: 50
+    parmlib_dataset: USER.Z31C.PARMLIB(BPXPRMZZ)
 
-      environment: "{{ environment_vars }}"
-      vars:
-        zfs_name: SMPE.SMPNTS.ZFS
-        mount_point: /u/smpe/smpnts
-        primary_cylinders: 100
-        secondary_cylinders: 50
-    
-      tasks:
-        - name: Check if ZFS dataset already exists
+  tasks:
+    - name: Check ZFS and directory status
+      block:
+        - name: Verify ZFS dataset status
           zos_data_set:
             name: "{{ zfs_name }}"
             state: present
-          register: zfs_check
-          failed_when: false
           check_mode: yes
-    
-        - name: Check if mount point exists
-          zos_tso_command:
-            commands:
-              - "ISHELL cd {{ mount_point }}"
-          register: dir_check
-          failed_when: false
-          changed_when: false
-    
-        - name: Create ZFS dataset
-          zos_data_set:
-            name: "{{ zfs_name }}"
-            type: zfs
-            space_primary: "{{ primary_cylinders }}"
-            space_secondary: "{{ secondary_cylinders }}"
-            space_type: cyl
-            state: present
-          when: not zfs_check.changed
-          register: zfs_create_result
-          failed_when: zfs_create_result.failed | default(false)
-    
-        - name: Format the ZFS
-          zos_mvs_raw:
-            pgm: IOEAGFMT
-            parm: "-aggregate {{ zfs_name }} -compat"
-          register: format_result
-          failed_when: format_result.rc > 4
-          when: not zfs_check.changed
-    
-        - name: Create mount point directory if it doesn't exist
-          zos_tso_command:
-            commands:
-              - "MKDIR '{{ mount_point }}' MODE(755)"
-          when: dir_check.output | regex_search('EDC5129I') is not none
-          register: dir_create_result
-          failed_when: dir_create_result.rc != 0
-    
-        - name: Check if filesystem is mounted
-          zos_tso_command:
-            commands:
-              - "MOUNT"
-          register: mount_status
-          failed_when: false
-          changed_when: false
-    
-        - name: Mount the ZFS
+          register: zfs_status
+
+        - name: Verify mount point directory
+          zos_unix_path:
+            path: "{{ mount_point }}"
+            state: directory
+          check_mode: yes
+          register: dir_status
+      
+    - name: Setup ZFS environment
+      block:
+        - name: Create and format ZFS
+          when: not zfs_status.changed
+          block:
+            - name: Create ZFS dataset
+              zos_data_set:
+                name: "{{ zfs_name }}"
+                type: zfs
+                space_primary: "{{ primary_cylinders }}"
+                space_secondary: "{{ secondary_cylinders }}"
+                space_type: cyl
+                state: present
+              register: zfs_create
+
+            - name: Format ZFS
+              zos_mvs_raw:
+                pgm: IOEAGFMT
+                parm: "-aggregate {{ zfs_name }} -compat"
+              register: format_result
+              failed_when: format_result.rc > 4
+
+        - name: Create mount point
+          when: not dir_status.changed
+          zos_unix_path:
+            path: "{{ mount_point }}"
+            mode: "755"
+            state: directory
+          register: dir_create
+
+        - name: Mount and persist ZFS
           zos_mount:
             src: "{{ zfs_name }}"
             path: "{{ mount_point }}"
             fs_type: zfs
             state: mounted
             persistent:
-              data_store: "USER.Z31C.PARMLIB(BPXPRMZZ)"
-          when: mount_status.output | regex_search(zfs_name) is none
+              data_store: "{{ parmlib_dataset }}"
           register: mount_result
-    
-        - name: Verify mount was successful
-          zos_tso_command:
-            commands:
-              - "MOUNT"
-          register: final_mount_check
-          failed_when: final_mount_check.output | regex_search(zfs_name) is none
-          changed_when: false
-    
+
+    - name: Verify setup
+      block:
+        - name: Check final mount status
+          zos_mount:
+            src: "{{ zfs_name }}"
+            path: "{{ mount_point }}"
+            state: present
+          register: final_status
+
         - name: Display completion status
           debug:
             msg: "ZFS setup completed successfully. Mounted at {{ mount_point }}"
-          when: final_mount_check.output | regex_search(zfs_name) is not none
-    
+          when: final_status.changed == false
+
+  handlers:
+    - name: Cleanup on failure
+      block:
+        - name: Unmount ZFS if mounted
+          zos_mount:
+            src: "{{ zfs_name }}"
+            path: "{{ mount_point }}"
+            state: unmounted
+          when: mount_result is defined and mount_result.changed
+
+        - name: Remove ZFS if created
+          zos_data_set:
+            name: "{{ zfs_name }}"
+            state: absent
+          when: zfs_create is defined and zfs_create.changed
+      when: ansible_failed_task is defined
