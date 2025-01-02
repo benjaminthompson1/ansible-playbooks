@@ -55,13 +55,6 @@
                 state: present
               register: zfs_create
 
-            - name: Format ZFS
-              zos_mvs_raw:
-                pgm: IOEAGFMT
-                parm: "-aggregate {{ zfs_name }} -compat"
-              register: format_result
-              failed_when: format_result.rc > 4
-
         - name: Create mount point
           when: dir_status.rc != 0
           zos_mvs_raw:
