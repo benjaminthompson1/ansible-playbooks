@@ -22,66 +22,27 @@
     secondary_cylinders: 50
     parmlib_dataset: USER.Z31C.PARMLIB(BPXPRMZZ)
 
-  tasks:   
-    - name: Setup ZFS environment
-      block:
-        - name: Create and format ZFS
-          when: not zfs_status.changed
-          block:
-            - name: Create ZFS dataset
-              zos_data_set:
-                name: "{{ zfs_name }}"
-                type: zfs
-                space_primary: "{{ primary_cylinders }}"
-                space_secondary: "{{ secondary_cylinders }}"
-                space_type: cyl
-                state: present
-              register: zfs_create
+  tasks:
+    - name: Create ZFS dataset
+      zos_data_set:
+        name: "{{ zfs_name }}"
+        type: ZFS
+        space_primary: "{{ primary_cylinders }}"
+        space_secondary: "{{ secondary_cylinders }}"
+        space_type: CYL
+        record_format: U
+        state: present
 
-        - name: Create mount point
-          when: dir_status.rc != 0
-          zos_mvs_raw:
-            program: BPXBATCH
-            parm: 'SH mkdir -p {{ mount_point }} && chmod 755 {{ mount_point }}'
-          register: dir_create
+    - name: Create mount point directory
+      zos_mvs_raw:
+        program: BPXBATCH
+        parm: 'SH mkdir -p {{ mount_point }} && chmod 755 {{ mount_point }}'
 
-        - name: Mount and persist ZFS
-          zos_mount:
-            src: "{{ zfs_name }}"
-            path: "{{ mount_point }}"
-            fs_type: zfs
-            state: mounted
-            persistent:
-              data_store: "{{ parmlib_dataset }}"
-          register: mount_result
-
-    - name: Verify setup
-      block:
-        - name: Check final mount status
-          zos_mount:
-            src: "{{ zfs_name }}"
-            path: "{{ mount_point }}"
-            state: present
-          register: final_status
-
-        - name: Display completion status
-          debug:
-            msg: "ZFS setup completed successfully. Mounted at {{ mount_point }}"
-          when: final_status.changed == false
-
-  handlers:
-    - name: Cleanup on failure
-      block:
-        - name: Unmount ZFS if mounted
-          zos_mount:
-            src: "{{ zfs_name }}"
-            path: "{{ mount_point }}"
-            state: unmounted
-          when: mount_result is defined and mount_result.changed
-
-        - name: Remove ZFS if created
-          zos_data_set:
-            name: "{{ zfs_name }}"
-            state: absent
-          when: zfs_create is defined and zfs_create.changed
-      when: ansible_failed_task is defined
+    - name: Mount ZFS
+      zos_mount:
+        src: "{{ zfs_name }}"
+        path: "{{ mount_point }}"
+        fs_type: ZFS
+        state: mounted
+        persistent:
+          data_store: "{{ parmlib_dataset }}"
