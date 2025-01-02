@@ -20,7 +20,7 @@
     mount_point: /u/smpe/smpnts
     primary_cylinders: 100
     secondary_cylinders: 50
-    parmlib_dataset: USER.Z31C.PARMLIB(BPXPRMXX)
+    parmlib_dataset: USER.Z31C.PARMLIB(BPXPRMZZ)
 
   tasks:
     - name: Create ZFS dataset
