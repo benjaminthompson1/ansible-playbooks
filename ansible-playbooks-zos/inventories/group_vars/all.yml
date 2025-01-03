@@ -2,6 +2,7 @@
 ZOAU: "/Z31C/usr/lpp/IBM/zoautil"
 PYZ: "/Z31C/usr/lpp/IBM/cyp/v3r12/pyz"
 ansible_python_interpreter: "{{ PYZ }}/bin/python3.12"
+ansible_shell_executable: "/bin/sh"
 environment_vars:
   ZOAU_HOME: "{{ ZOAU }}"
   PYTHONPATH: "{{ ZOAU }}:/lib/3.12"
