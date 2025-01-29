@@ -1,0 +1,118 @@
+################################################################################
+# Playbook: Dataset Commander Setup
+# Purpose: Updates DBSPROCD procedure with Dataset Commander libraries
+# Usage: ansible-playbook -i inventories/inventory.yml ds_config_commander.yml
+################################################################################
+---
+- name: Dataset Commander Customization
+  hosts: z31c_s0w1
+  collections:
+    - ibm.ibm_zos_core
+  gather_facts: no
+  
+  vars:
+    adcd_ver: Z31C
+    dsc_version: IQI910
+    dbsprocd_dataset: "USER.{{ adcd_ver }}.PROCLIB(DBSPROCD)"
+    backup_dataset: "USER.{{ adcd_ver }}.PROCLIB.(DBSPROC9)"
+    required_libraries:
+      - "{{ dsc_version }}.SIQILPA"
+      - "{{ dsc_version }}.SIQILOAD"
+      - "{{ dsc_version }}.SIQICLIB"
+      - "{{ dsc_version }}.SIQIMLIB"
+      - "{{ dsc_version }}.SIQIPLIB"
+      - "{{ dsc_version }}.SIQISLIB"
+      - "{{ dsc_version }}.SIQITLIB"
+    required_dd_statements:
+      - "STEPLIB"
+      - "ISPLLIB"
+      - "SYSPROC"
+      - "ISPMLIB"
+      - "ISPPLIB"
+      - "ISPSLIB"
+      - "SDSFMENU"
+  
+  environment: "{{ environment_vars }}"
+  
+  tasks:
+    - name: Verify connectivity
+      zos_ping:
+      register: ping_result
+      failed_when: ping_result.failed
+      
+    - name: Create backup of DBSPROCD
+      zos_mvs_raw:
+        program_name: IEBGENER
+        auth: yes
+        dds:
+          - dd_input:
+              dd_name: SYSUT1
+              dd_data_set: "{{ dbsprocd_dataset }}"
+          - dd_output:
+              dd_name: SYSUT2
+              dd_data_set: "{{ backup_dataset }}"
+      register: backup_result
+      
+    - name: Verify required libraries exist
+      zos_data_set:
+        name: "{{ item }}"
+        state: present
+      loop: "{{ required_libraries }}"
+      register: lib_check
+      failed_when: lib_check.failed
+      
+    - name: Verify required DD statements exist
+      zos_lineinfile:
+        src: "{{ dbsprocd_dataset }}"
+        state: present
+        regexp: "^//{{ item }}"
+      loop: "{{ required_dd_statements }}"
+      register: dd_check
+      failed_when: dd_check.failed
+      
+    - name: Add Dataset Commander DD statements
+      zos_lineinfile:
+        src: "{{ dbsprocd_dataset }}"
+        insertafter: "{{ item.insertafter }}"
+        insertbefore: "{{ item.insertbefore | default(omit) }}"
+        line: "{{ item.line }}"
+        backup: yes
+      loop:
+        - { insertbefore: '^//SYSUADS', line: '//STEPLIB  DD  DISP=SHR,DSN={{ dsc_version }}.SIQILPA' }
+        - { insertafter: '^//STEPLIB', line: '//         DD  DISP=SHR,DSN={{ dsc_version }}.SIQILOAD' }
+        - { insertafter: '^//ISPLLIB', line: '//         DD  DISP=SHR,DSN={{ dsc_version }}.SIQILOAD' }
+        - { insertafter: '^//ISPLLIB', line: '//         DD  DISP=SHR,DSN={{ dsc_version }}.SIQILPA' }
+        - { insertafter: '^//SYSPROC', line: '//         DD  DISP=SHR,DSN={{ dsc_version }}.SIQICLIB' }
+        - { insertafter: '^//ISPMLIB', line: '//         DD  DISP=SHR,DSN={{ dsc_version }}.SIQIMLIB' }
+        - { insertafter: '^//ISPPLIB', line: '//         DD  DISP=SHR,DSN={{ dsc_version }}.SIQIPLIB' }
+        - { insertafter: '^//ISPSLIB', line: '//         DD  DISP=SHR,DSN={{ dsc_version }}.SIQISLIB' }
+        - { insertafter: '^//SDSFMENU', line: '//IQITLIB  DD  DISP=SHR,DSN={{ dsc_version }}.SIQITLIB' }
+        - { insertafter: '^//IQITLIB', line: '//IQIUT04  DD  DISP=NEW,UNIT=VIO,SPACE=(3,1)' }
+        - { insertafter: '^//IQITLIB', line: '//IQIUT03  DD  DISP=NEW,UNIT=VIO,SPACE=(3,1)' }
+        - { insertafter: '^//IQITLIB', line: '//IQIUTOT  DD  DISP=NEW,UNIT=SYSALLDA,' }
+        - { insertafter: '^//IQIUTOT', line: '//         SPACE=(CYL,(2,2)),RECFM=FBA,LRECL=121,BLKSIZE=4840' }
+        - { insertafter: '^//IQITLIB', line: '//IQIUTIN  DD  DISP=NEW,UNIT=VIO,' }
+        - { insertafter: '^//IQIUTIN', line: '//         SPACE=(CYL,(1,1)),RECFM=FB,LRECL=80,BLKSIZE=4000' }
+      register: update_result
+
+    - name: Display detailed execution summary
+      debug:
+        msg: |
+          Dataset Commander Update Summary
+          ==============================
+          Timestamp: {{ ansible_date_time.iso8601 }}
+          Host: {{ inventory_hostname }}
+          
+          Execution Status:
+          - Overall Status: {{ update_result.failed | ternary('Failed', 'Success') }}
+          - Changes Made: {{ update_result.changed | ternary('Yes', 'No') }}
+          
+          Verification Results:
+          - Connectivity Check: {{ ping_result.failed | ternary('Failed', 'Success') }}
+          - Backup Creation: {{ backup_result.failed | ternary('Failed', 'Success') }}
+          - Library Verification: {{ lib_check.failed | ternary('Failed', 'Success') }}
+          - DD Statement Check: {{ dd_check.failed | ternary('Failed', 'Success') }}
+          
+          Modified Dataset: {{ dbsprocd_dataset }}
+          Backup Location: {{ backup_dataset }}
+      when: update_result is defined
