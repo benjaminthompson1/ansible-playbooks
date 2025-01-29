@@ -1,0 +1,33 @@
+################################################################################
+# Playbook: z/OS Configuration Tasks
+# Purpose: Copies JOBCARD and Z members from IBMUSER.GIT.REXX.SYSEXEC to USER.Z31C.SYSEXEC
+# Usage: ansible-playbook -i inventories/inventory.yml dev_copy_rexx.yml
+################################################################################
+---
+- name: z/OS Configuration Tasks
+  hosts: z31c_s0w1
+  collections:
+    - ibm.ibm_zos_core
+  gather_facts: no
+
+  vars:
+    adcd_ver: Z31C
+  environment: "{{ environment_vars }}"
+  
+  tasks:
+    - name: Verify connectivity
+      zos_ping:
+
+    - name: Copy JOBCARD member
+      zos_copy:
+        src: IBMUSER.GIT.REXX.SYSEXEC(JOBCARD)
+        dest: USER.{{ adcd_ver }}.SYSEXEC(JOBCARD)
+        remote_src: true
+        force: yes
+
+    - name: Copy Z member
+      zos_copy:
+        src: IBMUSER.GIT.REXX.SYSEXEC(Z)
+        dest: USER.{{ adcd_ver }}.SYSEXEC(Z)
+        remote_src: true
+        force: yes
