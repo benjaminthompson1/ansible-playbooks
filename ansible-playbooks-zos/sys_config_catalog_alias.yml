@@ -1,16 +1,17 @@
 ################################################################################
-# Playbook: z/OS Define aliases
+# Playbook: z/OS define catalog aliases
 # Purpose: Implement alias for NSPI, SYS3 and SMPE
 # Usage: ansible-playbook -i inventories/inventory.yml zos_catalog_aliases.yml
 ################################################################################
 ---
-- name: Define aliases in z/OS user catalog using TSO commands
+- name: z/OS define catalog aliases
   hosts: z31c_s0w1
   collections:
     - ibm.ibm_zos_core
   gather_facts: no
   
   environment: "{{ environment_vars }}"
+
   vars:
     adcd_ver: Z31C
   tasks:

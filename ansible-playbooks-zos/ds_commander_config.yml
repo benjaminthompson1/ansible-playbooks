@@ -1,14 +1,16 @@
 ################################################################################
-# Playbook: Dataset Commander Setup
+# Playbook: Dataset Commander configuration
 # Purpose: Updates DBSPROCD procedure with Dataset Commander libraries
-# Usage: ansible-playbook -i inventories/inventory.yml ds_config_commander.yml
+# Usage: ansible-playbook -i inventories/inventory.yml ds_commander_config.yml
 ################################################################################
 ---
-- name: Dataset Commander Customization
+- name: Dataset Commander configuration
   hosts: z31c_s0w1
   collections:
     - ibm.ibm_zos_core
   gather_facts: no
+
+  environment: "{{ environment_vars }}"
   
   vars:
     adcd_ver: Z31C
@@ -31,8 +33,6 @@
       - "ISPPLIB"
       - "ISPSLIB"
       - "SDSFMENU"
-  
-  environment: "{{ environment_vars }}"
   
   tasks:
     - name: Verify connectivity

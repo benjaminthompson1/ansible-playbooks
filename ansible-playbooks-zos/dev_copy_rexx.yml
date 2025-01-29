@@ -4,16 +4,17 @@
 # Usage: ansible-playbook -i inventories/inventory.yml dev_copy_rexx.yml
 ################################################################################
 ---
-- name: z/OS Configuration Tasks
+- name: Copy common REXX
   hosts: z31c_s0w1
   collections:
     - ibm.ibm_zos_core
   gather_facts: no
 
+  environment: "{{ environment_vars }}"
+
   vars:
     adcd_ver: Z31C
-  environment: "{{ environment_vars }}"
-  
+
   tasks:
     - name: Verify connectivity
       zos_ping:

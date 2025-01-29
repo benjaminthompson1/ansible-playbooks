@@ -1,18 +1,15 @@
 ################################################################################
-# Playbook: SMP/E ZFS Setup
+# Playbook: SMP/E ZFS setup
 # Purpose: Creates and mounts SMP/E ZFS filesystem on z/OS
-# Usage: ansible-playbook -i inventories/inventory.yml smpe_zfs_setup.yml
-# Prerequisites: 
-#   - IBM z/OS Core collection installed
-#   - Valid z/OS credentials configured
-#   - Appropriate permissions for ZFS operations
+# Usage: ansible-playbook -i inventories/inventory.yml storage_setup_smpe_zfs.yml
 ################################################################################
 ---
-- name: SMP/E ZFS Setup
+- name: SMP/E ZFS setup
   hosts: z31c_s0w1
   collections:
     - ibm.ibm_zos_core
   gather_facts: no
+
   environment: "{{ environment_vars }}"
   
   vars:
