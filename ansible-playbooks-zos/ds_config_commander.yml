@@ -14,7 +14,7 @@
     adcd_ver: Z31C
     dsc_version: IQI910
     dbsprocd_dataset: "USER.{{ adcd_ver }}.PROCLIB(DBSPROCD)"
-    backup_dataset: "USER.{{ adcd_ver }}.PROCLIB.(DBSPROC9)"
+    backup_dataset: "USER.{{ adcd_ver }}.PROCLIB(DBSPROC9)"
     required_libraries:
       - "{{ dsc_version }}.SIQILPA"
       - "{{ dsc_version }}.SIQILOAD"
