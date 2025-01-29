@@ -41,16 +41,11 @@
       failed_when: ping_result.failed
       
     - name: Create backup of DBSPROCD
-      zos_mvs_raw:
-        program_name: IEBGENER
-        auth: yes
-        dds:
-          - dd_input:
-              dd_name: SYSUT1
-              dd_data_set: "{{ dbsprocd_dataset }}"
-          - dd_output:
-              dd_name: SYSUT2
-              dd_data_set: "{{ backup_dataset }}"
+      zos_copy:
+        src: "{{ dbsprocd_dataset }}"
+        dest: "{{ backup_dataset }}"
+        remote_src: true
+        force: true
       register: backup_result
       
     - name: Verify required libraries exist
