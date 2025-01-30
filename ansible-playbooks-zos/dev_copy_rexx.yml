@@ -9,15 +9,13 @@
   collections:
     - ibm.ibm_zos_core
   gather_facts: no
-
   environment: "{{ environment_vars }}"
-
   vars:
     adcd_ver: Z31C
-
   tasks:
     - name: Verify connectivity
       zos_ping:
+      register: ping_result
 
     - name: Copy GETDATE member
       zos_copy:
@@ -25,6 +23,7 @@
         dest: USER.{{ adcd_ver }}.SYSEXEC(GETDATE)
         remote_src: true
         force: yes
+      register: getdate_copy
 
     - name: Copy JOBCARD member
       zos_copy:
@@ -32,6 +31,7 @@
         dest: USER.{{ adcd_ver }}.SYSEXEC(JOBCARD)
         remote_src: true
         force: yes
+      register: jobcard_copy
 
     - name: Copy Z member
       zos_copy:
@@ -39,3 +39,28 @@
         dest: USER.{{ adcd_ver }}.SYSEXEC(Z)
         remote_src: true
         force: yes
+      register: z_copy
+      register: update_result
+
+    - name: Display detailed execution summary
+      debug:
+        msg: |
+          z/OS Configuration Tasks
+          ========================
+          Timestamp: {{ ansible_date_time.iso8601 }}
+          Host: {{ inventory_hostname }}
+          
+          Execution Status:
+          - Overall Status: {{ update_result.failed | default(false) | ternary('Failed', 'Success') }}
+          - Changes Made: {{ (getdate_copy.changed or jobcard_copy.changed or z_copy.changed) | ternary('Yes', 'No') }}
+          
+          Verification Results:
+          - Connectivity Check: {{ ping_result.failed | default(false) | ternary('Failed', 'Success') }}
+          - Copy Operations:
+            * GETDATE: {{ getdate_copy.failed | default(false) | ternary('Failed', 'Success') }}
+            * JOBCARD: {{ jobcard_copy.failed | default(false) | ternary('Failed', 'Success') }}
+            * Z: {{ z_copy.failed | default(false) | ternary('Failed', 'Success') }}
+          
+          Target Dataset: USER.{{ adcd_ver }}.SYSEXEC
+          Source Dataset: IBMUSER.GIT.REXX.SYSEXEC
+      when: true

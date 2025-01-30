@@ -11,10 +11,13 @@
   gather_facts: no
   
   environment: "{{ environment_vars }}"
-
   vars:
     adcd_ver: Z31C
   tasks:
+    - name: Verify connectivity
+      zos_ping:
+      register: ping_result
+
     - name: Define NSPI alias
       zos_tso_command:
         commands:
@@ -40,7 +43,31 @@
         commands:
           - "DEFINE ALIAS (NAME('SMPE') RELATE('USERCAT.{{ adcd_ver }}.PRODS'))"
       register: smpe_result
+      register: update_result
     
     - name: Display SMPE result
       debug:
         var: smpe_result.output
+
+    - name: Display detailed execution summary
+      debug:
+        msg: |
+          Catalog Aliases Update Summary
+          ==============================
+          Timestamp: {{ ansible_date_time.iso8601 }}
+          Host: {{ inventory_hostname }}
+          
+          Execution Status:
+          - Overall Status: {{ update_result.failed | default(false) | ternary('Failed', 'Success') }}
+          - Changes Made: {{ (nspi_result.changed or sys3_result.changed or smpe_result.changed) | ternary('Yes', 'No') }}
+          
+          Verification Results:
+          - Connectivity Check: {{ ping_result.failed | default(false) | ternary('Failed', 'Success') }}
+          - Alias Definitions:
+            * NSPI: {{ nspi_result.failed | default(false) | ternary('Failed', 'Success') }}
+            * SYS3: {{ sys3_result.failed | default(false) | ternary('Failed', 'Success') }}
+            * SMPE: {{ smpe_result.failed | default(false) | ternary('Failed', 'Success') }}
+          
+          Target Catalog: USERCAT.{{ adcd_ver }}.PRODS
+          Defined Aliases: NSPI, SYS3, SMPE
+      when: true
