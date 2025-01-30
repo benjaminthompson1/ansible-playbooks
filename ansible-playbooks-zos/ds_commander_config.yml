@@ -59,11 +59,11 @@
     - name: Verify required DD statements exist
       zos_lineinfile:
         src: "{{ dbsprocd_dataset }}"
-        state: present
+        state: absent
         regexp: "^//{{ item }}"
       loop: "{{ required_dd_statements }}"
       register: dd_check
-      failed_when: dd_check.failed
+      failed_when: not dd_check.changed  # Fail if the line is not found
       
     - name: Add Dataset Commander DD statements
       zos_lineinfile:
@@ -71,7 +71,6 @@
         insertafter: "{{ item.insertafter }}"
         insertbefore: "{{ item.insertbefore | default(omit) }}"
         line: "{{ item.line }}"
-        backup: yes
       loop:
         - { insertbefore: '^//SYSUADS', line: '//STEPLIB  DD  DISP=SHR,DSN={{ dsc_version }}.SIQILPA' }
         - { insertafter: '^//STEPLIB', line: '//         DD  DISP=SHR,DSN={{ dsc_version }}.SIQILOAD' }
