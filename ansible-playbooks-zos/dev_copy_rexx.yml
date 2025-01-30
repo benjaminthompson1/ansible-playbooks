@@ -19,6 +19,13 @@
     - name: Verify connectivity
       zos_ping:
 
+    - name: Copy GETDATE member
+      zos_copy:
+        src: IBMUSER.GIT.REXX.SYSEXEC(GETDATE)
+        dest: USER.{{ adcd_ver }}.SYSEXEC(GETDATE)
+        remote_src: true
+        force: yes
+
     - name: Copy JOBCARD member
       zos_copy:
         src: IBMUSER.GIT.REXX.SYSEXEC(JOBCARD)
