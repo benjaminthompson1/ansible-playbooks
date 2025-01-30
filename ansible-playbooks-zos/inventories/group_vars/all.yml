@@ -1,11 +1,11 @@
 ---
-ZOAU: "/Z31C/usr/lpp/IBM/zoautil"
-PYZ: "/Z31C/usr/lpp/IBM/cyp/v3r12/pyz"
+ZOAU: "/usr/lpp/IBM/zoautil"
+PYZ: "/usr/lpp/IBM/cyp/v3r12/pyz"
 ansible_python_interpreter: "{{ PYZ }}/bin/python3.12"
 ansible_shell_executable: "/bin/sh"
 environment_vars:
   ZOAU_HOME: "{{ ZOAU }}"
-  PYTHONPATH: "{{ ZOAU }}:/lib/3.12"
+  PYTHONPATH: "{{ PYZ }}:{{ ZOAU }}/lib/3.12"
   LIBPATH: "{{ ZOAU }}/lib:{{ PYZ }}/lib:/lib:/usr/lib:."
   PATH: "{{ ZOAU }}/bin:{{ PYZ }}/bin:/bin:/var/bin"
   _BPXK_AUTOCVT: "ON"
