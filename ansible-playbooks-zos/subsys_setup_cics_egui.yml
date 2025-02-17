@@ -13,7 +13,7 @@
     jcl_library: IBMUSER.GIT.JCL.CNTL
     wait_time_seconds: 120
     max_rc: 0
-    cics_sip_dataset: DFH610.SYSIN(DFH$SIP1)
+    cics_sip_dataset: DFH620.SYSIN(DFH$SIP1)
     dfltuser: IBMUSER
   environment: "{{ environment_vars }}"
   tasks:
@@ -47,13 +47,20 @@
         max_rc: "{{ max_rc }}"
       register: cicscsd_result
 
+    - name: Check if DFLTUSER already exists in SIP
+      zos_find:
+        patterns: 
+          - "DFLTUSER"
+        path: "{{ cics_sip_dataset }}"
+      register: dfltuser_check
+
     - name: Configure CICS SIP
       zos_lineinfile:
         src: "{{ cics_sip_dataset }}"
         insertbefore: '^*TCPIP=YES'
         line: 'DFLTUSER={{ dfltuser }}                          ANSIBLE ADDED {{ dfltuser }}'
       register: sip_result
-      register: update_result
+      when: dfltuser_check.matched == 0
 
     - name: Display detailed execution summary
       debug:
@@ -75,6 +82,7 @@
           - CICS Configuration:
             * System Definition: {{ cicscsd_result.failed | default(false) | ternary('Failed', 'Success') }}
             * SIP Update: {{ sip_result.failed | default(false) | ternary('Failed', 'Success') }}
+            * DFLTUSER Check: {{ dfltuser_check.matched > 0 | ternary('Already exists', 'Added') }}
           
           Configuration Details:
           - JCL Library: {{ jcl_library }}
