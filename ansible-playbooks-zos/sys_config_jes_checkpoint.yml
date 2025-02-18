@@ -5,7 +5,7 @@
 # - IBM z/OS Core Collection
 #
 # Usage:
-# ansible-playbook -i inventories/inventory.yml configure_jes_checkpoint.yml
+# ansible-playbook -i inventories/inventory.yml sys_config_jes_checkpoint.yml
 ################################################################################
 
 ---
