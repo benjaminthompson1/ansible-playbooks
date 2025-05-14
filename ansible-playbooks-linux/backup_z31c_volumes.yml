@@ -1,5 +1,5 @@
 ################################################################################
-# Backup z31c volumes and keep latest 4 backups
+# Backup z31c volumes and keep latest N backups
 #
 # Requirements:
 # - Ansible 2.9+
@@ -8,7 +8,7 @@
 # Usage:
 # ansible-playbook -i inventories/inventory.yml backup_z31c_volumes.yml
 #
-# Optional variables override:
+# Optional variable overrides:
 # ansible-playbook -i inventories/inventory.yml backup_z31c_volumes.yml -e "src_dir=/custom/source dest_dir=/custom/backup"
 ################################################################################
 
@@ -16,40 +16,55 @@
 - name: z31c Volume Backup
   hosts: zPDT
   gather_facts: yes
+
   vars:
     src_dir: "/home/ibmsys1/volumes-z31c"
     dest_dir: "/home/ibmsys1/volumes-backup"
-    archive_name: "volumes-z31c-{{ ansible_date_time.date | replace('-', '') }}.tar.xz"
+    timestamp: "{{ ansible_date_time.iso8601 | regex_replace('[-:T]', '') | regex_replace('\\..*', '') }}"
+    archive_name: "volumes-z31c-{{ timestamp }}.tar.xz"
     keep_backups: 2
+
   tasks:
-    - name: Verify source directory exists
+    - name: Ensure source directory exists
       ansible.builtin.stat:
         path: "{{ src_dir }}"
       register: src_dir_stat
-      failed_when: not src_dir_stat.stat.exists
+      failed_when: not src_dir_stat.stat.isdir
+      tags: verify
 
-    - name: Create backup directory
+    - name: Create destination directory if needed
       ansible.builtin.file:
         path: "{{ dest_dir }}"
         state: directory
         mode: '0755'
+      tags: prepare
 
-    - name: Create backup archive
+    - name: Create compressed archive of z31c volumes
       ansible.builtin.command: >
-        tar -c -I 'xz --fast' -f {{ dest_dir }}/{{ archive_name }} -C {{ src_dir }} .
+        tar -c -I 'xz --fast' -f "{{ dest_dir }}/{{ archive_name }}" -C "{{ src_dir }}" .
       register: tar_result
       failed_when: tar_result.rc != 0
+      tags: backup
 
-    - name: List all backup files
+    - name: List existing backup files
       ansible.builtin.find:
         paths: "{{ dest_dir }}"
         patterns: "volumes-z31c-*.tar.xz"
         file_type: file
+        age_stamp: mtime
       register: backup_files
+      tags: cleanup
 
-    - name: Remove old backups
+    - name: Sort and remove old backups
       ansible.builtin.file:
         path: "{{ item.path }}"
         state: absent
-      loop: "{{ (backup_files.files | sort(attribute='mtime') | list | reverse)[keep_backups:] }}"
-      when: backup_files.files | length > keep_backups | int
+      loop: "{{ backup_files.files | sort(attribute='mtime') | reverse | skip(keep_backups) }}"
+      when: backup_files.files | length > keep_backups
+      tags: cleanup
+
+    - name: Display retained backup files (optional)
+      ansible.builtin.debug:
+        msg: "Retained backup: {{ item.path }}"
+      loop: "{{ backup_files.files | sort(attribute='mtime') | reverse | take(keep_backups) }}"
+      tags: report
