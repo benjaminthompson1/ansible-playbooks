@@ -59,12 +59,12 @@
       ansible.builtin.file:
         path: "{{ item.path }}"
         state: absent
-      loop: "{{ backup_files.files | sort(attribute='mtime') | reverse | skip(keep_backups) }}"
+      loop: "{{ (backup_files.files | sort(attribute='mtime') | reverse)[keep_backups:] }}"
       when: backup_files.files | length > keep_backups
       tags: cleanup
 
-    - name: Display retained backup files (optional)
+    - name: Display retained backup files
       ansible.builtin.debug:
         msg: "Retained backup: {{ item.path }}"
-      loop: "{{ backup_files.files | sort(attribute='mtime') | reverse | take(keep_backups) }}"
+      loop: "{{ (backup_files.files | sort(attribute='mtime') | reverse)[:keep_backups] }}"
       tags: report
