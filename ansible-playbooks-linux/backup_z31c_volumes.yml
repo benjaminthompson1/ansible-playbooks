@@ -14,7 +14,7 @@
 
 ---
 - name: z31c Volume Backup
-  hosts: zPDT
+  hosts: nuc
   gather_facts: yes
 
   vars:
