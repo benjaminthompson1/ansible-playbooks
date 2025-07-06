@@ -1,7 +1,7 @@
 ---
 linux_systems:
   hosts:
-    zPDT:
-      ansible_host: 192.168.1.170
+    nuc:
+      ansible_host: 192.168.1.177
       ansible_user: ibmsys1
-      ansible_ssh_private_key_file: ~/.ssh/zPDT
+      ansible_ssh_private_key_file: ~/.ssh/nuc_ed25519
