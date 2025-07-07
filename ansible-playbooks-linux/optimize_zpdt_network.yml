@@ -12,8 +12,8 @@
 ################################################################################
 
 ---
-- name: zPDT Network Optimization
-  hosts: zPDT
+- name: nuc Network Optimization
+  hosts: nuc
   vars_files:
     - su_secrets.yml  
   become: yes
