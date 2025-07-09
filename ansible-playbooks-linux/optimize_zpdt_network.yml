@@ -8,7 +8,7 @@
 #
 # Usage:
 # ansible-playbook -i inventories/inventory.yml optimize_zpdt_network.yml --ask-become-pass
-# Optional: -e "network_interface=eth0 make_persistent=true"
+# Optional: -e "network_interface=enp86s0 make_persistent=true"
 ################################################################################
 
 ---
@@ -28,9 +28,11 @@
     make_persistent: false
 
   tasks:
-    - name: Ensure ethtool is installed
+    - name: Ensure required packages are installed
       ansible.builtin.package:
-        name: ethtool
+        name:
+          - ethtool
+          - tuned
         state: present
 
     - name: Verify network interface exists
@@ -44,9 +46,36 @@
       loop: "{{ offload_options }}"
       register: disable_result
       changed_when: "'Actual changes' in disable_result.stderr"
-      failed_when: 
+      failed_when:
         - disable_result.rc != 0
         - "'Cannot change' not in disable_result.stderr"
+
+    - name: Increase NIC ring buffer sizes
+      ansible.builtin.command: "ethtool -G {{ network_interface }} rx 4096 tx 4096"
+      register: ring_buffer_result
+      changed_when: ring_buffer_result.rc == 0
+      failed_when: ring_buffer_result.rc != 0
+
+    - name: Set interrupt coalesce parameters
+      ansible.builtin.command: "ethtool -C {{ network_interface }} rx-usecs 32 tx-usecs 32"
+      register: coalesce_result
+      changed_when: coalesce_result.rc == 0
+      failed_when: coalesce_result.rc != 0
+
+    - name: Tune TCP socket buffer sizes
+      ansible.builtin.sysctl:
+        name: "{{ item.key }}"
+        value: "{{ item.value }}"
+        state: present
+      loop:
+        - { key: 'net.core.rmem_max', value: '16777216' }
+        - { key: 'net.core.wmem_max', value: '16777216' }
+        - { key: 'net.ipv4.tcp_rmem', value: '4096 87380 16777216' }
+        - { key: 'net.ipv4.tcp_wmem', value: '4096 65536 16777216' }
+        - { key: 'net.ipv4.tcp_window_scaling', value: '1' }
+
+    - name: Apply tuned profile for network throughput
+      ansible.builtin.command: "tuned-adm profile network-throughput"
 
     - name: Make changes persistent
       block:
