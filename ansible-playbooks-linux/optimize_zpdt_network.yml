@@ -56,8 +56,8 @@
       changed_when: ring_buffer_result.rc == 0
       failed_when: ring_buffer_result.rc != 0
 
-    - name: Set interrupt coalesce parameters
-      ansible.builtin.command: "ethtool -C {{ network_interface }} rx-usecs 32 tx-usecs 32"
+    - name: Set RX interrupt coalescing (IGC-compatible)
+      ansible.builtin.command: "ethtool -C {{ network_interface }} rx-usecs 32"
       register: coalesce_result
       changed_when: coalesce_result.rc == 0
       failed_when: coalesce_result.rc != 0
