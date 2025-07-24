@@ -12,27 +12,30 @@
 ################################################################################
 
 ---
-- name: nuc Network Optimization
+- name: Optimize network settings for z/PDT systems on ASUS NUC
   hosts: nuc
   become: yes
+  become_user: root
   gather_facts: yes
 
   vars:
     network_interface: enp86s0
     offload_options:
-      - rx
-      - tso
-      - gso
-      - gro
-      - lro
+      rx: false
+      tso: false
+      gso: false
+      gro: false
+      lro: false
     make_persistent: false
 
   tasks:
+
     - name: Ensure required packages are installed
       ansible.builtin.package:
         name:
           - ethtool
           - tuned
+          - NetworkManager
         state: present
 
     - name: Verify network interface exists
@@ -41,14 +44,10 @@
       failed_when: interface_check.rc != 0
       changed_when: false
 
-    - name: Disable network offload options
-      ansible.builtin.command: "ethtool -K {{ network_interface }} {{ item }} off"
-      loop: "{{ offload_options }}"
-      register: disable_result
-      changed_when: "'Actual changes' in disable_result.stderr"
-      failed_when:
-        - disable_result.rc != 0
-        - "'Cannot change' not in disable_result.stderr"
+    - name: Disable network offload options using ethtool (idempotent)
+      community.general.ethtool:
+        name: "{{ network_interface }}"
+        offload: "{{ offload_options }}"
 
     - name: Increase NIC ring buffer sizes
       ansible.builtin.command: "ethtool -G {{ network_interface }} rx 4096 tx 4096"
@@ -70,40 +69,42 @@
       loop:
         - { key: 'net.core.rmem_max', value: '16777216' }
         - { key: 'net.core.wmem_max', value: '16777216' }
+        - { key: 'net.core.optmem_max', value: '40960' }
         - { key: 'net.ipv4.tcp_rmem', value: '4096 87380 16777216' }
         - { key: 'net.ipv4.tcp_wmem', value: '4096 65536 16777216' }
         - { key: 'net.ipv4.tcp_window_scaling', value: '1' }
 
-    - name: Apply tuned profile for network throughput
-      ansible.builtin.command: "tuned-adm profile network-throughput"
-
-    - name: Make changes persistent
+    - name: Apply tuned profile for network throughput (if not already set)
       block:
-        - name: Create network scripts directory
-          ansible.builtin.file:
-            path: /etc/sysconfig/network-scripts
-            state: directory
-            mode: '0755'
+        - name: Check current tuned profile
+          ansible.builtin.command: tuned-adm active
+          register: tuned_profile
 
-        - name: Create or update ifup-local script
-          ansible.builtin.template:
-            src: ifup-local.j2
-            dest: /etc/sysconfig/network-scripts/ifup-local
-            mode: '0755'
-          vars:
-            interface: "{{ network_interface }}"
-            options: "{{ offload_options }}"
+        - name: Apply tuned profile
+          ansible.builtin.command: tuned-adm profile network-throughput
+          when: "'network-throughput' not in tuned_profile.stdout"
 
-        - name: Ensure ifup-local is executed
-          ansible.builtin.lineinfile:
-            path: /etc/sysconfig/network-scripts/ifup
-            line: "if [ -x /etc/sysconfig/network-scripts/ifup-local ]; then /etc/sysconfig/network-scripts/ifup-local ${DEVICE}; fi"
-            insertbefore: EOF
+    - name: Persist ethtool settings using nmcli
       when: make_persistent | bool
+      block:
+        - name: Ensure connection name is available
+          ansible.builtin.command: nmcli -g GENERAL.CONNECTION device show {{ network_interface }}
+          register: connection_name
+          changed_when: false
+          failed_when: connection_name.rc != 0 or connection_name.stdout == ""
 
-  handlers:
-    - name: Restart network service
-      ansible.builtin.service:
-        name: network
-        state: restarted
-      when: make_persistent | bool
+        - name: Persist ethtool offload settings via nmcli
+          community.general.nmcli:
+            conn_name: "{{ connection_name.stdout.strip() }}"
+            type: ethernet
+            ethtool:
+              feature:
+                rx: "off"
+                tso: "off"
+                gso: "off"
+                gro: "off"
+                lro: "off"
+
+        - name: Reload NetworkManager connection
+          ansible.builtin.command: "nmcli connection up '{{ connection_name.stdout.strip() }}'"
+          changed_when: false
