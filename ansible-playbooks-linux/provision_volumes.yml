@@ -25,6 +25,7 @@
       - c3zcx2
     volumes_3390_9:
       - work0a
+      - work0b
 
   tasks:
     - name: Ensure destination directory exists
