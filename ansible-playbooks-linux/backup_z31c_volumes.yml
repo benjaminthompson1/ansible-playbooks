@@ -22,7 +22,7 @@
     dest_dir: "/home/ibmsys1/volumes-backup"
     timestamp: "{{ ansible_date_time.iso8601 | regex_replace('[-:T]', '') | regex_replace('\\..*', '') }}"
     archive_name: "volumes-z31c-{{ timestamp }}.tar.xz"
-    keep_backups: 2
+    keep_backups: 4
 
   tasks:
     - name: Ensure source directory exists
