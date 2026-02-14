@@ -2,20 +2,20 @@
 - name: z31c Volume Backup
   hosts: nuc
   gather_facts: yes
-
   vars:
     src_dir: "/home/ibmsys1/volumes-z31c"
     dest_dir: "/home/ibmsys1/volumes-backup"
     timestamp: "{{ ansible_date_time.iso8601 | regex_replace('[-:T]', '') | regex_replace('\\..*', '') }}"
     archive_name: "volumes-z31c-{{ timestamp }}.tar.xz"
     keep_backups: 4
+    backup_timeout: 7200 # 2 hours in seconds
 
   tasks:
     - name: Ensure source directory exists
       ansible.builtin.stat:
         path: "{{ src_dir }}"
       register: src_dir_stat
-      failed_when: not src_dir_stat.stat.isdir
+      failed_when: not src_dir_stat.stat.exists or not src_dir_stat.stat.isdir
       tags: verify
 
     - name: Create destination directory if needed
@@ -25,13 +25,22 @@
         mode: "0755"
       tags: prepare
 
+    - name: Check if backup already exists for this timestamp
+      ansible.builtin.stat:
+        path: "{{ dest_dir }}/{{ archive_name }}"
+      register: existing_backup
+      tags: backup
+
     - name: Create compressed archive of z31c volumes (async)
       ansible.builtin.shell: >
-        tar -c -I 'xz -T0 --ultra-fast' --checkpoint=10000 -f "{{ dest_dir }}/{{ archive_name }}" -C "{{ src_dir }}" .
-      async: 0
+        tar -c -I 'xz -T0 --ultra-fast'
+        --checkpoint=10000
+        -f "{{ dest_dir }}/{{ archive_name }}"
+        -C "{{ src_dir }}" .
+      async: "{{ backup_timeout }}"
       poll: 0
       register: tar_job
-      creates: "{{ dest_dir }}/{{ archive_name }}"
+      when: not existing_backup.stat.exists
       tags: backup
 
     - name: Wait for tar job to finish
@@ -39,8 +48,32 @@
         jid: "{{ tar_job.ansible_job_id }}"
       register: tar_status
       until: tar_status.finished
-      retries: 30
+      retries: "{{ (backup_timeout / 10) | int }}"
       delay: 10
+      failed_when: tar_status.failed | default(false)
+      when: not existing_backup.stat.exists
+      tags: backup
+
+    - name: Verify archive integrity
+      ansible.builtin.shell: "xz -t {{ dest_dir }}/{{ archive_name }}"
+      register: verify_result
+      changed_when: false
+      when: not existing_backup.stat.exists
+      tags: backup
+
+    - name: Get archive size
+      ansible.builtin.stat:
+        path: "{{ dest_dir }}/{{ archive_name }}"
+      register: archive_stat
+      tags: backup
+
+    - name: Display backup information
+      ansible.builtin.debug:
+        msg: |
+          Backup completed successfully
+          Archive: {{ archive_name }}
+          Size: {{ (archive_stat.stat.size / 1024 / 1024) | round(2) }} MB
+      when: not existing_backup.stat.exists
       tags: backup
 
     - name: List existing backup files
@@ -56,12 +89,12 @@
       ansible.builtin.file:
         path: "{{ item.path }}"
         state: absent
-      loop: "{{ (backup_files.files | sort(attribute='mtime') | reverse)[keep_backups:] }}"
+      loop: "{{ (backup_files.files | sort(attribute='mtime', reverse=true))[keep_backups:] }}"
       when: backup_files.files | length > keep_backups
       tags: cleanup
 
     - name: Display retained backup files
       ansible.builtin.debug:
-        msg: "Retained backup: {{ item.path }}"
-      loop: "{{ (backup_files.files | sort(attribute='mtime') | reverse)[:keep_backups] }}"
+        msg: "Retained: {{ item.path | basename }} ({{ (item.size / 1024 / 1024) | round(2) }} MB)"
+      loop: "{{ (backup_files.files | sort(attribute='mtime', reverse=true))[:keep_backups] }}"
       tags: report
