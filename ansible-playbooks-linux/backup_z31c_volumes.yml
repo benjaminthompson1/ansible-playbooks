@@ -33,7 +33,7 @@
 
     - name: Create compressed archive of z31c volumes (async)
       ansible.builtin.shell: >
-        tar -c -I 'xz -T0 --ultra-fast'
+        tar -c -I 'xz -T0 -1'
         --checkpoint=10000
         -f "{{ dest_dir }}/{{ archive_name }}"
         -C "{{ src_dir }}" .
