@@ -1,3 +1,11 @@
+ansible-playbooks\README.md
+</file_path>
+
+<edit_description>
+Rewrite README.md to reflect backup playbook changes
+</edit_description>
+
+```
 # 📘 Ansible Playbook Repository
 
 This repository contains a collection of **Ansible playbooks** designed for managing and automating tasks on both **z/OS** and **Linux** systems.
@@ -16,9 +24,10 @@ ansible-playbooks/
 
 ## 🔧 Requirements
 
-- Ansible 2.9 or higher
-- Python 3.6 or higher (for z/OS)
+- Ansible 2.9 or higher
+- Python 3.6 or higher (for z/OS)
 - SSH access to the target hosts
+- `xz` utility (required by the `backup_z31c_volumes.yml` playbook)
 
 ## 🚀 Getting Started
 
@@ -57,9 +66,23 @@ ansible-playbooks/
 
 ### Linux Playbooks
 
-- **`backup_z31c_volumes.yml`** – Backs up z31c volumes and keeps the latest N backups.
-- **`optimize_zpdt_network.yml`** – Optimizes the zpd network.
+- **`backup_z31c_volumes.yml`** – Backs up z31c volumes as a full backup, storing the resulting `.tar.xz` file with a timestamp.  
+  The playbook now uses an **async tar job** that runs XZ with multi‑threading (`-T0 --ultra-fast`) and a progress checkpoint (`--checkpoint=10000`).  
+  It keeps the most recent `N` backups (default 4) and deletes older archives automatically.
+
+- **`optimize_zpdt_network.yml`** – Optimizes the zpdt network.
 - **`provision_volumes.yml`** – Provisions volumes.
+
+## ⚙️ Backup Playbook Highlights
+
+- **Full backup**: No incremental logic – a fresh archive is created on each run.
+- **Efficient**: Multi‑threaded XZ (`-T0 --ultra-fast`) plus async execution reduces CPU contention and keeps the control node responsive.
+- **Retention**: Keeps only the latest `keep_backups` archives, freeing disk space automatically.
+- **Easy restore**: The `.tar.xz` can be extracted on any Linux host with a single command:
+  
+  ```sh
+  tar -xvf volumes-z31c-*.tar.xz -C /desired/restore/path
+  ```
 
 ## 🤝 Contributing
 

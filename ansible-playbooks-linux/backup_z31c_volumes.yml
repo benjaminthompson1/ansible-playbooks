@@ -1,17 +1,3 @@
-################################################################################
-# Backup z31c volumes and keep latest N backups
-#
-# Requirements:
-# - Ansible 2.9+
-# - xz utility
-#
-# Usage:
-# ansible-playbook -i inventories/inventory.yml backup_z31c_volumes.yml
-#
-# Optional variable overrides:
-# ansible-playbook -i inventories/inventory.yml backup_z31c_volumes.yml -e "src_dir=/custom/source dest_dir=/custom/backup"
-################################################################################
-
 ---
 - name: z31c Volume Backup
   hosts: nuc
@@ -36,14 +22,25 @@
       ansible.builtin.file:
         path: "{{ dest_dir }}"
         state: directory
-        mode: '0755'
+        mode: "0755"
       tags: prepare
 
-    - name: Create compressed archive of z31c volumes
-      ansible.builtin.command: >
-        tar -c -I 'xz --fast' -f "{{ dest_dir }}/{{ archive_name }}" -C "{{ src_dir }}" .
-      register: tar_result
-      failed_when: tar_result.rc != 0
+    - name: Create compressed archive of z31c volumes (async)
+      ansible.builtin.shell: >
+        tar -c -I 'xz -T0 --ultra-fast' --checkpoint=10000 -f "{{ dest_dir }}/{{ archive_name }}" -C "{{ src_dir }}" .
+      async: 0
+      poll: 0
+      register: tar_job
+      creates: "{{ dest_dir }}/{{ archive_name }}"
+      tags: backup
+
+    - name: Wait for tar job to finish
+      ansible.builtin.async_status:
+        jid: "{{ tar_job.ansible_job_id }}"
+      register: tar_status
+      until: tar_status.finished
+      retries: 30
+      delay: 10
       tags: backup
 
     - name: List existing backup files
