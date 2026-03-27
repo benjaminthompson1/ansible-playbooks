@@ -1,20 +1,14 @@
 ################################################################################
-# Playbook: z/OS Ping
-# Purpose: Tests connectivity to z/OS system
+# Tests connectivity to a z/OS system via zos_ping
 #
-# Examples:
-#   1. Run the playbook with default settings:
-#      ansible-playbook -i inventories/inventory.yml zos_ping.yml
+# Requirements:
+# - ibm.ibm_zos_core collection
 #
-#   2. Run the playbook with verbose output:
-#      ansible-playbook -i inventories/inventory.yml zos_ping.yml -v
-#
-#   3. Run the playbook with boolean debug enabled:
-#      ansible-playbook -i inventories/inventory.yml zos_ping.yml -e "boolean_debug=true"
-#
-#   4. Run the playbook with enable_debug set to yes:
-#      ansible-playbook -i inventories/inventory.yml zos_ping.yml -e "enable_debug=yes"
+# Usage:
+#   ansible-playbook -i inventories/inventory.yml zos_ping.yml
+#   Optional: -v (verbose) | -e "boolean_debug=true"
 ################################################################################
+
 ---
 - name: Enhanced z/OS Ping
   hosts: z31c_s0w1

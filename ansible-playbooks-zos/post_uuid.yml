@@ -1,6 +1,12 @@
 ################################################################################
-# Playbook: POST z/OS UUID via z/OSMF
-# Usage: ansible-playbook -i inventories/inventory.yml post_uuid.yml
+# POSTs z/OS system UUID via z/OSMF
+#
+# Requirements:
+# - ibm.ibm_zosmf collection
+# - z/OSMF accessible on port 10443
+#
+# Usage:
+#   ansible-playbook -i inventories/inventory.yml post_uuid.yml
 ################################################################################
 
 ---

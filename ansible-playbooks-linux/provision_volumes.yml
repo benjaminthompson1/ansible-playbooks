@@ -1,13 +1,12 @@
 ################################################################################
-# Creates volumes for z/PDT systems
+# Creates z31c CKD volumes for z/PDT systems
 #
 # Requirements:
-# - Ansible 2.9+
-# - alcckd command available
+# - alcckd command available on target host
 #
 # Usage:
-# ansible-playbook -i inventories/inventory.yml provision_volumes.yml
-# Optional: -e "dest_dir=/custom/volume/path"
+#   ansible-playbook -i inventories/inventory.yml provision_volumes.yml
+#   Optional: -e "dest_dir=/custom/volume/path"
 ################################################################################
 
 ---

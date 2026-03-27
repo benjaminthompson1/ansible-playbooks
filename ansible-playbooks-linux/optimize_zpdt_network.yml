@@ -2,13 +2,12 @@
 # Optimizes network settings for z/PDT systems
 #
 # Requirements:
-# - Ansible 2.9+
-# - Root access
-# - RHEL system
+# - Root access (become)
+# - RHEL system with ethtool and tuned
 #
 # Usage:
-# ansible-playbook -i inventories/inventory.yml optimize_zpdt_network.yml --ask-become-pass
-# Optional: -e "network_interface=enp86s0 make_persistent=true"
+#   ansible-playbook -i inventories/inventory.yml optimize_zpdt_network.yml --ask-become-pass
+#   Optional: -e "network_interface=enp86s0 make_persistent=true"
 ################################################################################
 
 ---

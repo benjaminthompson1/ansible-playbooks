@@ -1,3 +1,15 @@
+################################################################################
+# Backs up z31c volumes to a compressed archive with rotation
+#
+# Requirements:
+# - xz compression utility on target host
+# - ~2hr runtime for large volume sets
+#
+# Usage:
+#   ansible-playbook -i inventories/inventory.yml backup_z31c_volumes.yml
+#   Optional: -e "keep_backups=5"
+################################################################################
+
 ---
 - name: z31c Volume Backup
   hosts: nuc
