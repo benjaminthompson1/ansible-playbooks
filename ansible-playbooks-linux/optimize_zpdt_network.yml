@@ -49,6 +49,13 @@
       changed_when: false
       ignore_errors: true
 
+    - name: Log offload results
+      ansible.builtin.debug:
+        msg: "{{ item.item }}: {{ 'OK' if item.rc == 0 else 'SKIPPED (not supported) - ' + item.stderr | default('') }}"
+      loop: "{{ ethtool_offload_result.results }}"
+      loop_control:
+        label: "{{ item.item }}"
+
     - name: Increase NIC ring buffer sizes
       ansible.builtin.command: "ethtool -G {{ network_interface }} rx 4096 tx 4096"
       register: ring_buffer_result

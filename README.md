@@ -1,35 +1,52 @@
-ansible-playbooks\README.md
-</file_path>
+# Ansible Playbooks
 
-<edit_description>
-Rewrite README.md to reflect backup playbook changes
-</edit_description>
+A collection of Ansible playbooks for managing and automating tasks on IBM z/PDT (z Personal Development Tool) and associated Linux host systems.
 
-```
-# 📘 Ansible Playbook Repository
+## Directory Structure
 
-This repository contains a collection of **Ansible playbooks** designed for managing and automating tasks on both **z/OS** and **Linux** systems.
-
-## 📁 Directory Structure
 ```
 ansible-playbooks/
-├── ansible-playbooks-zos/
-│   ├── post_uuid.yml
-│   └── zos_ping.yml
-└── ansible-playbooks-linux/
-    ├── backup_z31c_volumes.yml
-    ├── optimize_zpdt_network.yml
-    └── provision_volumes.yml
+├── ansible-playbooks-linux/
+│   ├── inventories/
+│   │   └── inventory.yml
+│   ├── backup_z31c_volumes.yml
+│   ├── optimize_zpdt_network.yml
+│   └── provision_volumes.yml
+└── ansible-playbooks-zos/
+    ├── inventories/
+    │   ├── inventory.yml
+    │   └── group_vars/
+    │       └── all.yml
+    ├── post_uuid.yml
+    └── zos_ping.yml
 ```
 
-## 🔧 Requirements
+## Requirements
 
-- Ansible 2.9 or higher
-- Python 3.6 or higher (for z/OS)
-- SSH access to the target hosts
-- `xz` utility (required by the `backup_z31c_volumes.yml` playbook)
+### General
+- Ansible 2.9+
+- SSH access to target hosts
 
-## 🚀 Getting Started
+### Linux Playbooks
+- `xz` utility (required by `backup_z31c_volumes.yml`)
+- `ethtool` and `tuned` packages (installed automatically by `optimize_zpdt_network.yml`)
+- `alcckd` utility — IBM z/PDT disk creation tool (required by `provision_volumes.yml`)
+
+### z/OS Playbooks
+- Ansible collections:
+  - `ibm.ibm_zos_core`
+  - `ibm.ibm_zosmf`
+- Python 3.12 at `/usr/lpp/IBM/cyp/v3r12/pyz` on the z/OS target
+- ZOAU (z/OS Ansible Utility) at `/usr/lpp/IBM/zoautil`
+- z/OSMF running on port 10443 (required by `post_uuid.yml`)
+
+Install required collections:
+
+```sh
+ansible-galaxy collection install ibm.ibm_zos_core ibm.ibm_zosmf
+```
+
+## Getting Started
 
 1. Clone the repository:
 
@@ -37,53 +54,142 @@ ansible-playbooks/
     git clone https://github.com/yourusername/ansible-playbooks.git
     ```
 
-2. Change to the appropriate playbook directory (either `ansible-playbooks-zos` or `ansible-playbooks-linux`) depending on the target system:
+2. Update the relevant `inventories/inventory.yml` with your target host details.
+
+3. Run the desired playbook:
 
     ```sh
-    cd ansible-playbooks/ansible-playbooks-zos
+    ansible-playbook -i inventories/inventory.yml <playbook>.yml
     ```
 
-    or
+---
 
-    ```sh
-    cd ansible-playbooks/ansible-playbooks-linux
-    ```
+## Linux Playbooks
 
-3. Modify the `inventories/inventory.yml` file to include the target hosts for your playbooks.
+### backup_z31c_volumes.yml
 
-4. Run the desired playbook:
+Creates a full compressed backup of z31c volumes using async tar with multi-threaded XZ compression. Verifies archive integrity after creation and enforces a configurable retention policy.
 
-    ```sh
-    ansible-playbook -i inventories/inventory.yml playbook.yml
-    ```
+**Target host:** `nuc`
 
-## 📚 Playbook Descriptions
+**Key behaviour:**
+- Skips creation if an archive already exists for the current timestamp
+- Uses `xz -T0 -1` (all cores, fast compression) with `--checkpoint=10000` progress markers
+- Verifies the archive with `xz -t` before reporting success
+- Retains the most recent `keep_backups` archives (default: 4) and deletes older ones
 
-### z/OS Playbooks
+**Variables:**
 
-- **`post_uuid.yml`** – POSTs a z/OS UUID via z/OSMF.
-- **`zos_ping.yml`** – Pings a z/OS system to test network connectivity.
+| Variable | Default | Description |
+|----------|---------|-------------|
+| `src_dir` | `/home/ibmsys1/volumes-z31c` | Directory to back up |
+| `dest_dir` | `/home/ibmsys1/volumes-backup` | Backup destination |
+| `keep_backups` | `4` | Number of archives to retain |
+| `backup_timeout` | `7200` | Max seconds to wait for tar (2 hours) |
 
-### Linux Playbooks
+**Usage:**
 
-- **`backup_z31c_volumes.yml`** – Backs up z31c volumes as a full backup, storing the resulting `.tar.xz` file with a timestamp.  
-  The playbook now uses an **async tar job** that runs XZ with multi‑threading (`-T0 --ultra-fast`) and a progress checkpoint (`--checkpoint=10000`).  
-  It keeps the most recent `N` backups (default 4) and deletes older archives automatically.
+```sh
+ansible-playbook -i inventories/inventory.yml backup_z31c_volumes.yml
+```
 
-- **`optimize_zpdt_network.yml`** – Optimizes the zpdt network.
-- **`provision_volumes.yml`** – Provisions volumes.
+**Restore:**
 
-## ⚙️ Backup Playbook Highlights
+```sh
+tar -xvf volumes-z31c-<timestamp>.tar.xz -C /desired/restore/path
+```
 
-- **Full backup**: No incremental logic – a fresh archive is created on each run.
-- **Efficient**: Multi‑threaded XZ (`-T0 --ultra-fast`) plus async execution reduces CPU contention and keeps the control node responsive.
-- **Retention**: Keeps only the latest `keep_backups` archives, freeing disk space automatically.
-- **Easy restore**: The `.tar.xz` can be extracted on any Linux host with a single command:
-  
-  ```sh
-  tar -xvf volumes-z31c-*.tar.xz -C /desired/restore/path
-  ```
+**Tags:** `verify`, `prepare`, `backup`, `cleanup`, `report`
 
-## 🤝 Contributing
+---
 
-Contributions are welcome! Please submit pull requests with your changes, and make sure to update the documentation accordingly.
+### optimize_zpdt_network.yml
+
+Tunes network settings on the z/PDT host for maximum throughput. Disables NIC offloads, increases ring buffer sizes, sets RX interrupt coalescing, and applies TCP socket buffer tuning via sysctl.
+
+**Target host:** `nuc`
+**Requires:** root (`become: yes`)
+
+**Key behaviour:**
+- Installs `ethtool` and `tuned` if not present
+- Disables offloads: `rx`, `tso`, `gso`, `gro`, `lro` — unsupported offloads are skipped and logged rather than failing the play
+- Sets NIC ring buffers to 4096 (RX and TX)
+- Sets RX interrupt coalescing to 32 µs (IGC-compatible)
+- Applies `network-throughput` tuned profile
+
+**Variables:**
+
+| Variable | Default | Description |
+|----------|---------|-------------|
+| `network_interface` | `enp86s0` | NIC to tune |
+| `make_persistent` | `false` | Persist settings across reboots |
+
+**Usage:**
+
+```sh
+ansible-playbook -i inventories/inventory.yml optimize_zpdt_network.yml --ask-become-pass
+# Override interface:
+ansible-playbook -i inventories/inventory.yml optimize_zpdt_network.yml -e "network_interface=eth0"
+```
+
+---
+
+### provision_volumes.yml
+
+Creates z/PDT CKD disk volumes using the `alcckd` utility. Provisions a set of 3390-54 and 3390-9 volumes and verifies they exist after creation.
+
+**Target host:** `nuc`
+
+**Volumes created:**
+
+| Type | Volumes |
+|------|---------|
+| 3390-54 | `c3usr2`, `c3usr3`, `c3usr4`, `c3usr5`, `c3zcx2` |
+| 3390-9 | `work0a`, `work0b` |
+
+**Variables:**
+
+| Variable | Default | Description |
+|----------|---------|-------------|
+| `dest_dir` | `/home/ibmsys1/volumes-z31c` | Directory to create volumes in |
+
+**Usage:**
+
+```sh
+ansible-playbook -i inventories/inventory.yml provision_volumes.yml
+# Custom destination:
+ansible-playbook -i inventories/inventory.yml provision_volumes.yml -e "dest_dir=/custom/path"
+```
+
+---
+
+## z/OS Playbooks
+
+### zos_ping.yml
+
+Tests connectivity to a z/OS system using the `ibm.ibm_zos_core.zos_ping` module and asserts a successful `pong` response.
+
+**Target host:** `z31c_s0w1`
+
+**Usage:**
+
+```sh
+ansible-playbook -i inventories/inventory.yml zos_ping.yml
+# Enable debug output:
+ansible-playbook -i inventories/inventory.yml zos_ping.yml -e "boolean_debug=true"
+```
+
+---
+
+### post_uuid.yml
+
+POSTs z/OS UUID information to a z/OSMF endpoint using the `ibm.ibm_zosmf` collection. Verifies z/OSMF connectivity before executing the `zmf_swmgmt_zos_system_uuid` role.
+
+**Target host:** `z31a_s0w1`
+**Requires:** `zmf_swmgmt_zos_system_uuid` role from the `ibm.ibm_zosmf` collection
+
+**Usage:**
+
+```sh
+ansible-playbook -i inventories/inventory.yml post_uuid.yml
+```

@@ -18,6 +18,13 @@
       failed_when: not src_dir_stat.stat.exists or not src_dir_stat.stat.isdir
       tags: verify
 
+    - name: Verify xz is available
+      ansible.builtin.command: xz --version
+      register: xz_check
+      changed_when: false
+      failed_when: xz_check.rc != 0
+      tags: verify
+
     - name: Create destination directory if needed
       ansible.builtin.file:
         path: "{{ dest_dir }}"

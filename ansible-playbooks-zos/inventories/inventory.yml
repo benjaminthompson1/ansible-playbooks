@@ -5,4 +5,4 @@ zsystems:
       ansible_host: 10.1.1.2
       ansible_user: ibmuser
       ansible_port: 65522
-      ansible_password: sys1
+      ansible_password: spider

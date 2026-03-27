@@ -14,7 +14,7 @@
     zmf_host: "{{ ansible_host | default('s0w1.dal-ebis.ihost.com') }}"
     zmf_port: 10443
     zmf_user: IBMUSER
-    zmf_password: sys1
+    zmf_password: spider
 
   pre_tasks:
     - name: Verify z/OSMF connectivity

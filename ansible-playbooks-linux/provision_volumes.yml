@@ -12,7 +12,7 @@
 
 ---
 - name: zPDT Volume Provisioning
-  hosts: zPDT
+  hosts: nuc
   gather_facts: yes
 
   vars:
