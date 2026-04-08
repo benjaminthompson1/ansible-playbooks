@@ -15,13 +15,13 @@
   gather_facts: yes
 
   vars:
-    dest_dir: "/home/ibmsys1/volumes-z31c"
+    dest_dir: "/home/ibmsys1/volumes-z32a"
     volumes_3390_54:
-      - c3usr2
-      - c3usr3
-      - c3usr4
-      - c3usr5
-      - c3zcx2
+      - a3usr2
+      - a3usr3
+      - a3usr4
+      - a3usr5
+      - a3zcx2
     volumes_3390_9:
       - work0a
       - work0b
