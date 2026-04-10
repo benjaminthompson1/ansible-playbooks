@@ -1,5 +1,5 @@
 ################################################################################
-# Backs up z31c volumes to a compressed archive with rotation
+# Backs up z32a volumes to a compressed archive with rotation
 #
 # Requirements:
 # - xz compression utility on target host

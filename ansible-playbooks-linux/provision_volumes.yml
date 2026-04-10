@@ -1,5 +1,5 @@
 ################################################################################
-# Creates z31c CKD volumes for z/PDT systems
+# Creates z32a CKD volumes for zADE systems
 #
 # Requirements:
 # - alcckd command available on target host
