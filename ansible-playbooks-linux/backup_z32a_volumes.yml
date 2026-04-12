@@ -6,7 +6,7 @@
 # - ~2hr runtime for large volume sets
 #
 # Usage:
-#   ansible-playbook -i inventories/inventory.yml backup_z31c_volumes.yml
+#   ansible-playbook -i inventories/inventory.yml backup_z32a_volumes.yml
 #   Optional: -e "keep_backups=5"
 ################################################################################
 
