@@ -11,14 +11,14 @@
 ################################################################################
 
 ---
-- name: z31c Volume Backup
+- name: z32a Volume Backup
   hosts: nuc
   gather_facts: yes
   vars:
     src_dir: "/home/ibmsys1/volumes-z32a"
     dest_dir: "/home/ibmsys1/volumes-backup"
     timestamp: "{{ ansible_date_time.iso8601 | regex_replace('[-:T]', '') | regex_replace('\\..*', '') }}"
-    archive_name: "volumes-z31c-{{ timestamp }}.tar.xz"
+    archive_name: "volumes-z32a-{{ timestamp }}.tar.xz"
     keep_backups: 4
     backup_timeout: 7200 # 2 hours in seconds
 
@@ -50,7 +50,7 @@
       register: existing_backup
       tags: backup
 
-    - name: Create compressed archive of z31c volumes (async)
+    - name: Create compressed archive of z32a volumes (async)
       ansible.builtin.shell: >
         tar -c -I 'xz -T0 -1'
         --checkpoint=10000
@@ -98,7 +98,7 @@
     - name: List existing backup files
       ansible.builtin.find:
         paths: "{{ dest_dir }}"
-        patterns: "volumes-z31c-*.tar.xz"
+        patterns: "volumes-z32a-*.tar.xz"
         file_type: file
         age_stamp: mtime
       register: backup_files
