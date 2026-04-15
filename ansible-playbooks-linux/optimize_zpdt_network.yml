@@ -18,6 +18,9 @@
 
   vars:
     network_interface: enp86s0
+    # rx disables RX checksum offload (not the RX path itself); this is
+    # intentional — zPDT's emulated NIC does not handle hardware checksum
+    # offload correctly, so we force it to software.
     offload_options:
       - rx
       - tso
@@ -41,7 +44,7 @@
       failed_when: interface_check.rc != 0
       changed_when: false
 
-    - name: Disable network offload options (command-based fallback)
+    - name: Disable network offload options
       ansible.builtin.command: "ethtool -K {{ network_interface }} {{ item }} off"
       loop: "{{ offload_options }}"
       register: ethtool_offload_result
@@ -50,7 +53,7 @@
 
     - name: Log offload results
       ansible.builtin.debug:
-        msg: "{{ item.item }}: {{ 'OK' if item.rc == 0 else 'SKIPPED (not supported) - ' + item.stderr | default('') }}"
+        msg: "{{ item.item }}: {{ 'OK' if item.rc == 0 else 'SKIPPED (not supported) - ' + (item.stderr | default('')) }}"
       loop: "{{ ethtool_offload_result.results }}"
       loop_control:
         label: "{{ item.item }}"
@@ -58,34 +61,67 @@
     - name: Increase NIC ring buffer sizes
       ansible.builtin.command: "ethtool -G {{ network_interface }} rx 4096 tx 4096"
       register: ring_buffer_result
-      changed_when: ring_buffer_result.rc == 0
-      failed_when: ring_buffer_result.rc != 0
+      # ethtool exits 0 whether or not values changed; report honestly
+      changed_when: false
+      failed_when: false
+      ignore_errors: true
 
-    - name: Set RX interrupt coalescing (IGC-compatible)
+    - name: Warn if ring buffer resize failed
+      ansible.builtin.debug:
+        msg: "WARNING: Could not set ring buffer sizes (rc={{ ring_buffer_result.rc }}): {{ ring_buffer_result.stderr | default('no error detail') }}"
+      when: ring_buffer_result.rc != 0
+
+    - name: Set RX interrupt coalescing
       ansible.builtin.command: "ethtool -C {{ network_interface }} rx-usecs 32"
       register: coalesce_result
-      changed_when: coalesce_result.rc == 0
-      failed_when: coalesce_result.rc != 0
+      changed_when: false
+      failed_when: false
+      ignore_errors: true
 
-    - name: Tune TCP socket buffer sizes
+    - name: Warn if coalescing config failed
+      ansible.builtin.debug:
+        msg: "WARNING: Could not set RX coalescing (rc={{ coalesce_result.rc }}): {{ coalesce_result.stderr | default('no error detail') }}"
+      when: coalesce_result.rc != 0
+
+    - name: Pin NIC IRQs to isolated CPUs
+      block:
+        - name: Get IRQ numbers for network interface
+          ansible.builtin.shell: |
+            grep "{{ network_interface }}" /proc/interrupts | awk -F: '{print $1}' | tr -d ' '
+          register: nic_irqs
+          changed_when: false
+
+        - name: Set IRQ affinity (CPU 2-3, away from zPDT engine threads)
+          ansible.builtin.shell: |
+            echo 0xc > /proc/irq/{{ item }}/smp_affinity
+          loop: "{{ nic_irqs.stdout_lines }}"
+          when: nic_irqs.stdout_lines | length > 0
+          changed_when: false
+          # Adjust the mask to match your NUC's core layout.
+          # 0xc = CPUs 2 and 3. Leave CPUs 0-1 for zPDT engine.
+
+    - name: Tune TCP/IP socket and backlog settings
       ansible.builtin.sysctl:
         name: "{{ item.key }}"
         value: "{{ item.value }}"
         state: present
       loop:
-        - { key: 'net.core.rmem_max', value: '16777216' }
-        - { key: 'net.core.wmem_max', value: '16777216' }
-        - { key: 'net.core.optmem_max', value: '40960' }
-        - { key: 'net.ipv4.tcp_rmem', value: '4096 87380 16777216' }
-        - { key: 'net.ipv4.tcp_wmem', value: '4096 65536 16777216' }
-        - { key: 'net.ipv4.tcp_window_scaling', value: '1' }
+        - { key: 'net.core.rmem_max',            value: '16777216' }
+        - { key: 'net.core.wmem_max',            value: '16777216' }
+        - { key: 'net.core.optmem_max',          value: '40960' }
+        - { key: 'net.core.netdev_max_backlog',  value: '5000' }
+        - { key: 'net.ipv4.tcp_rmem',            value: '4096 87380 16777216' }
+        - { key: 'net.ipv4.tcp_wmem',            value: '4096 65536 16777216' }
+        - { key: 'net.ipv4.tcp_window_scaling',  value: '1' }
 
     - name: Apply tuned profile for network throughput
       block:
         - name: Get current tuned profile
           ansible.builtin.command: tuned-adm active
           register: tuned_profile
+          changed_when: false
 
         - name: Apply tuned profile if not already active
           ansible.builtin.command: tuned-adm profile network-throughput
           when: "'network-throughput' not in tuned_profile.stdout"
+          changed_when: "'network-throughput' not in tuned_profile.stdout"
