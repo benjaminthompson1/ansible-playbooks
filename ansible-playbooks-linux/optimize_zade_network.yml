@@ -6,12 +6,12 @@
 # - RHEL system with ethtool and tuned
 #
 # Usage:
-#   ansible-playbook -i inventories/inventory.yml optimize_zpdt_network.yml --ask-become-pass
+#   ansible-playbook -i inventories/inventory.yml optimize_zade_network.yml --ask-become-pass
 #   Optional: -e "network_interface=enp86s0 make_persistent=true"
 ################################################################################
 
 ---
-- name: Optimize network settings for z/PDT systems on ASUS NUC
+- name: Optimize network settings for zADE systems on ASUS NUC
   hosts: nuc
   become: yes
   gather_facts: yes
@@ -19,7 +19,7 @@
   vars:
     network_interface: enp86s0
     # rx disables RX checksum offload (not the RX path itself); this is
-    # intentional — zPDT's emulated NIC does not handle hardware checksum
+    # intentional — zADE's emulated NIC does not handle hardware checksum
     # offload correctly, so we force it to software.
     offload_options:
       - rx
@@ -91,14 +91,21 @@
           register: nic_irqs
           changed_when: false
 
-        - name: Set IRQ affinity (CPU 2-3, away from zPDT engine threads)
+        - name: Set IRQ affinity (CPU 2-3, away from zADE engine threads)
           ansible.builtin.shell: |
-            echo 0xc > /proc/irq/{{ item }}/smp_affinity
+            echo {{ (idx % 2) + 2 }} > /proc/irq/{{ item }}/smp_affinity_list
           loop: "{{ nic_irqs.stdout_lines }}"
+          loop_control:
+            index_var: idx
           when: nic_irqs.stdout_lines | length > 0
           changed_when: false
-          # Adjust the mask to match your NUC's core layout.
-          # 0xc = CPUs 2 and 3. Leave CPUs 0-1 for zPDT engine.
+          ignore_errors: true
+          # Uses smp_affinity_list (decimal CPU number) rather than the hex
+          # bitmask in smp_affinity. MSI-X IRQs on the IGC driver are
+          # single-CPU constrained, so a multi-CPU bitmask (e.g. 0xc) will
+          # be rejected with EINVAL. Queues are distributed round-robin
+          # across CPUs 2 and 3 — adjust the range to match your NUC's
+          # layout. Leave CPUs 0-1 free for zADE engine threads.
 
     - name: Tune TCP/IP socket and backlog settings
       ansible.builtin.sysctl:
