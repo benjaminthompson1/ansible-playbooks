@@ -43,4 +43,4 @@
   tasks:
     - include_role:
         name: zmf_swmgmt_zos_system_uuid
-      when: zmf_check is success
+      when: zmf_check is succeeded

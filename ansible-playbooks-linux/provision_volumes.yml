@@ -10,7 +10,7 @@
 ################################################################################
 
 ---
-- name: zPDT Volume Provisioning
+- name: zADE Volume Provisioning
   hosts: nuc
   gather_facts: yes
 
@@ -35,21 +35,26 @@
 
     - name: Create 3390-54 volumes
       ansible.builtin.command: "alcckd {{ dest_dir }}/{{ item }} -d3390-54"
+      args:
+        creates: "{{ dest_dir }}/{{ item }}"
       loop: "{{ volumes_3390_54 }}"
-      register: create_3390_54_result
-      failed_when: create_3390_54_result.rc != 0
-      changed_when: create_3390_54_result.rc == 0
 
     - name: Create 3390-9 volumes
       ansible.builtin.command: "alcckd {{ dest_dir }}/{{ item }} -d3390-9"
+      args:
+        creates: "{{ dest_dir }}/{{ item }}"
       loop: "{{ volumes_3390_9 }}"
-      register: create_3390_9_result
-      failed_when: create_3390_9_result.rc != 0
-      changed_when: create_3390_9_result.rc == 0
 
     - name: Verify volume creation
       ansible.builtin.stat:
         path: "{{ dest_dir }}/{{ item }}"
       loop: "{{ volumes_3390_54 + volumes_3390_9 }}"
       register: volume_check
-      failed_when: not volume_check.stat.exists
+
+    - name: Assert all volumes exist
+      ansible.builtin.assert:
+        that: item.stat.exists
+        fail_msg: "Volume {{ item.item }} was not created at {{ dest_dir }}/{{ item.item }}"
+      loop: "{{ volume_check.results }}"
+      loop_control:
+        label: "{{ item.item }}"

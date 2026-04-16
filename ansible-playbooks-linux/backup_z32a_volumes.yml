@@ -112,8 +112,19 @@
       when: backup_files.files | length > keep_backups
       tags: cleanup
 
+    - name: List retained backup files
+      ansible.builtin.find:
+        paths: "{{ dest_dir }}"
+        patterns: "volumes-z32a-*.tar.xz"
+        file_type: file
+        age_stamp: mtime
+      register: retained_files
+      tags: report
+
     - name: Display retained backup files
       ansible.builtin.debug:
         msg: "Retained: {{ item.path | basename }} ({{ (item.size / 1024 / 1024) | round(2) }} MB)"
-      loop: "{{ (backup_files.files | sort(attribute='mtime', reverse=true))[:keep_backups] }}"
+      loop: "{{ retained_files.files | sort(attribute='mtime', reverse=true) }}"
+      loop_control:
+        label: "{{ item.path | basename }}"
       tags: report
