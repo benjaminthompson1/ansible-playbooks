@@ -1,6 +1,6 @@
 # Ansible Playbooks
 
-A collection of Ansible playbooks for managing and automating tasks on IBM z/PDT (z Personal Development Tool) and associated Linux host systems.
+A collection of Ansible playbooks for managing and automating tasks on IBM zADE (z Application Development Environment) and associated Linux host systems.
 
 ## Directory Structure
 
@@ -9,8 +9,8 @@ ansible-playbooks/
 ├── ansible-playbooks-linux/
 │   ├── inventories/
 │   │   └── inventory.yml
-│   ├── backup_z31c_volumes.yml
-│   ├── optimize_zpdt_network.yml
+│   ├── backup_z32a_volumes.yml
+│   ├── optimize_zade_network.yml
 │   └── provision_volumes.yml
 └── ansible-playbooks-zos/
     ├── inventories/
@@ -28,9 +28,9 @@ ansible-playbooks/
 - SSH access to target hosts
 
 ### Linux Playbooks
-- `xz` utility (required by `backup_z31c_volumes.yml`)
-- `ethtool` and `tuned` packages (installed automatically by `optimize_zpdt_network.yml`)
-- `alcckd` utility — IBM z/PDT disk creation tool (required by `provision_volumes.yml`)
+- `xz` utility (required by `backup_z32a_volumes.yml`)
+- `ethtool` and `tuned` packages (installed automatically by `optimize_zade_network.yml`)
+- `alcckd` utility — IBM zADE disk creation tool (required by `provision_volumes.yml`)
 
 ### z/OS Playbooks
 - Ansible collections:
@@ -66,9 +66,9 @@ ansible-galaxy collection install ibm.ibm_zos_core ibm.ibm_zosmf
 
 ## Linux Playbooks
 
-### backup_z31c_volumes.yml
+### backup_z32a_volumes.yml
 
-Creates a full compressed backup of z31c volumes using async tar with multi-threaded XZ compression. Verifies archive integrity after creation and enforces a configurable retention policy.
+Creates a full compressed backup of z32a volumes using async tar with multi-threaded XZ compression. Verifies archive integrity after creation and enforces a configurable retention policy.
 
 **Target host:** `nuc`
 
@@ -82,7 +82,7 @@ Creates a full compressed backup of z31c volumes using async tar with multi-thre
 
 | Variable | Default | Description |
 |----------|---------|-------------|
-| `src_dir` | `/home/ibmsys1/volumes-z31c` | Directory to back up |
+| `src_dir` | `/home/ibmsys1/volumes-z32a` | Directory to back up |
 | `dest_dir` | `/home/ibmsys1/volumes-backup` | Backup destination |
 | `keep_backups` | `4` | Number of archives to retain |
 | `backup_timeout` | `7200` | Max seconds to wait for tar (2 hours) |
@@ -90,22 +90,22 @@ Creates a full compressed backup of z31c volumes using async tar with multi-thre
 **Usage:**
 
 ```sh
-ansible-playbook -i inventories/inventory.yml backup_z31c_volumes.yml
+ansible-playbook -i inventories/inventory.yml backup_z32a_volumes.yml
 ```
 
 **Restore:**
 
 ```sh
-tar -xvf volumes-z31c-<timestamp>.tar.xz -C /desired/restore/path
+tar -xvf volumes-z32a-<timestamp>.tar.xz -C /desired/restore/path
 ```
 
 **Tags:** `verify`, `prepare`, `backup`, `cleanup`, `report`
 
 ---
 
-### optimize_zpdt_network.yml
+### optimize_zade_network.yml
 
-Tunes network settings on the z/PDT host for maximum throughput. Disables NIC offloads, increases ring buffer sizes, sets RX interrupt coalescing, and applies TCP socket buffer tuning via sysctl.
+Tunes network settings on the zADE host for maximum throughput. Disables NIC offloads, increases ring buffer sizes, sets RX interrupt coalescing, and applies TCP socket buffer tuning via sysctl.
 
 **Target host:** `nuc`
 **Requires:** root (`become: yes`)
@@ -127,16 +127,16 @@ Tunes network settings on the z/PDT host for maximum throughput. Disables NIC of
 **Usage:**
 
 ```sh
-ansible-playbook -i inventories/inventory.yml optimize_zpdt_network.yml --ask-become-pass
+ansible-playbook -i inventories/inventory.yml optimize_zade_network.yml --ask-become-pass
 # Override interface:
-ansible-playbook -i inventories/inventory.yml optimize_zpdt_network.yml -e "network_interface=eth0"
+ansible-playbook -i inventories/inventory.yml optimize_zade_network.yml -e "network_interface=eth0"
 ```
 
 ---
 
 ### provision_volumes.yml
 
-Creates z/PDT CKD disk volumes using the `alcckd` utility. Provisions a set of 3390-54 and 3390-9 volumes and verifies they exist after creation.
+Creates zADE CKD disk volumes using the `alcckd` utility. Provisions a set of 3390-54 and 3390-9 volumes and verifies they exist after creation. Idempotent — existing volumes are skipped.
 
 **Target host:** `nuc`
 
@@ -144,14 +144,14 @@ Creates z/PDT CKD disk volumes using the `alcckd` utility. Provisions a set of 3
 
 | Type | Volumes |
 |------|---------|
-| 3390-54 | `c3usr2`, `c3usr3`, `c3usr4`, `c3usr5`, `c3zcx2` |
+| 3390-54 | `a3usr2`, `a3usr3`, `a3usr4`, `a3usr5`, `a3zcx2` |
 | 3390-9 | `work0a`, `work0b` |
 
 **Variables:**
 
 | Variable | Default | Description |
 |----------|---------|-------------|
-| `dest_dir` | `/home/ibmsys1/volumes-z31c` | Directory to create volumes in |
+| `dest_dir` | `/home/ibmsys1/volumes-z32a` | Directory to create volumes in |
 
 **Usage:**
 
