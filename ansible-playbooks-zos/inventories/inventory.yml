@@ -1,8 +1,8 @@
 ---
 zsystems:
   hosts:
-    z31c_s0w1:
+    z32a:
       ansible_host: 10.1.1.2
       ansible_user: ibmuser
       ansible_port: 65522
-      ansible_password: spider
+      ansible_password: sys1
