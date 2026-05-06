@@ -11,7 +11,7 @@
 
 ---
 - name: POST z/OS UUID
-  hosts: z31a_s0w1
+  hosts: z32a
   collections:
     - ibm.ibm_zosmf
   gather_facts: no

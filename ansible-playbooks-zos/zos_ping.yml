@@ -11,7 +11,7 @@
 
 ---
 - name: Enhanced z/OS Ping
-  hosts: z31c_s0w1
+  hosts: z32a
   collections:
     - ibm.ibm_zos_core
   gather_facts: no
