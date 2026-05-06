@@ -36,8 +36,8 @@ ansible-playbooks/
 - Ansible collections:
   - `ibm.ibm_zos_core`
   - `ibm.ibm_zosmf`
-- Python 3.12 at `/usr/lpp/IBM/cyp/v3r12/pyz` on the z/OS target
-- ZOAU (z/OS Ansible Utility) at `/usr/lpp/IBM/zoautil`
+- Python 3.14 at `/usr/lpp/IBM/cyp/v3r14/pyz` on the z/OS target
+- ZOAU (z/OS Open Automation Utilities) at `/usr/lpp/IBM/zoau/v1r4`
 - z/OSMF running on port 10443 (required by `post_uuid.yml`)
 
 Install required collections:
@@ -122,14 +122,16 @@ Tunes network settings on the zADE host for maximum throughput. Disables NIC off
 | Variable | Default | Description |
 |----------|---------|-------------|
 | `network_interface` | `enp86s0` | NIC to tune |
-| `make_persistent` | `false` | Persist settings across reboots |
+| `make_persistent` | `false` | Reserved — persistence not yet implemented |
+
+> **Note:** all tuning is ephemeral by default (lost on reboot). `make_persistent=true` is reserved for a future implementation that will write settings to network scripts.
 
 **Usage:**
 
 ```sh
 ansible-playbook -i inventories/inventory.yml optimize_zade_network.yml --ask-become-pass
 # Override interface:
-ansible-playbook -i inventories/inventory.yml optimize_zade_network.yml -e "network_interface=eth0"
+ansible-playbook -i inventories/inventory.yml optimize_zade_network.yml --ask-become-pass -e "network_interface=eth0"
 ```
 
 ---
@@ -169,7 +171,7 @@ ansible-playbook -i inventories/inventory.yml provision_volumes.yml -e "dest_dir
 
 Tests connectivity to a z/OS system using the `ibm.ibm_zos_core.zos_ping` module and asserts a successful `pong` response.
 
-**Target host:** `z31c_s0w1`
+**Target host:** `z32a`
 
 **Usage:**
 
@@ -185,11 +187,13 @@ ansible-playbook -i inventories/inventory.yml zos_ping.yml -e "boolean_debug=tru
 
 POSTs z/OS UUID information to a z/OSMF endpoint using the `ibm.ibm_zosmf` collection. Verifies z/OSMF connectivity before executing the `zmf_swmgmt_zos_system_uuid` role.
 
-**Target host:** `z31a_s0w1`
+**Target host:** `z32a`
 **Requires:** `zmf_swmgmt_zos_system_uuid` role from the `ibm.ibm_zosmf` collection
 
 **Usage:**
 
 ```sh
 ansible-playbook -i inventories/inventory.yml post_uuid.yml
+# Override credentials (recommended over editing the playbook directly):
+ansible-playbook -i inventories/inventory.yml post_uuid.yml -e "zmf_user=MYUSER zmf_password=MYPASS"
 ```
