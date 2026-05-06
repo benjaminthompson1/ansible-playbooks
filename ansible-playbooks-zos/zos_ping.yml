@@ -15,6 +15,7 @@
   collections:
     - ibm.ibm_zos_core
   gather_facts: no
+  environment: "{{ zos_environment }}"   
   vars:
     boolean_debug: false
   tasks:
