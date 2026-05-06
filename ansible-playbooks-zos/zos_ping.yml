@@ -1,26 +1,13 @@
-################################################################################
-# Tests connectivity to a z/OS system via zos_ping
-#
-# Requirements:
-# - ibm.ibm_zos_core collection
-#
-# Usage:
-#   ansible-playbook -i inventories/inventory.yml zos_ping.yml
-#   Optional: -v (verbose) | -e "boolean_debug=true"
-################################################################################
-
 ---
 - name: Enhanced z/OS Ping
   hosts: z32a
-  collections:
-    - ibm.ibm_zos_core
   gather_facts: no
-  environment: "{{ zos_environment }}"   
+  environment: "{{ zos_environment }}"
   vars:
     boolean_debug: false
   tasks:
     - name: Perform z/OS ping
-      zos_ping:
+      ibm.ibm_zos_core.zos_ping:
       register: zos_ping_result
 
     - name: Display basic ping response
@@ -54,5 +41,5 @@
       assert:
         that:
           - zos_ping_result.ping == "pong"
-        fail_msg: "z/OS ping failed. Please check your connection and permissions."
+        fail_msg: "z/OS ping failed."
         success_msg: "z/OS ping successful."
