@@ -17,6 +17,7 @@ ansible-playbooks/
     │   ├── inventory.yml
     │   └── group_vars/
     │       └── all.yml
+    ├── ansible.cfg
     ├── post_uuid.yml
     └── zos_ping.yml
 ```
@@ -36,8 +37,8 @@ ansible-playbooks/
 - Ansible collections:
   - `ibm.ibm_zos_core`
   - `ibm.ibm_zosmf`
-- Python 3.12 at `/usr/lpp/IBM/cyp/v3r12/pyz` on the z/OS target
-- ZOAU (z/OS Ansible Utility) at `/usr/lpp/IBM/zoautil`
+- Python 3.14 at `/usr/lpp/IBM/cyp/v3r14/pyz` on the z/OS target
+- ZOAU (z/OS Ansible Utility) v1.4 at `/usr/lpp/IBM/zoau/v1r4`
 - z/OSMF running on port 10443 (required by `post_uuid.yml`)
 
 Install required collections:
@@ -105,7 +106,7 @@ tar -xvf volumes-z32a-<timestamp>.tar.xz -C /desired/restore/path
 
 ### optimize_zade_network.yml
 
-Tunes network settings on the zADE host for maximum throughput. Disables NIC offloads, increases ring buffer sizes, sets RX interrupt coalescing, and applies TCP socket buffer tuning via sysctl.
+Tunes network settings on the zADE host for maximum throughput. Disables NIC offloads, increases ring buffer sizes, sets RX interrupt coalescing, pins NIC IRQs to isolated CPUs, and applies TCP socket buffer tuning via sysctl.
 
 **Target host:** `nuc`
 **Requires:** root (`become: yes`)
@@ -115,6 +116,8 @@ Tunes network settings on the zADE host for maximum throughput. Disables NIC off
 - Disables offloads: `rx`, `tso`, `gso`, `gro`, `lro` — unsupported offloads are skipped and logged rather than failing the play
 - Sets NIC ring buffers to 4096 (RX and TX)
 - Sets RX interrupt coalescing to 32 µs (IGC-compatible)
+- Pins NIC IRQs to CPUs 2–3 (via `smp_affinity_list`), leaving CPUs 0–1 free for zADE engine threads
+- Tunes TCP/IP socket buffers and backlog via sysctl (`rmem_max`, `wmem_max`, `tcp_rmem`, `tcp_wmem`, etc.)
 - Applies `network-throughput` tuned profile
 
 **Variables:**
@@ -130,6 +133,8 @@ Tunes network settings on the zADE host for maximum throughput. Disables NIC off
 ansible-playbook -i inventories/inventory.yml optimize_zade_network.yml --ask-become-pass
 # Override interface:
 ansible-playbook -i inventories/inventory.yml optimize_zade_network.yml -e "network_interface=eth0"
+# Persist across reboots:
+ansible-playbook -i inventories/inventory.yml optimize_zade_network.yml -e "make_persistent=true"
 ```
 
 ---
@@ -169,7 +174,7 @@ ansible-playbook -i inventories/inventory.yml provision_volumes.yml -e "dest_dir
 
 Tests connectivity to a z/OS system using the `ibm.ibm_zos_core.zos_ping` module and asserts a successful `pong` response.
 
-**Target host:** `z31c_s0w1`
+**Target host:** `z32a`
 
 **Usage:**
 
@@ -185,7 +190,7 @@ ansible-playbook -i inventories/inventory.yml zos_ping.yml -e "boolean_debug=tru
 
 POSTs z/OS UUID information to a z/OSMF endpoint using the `ibm.ibm_zosmf` collection. Verifies z/OSMF connectivity before executing the `zmf_swmgmt_zos_system_uuid` role.
 
-**Target host:** `z31a_s0w1`
+**Target host:** `z32a`
 **Requires:** `zmf_swmgmt_zos_system_uuid` role from the `ibm.ibm_zosmf` collection
 
 **Usage:**
