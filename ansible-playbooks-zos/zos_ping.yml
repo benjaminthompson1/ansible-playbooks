@@ -1,3 +1,15 @@
+################################################################################
+# Tests connectivity to a z/OS system via ibm.ibm_zos_core.zos_ping
+#
+# Requirements:
+# - ibm.ibm_zos_core collection
+# - z/OS environment variables set in group_vars/all.yml (zos_environment)
+#
+# Usage:
+#   ansible-playbook -i inventories/inventory.yml zos_ping.yml
+#   Optional: -e "boolean_debug=true"
+################################################################################
+
 ---
 - name: Enhanced z/OS Ping
   hosts: z32a
