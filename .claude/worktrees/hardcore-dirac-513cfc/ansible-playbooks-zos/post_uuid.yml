@@ -1,0 +1,46 @@
+################################################################################
+# POSTs z/OS system UUID via z/OSMF
+#
+# Requirements:
+# - ibm.ibm_zosmf collection
+# - z/OSMF accessible on port 10443
+#
+# Usage:
+#   ansible-playbook -i inventories/inventory.yml post_uuid.yml
+################################################################################
+
+---
+- name: POST z/OS UUID
+  hosts: z32a
+  collections:
+    - ibm.ibm_zosmf
+  gather_facts: no
+
+  vars:
+    zmf_host: "{{ ansible_host | default('s0w1.dal-ebis.ihost.com') }}"
+    zmf_port: 10443
+    zmf_user: IBMUSER
+    zmf_password: spider
+
+  pre_tasks:
+    - name: Verify z/OSMF connectivity
+      uri:
+        url: "https://{{ zmf_host }}:{{ zmf_port }}/zosmf/info"
+        method: POST
+        validate_certs: false
+        user: "{{ zmf_user }}"
+        password: "{{ zmf_password }}"
+        force_basic_auth: true
+      delegate_to: localhost
+      register: zmf_check
+      ignore_errors: true
+
+    - name: Display connectivity status
+      debug:
+        msg: "z/OSMF connection check result: {{ zmf_check.status | default('Failed to connect') }}"
+      when: zmf_check is defined
+
+  tasks:
+    - include_role:
+        name: zmf_swmgmt_zos_system_uuid
+      when: zmf_check is succeeded

@@ -1,0 +1,57 @@
+################################################################################
+# Tests connectivity to a z/OS system via ibm.ibm_zos_core.zos_ping
+#
+# Requirements:
+# - ibm.ibm_zos_core collection
+# - z/OS environment variables set in group_vars/all.yml (zos_environment)
+#
+# Usage:
+#   ansible-playbook -i inventories/inventory.yml zos_ping.yml
+#   Optional: -e "boolean_debug=true"
+################################################################################
+
+---
+- name: Enhanced z/OS Ping
+  hosts: z32a
+  gather_facts: no
+  environment: "{{ zos_environment }}"
+  vars:
+    boolean_debug: false
+  tasks:
+    - name: Perform z/OS ping
+      ibm.ibm_zos_core.zos_ping:
+      register: zos_ping_result
+
+    - name: Display basic ping response
+      debug:
+        msg: "Ping result: {{ zos_ping_result.ping }}"
+
+    - name: Display detailed ping response (verbosity 1)
+      debug:
+        msg: "Detailed ping result: {{ zos_ping_result }}"
+        verbosity: 1
+
+    - name: Display extra debug info (verbosity 2)
+      debug:
+        msg: "Extra debug info: {{ zos_ping_result | to_nice_json }}"
+        verbosity: 2
+
+    - name: Display debug info (boolean flag)
+      debug:
+        msg: "Debug info (boolean flag): {{ zos_ping_result }}"
+      when: boolean_debug | bool
+
+    - name: Display summary
+      debug:
+        msg:
+          - "z/OS Ping Summary:"
+          - "- Ping status: {{ 'Successful' if zos_ping_result.ping == 'pong' else 'Failed' }}"
+          - "- Host: {{ inventory_hostname }}"
+          - "- Boolean debug: {{ boolean_debug }}"
+
+    - name: Check ping result
+      assert:
+        that:
+          - zos_ping_result.ping == "pong"
+        fail_msg: "z/OS ping failed."
+        success_msg: "z/OS ping successful."
