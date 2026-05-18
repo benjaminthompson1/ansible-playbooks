@@ -182,7 +182,9 @@
       tags: [smoketest]
 
     - name: Verify Languages.yaml content has expected variables
-      ansible.builtin.command: grep -c '^  - name: ' {{ dbb_build_dir }}/Languages.yaml
+      # YAML-quote the whole value: the inner `: ` (colon-space) inside the
+      # shell pattern would otherwise be parsed as a YAML mapping separator.
+      ansible.builtin.command: "grep -c '^  - name: ' {{ dbb_build_dir }}/Languages.yaml"
       register: languages_var_count
       changed_when: false
       tags: [smoketest]
