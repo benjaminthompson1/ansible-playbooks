@@ -1,0 +1,142 @@
+################################################################################
+# setup_runner_user.yml
+#
+# Prepares a z/OS USS user account to host GitLab Runner pipeline workloads.
+# Idempotent — safe to re-run.
+#
+# What it does:
+#   1. Creates ~/gitlab-runner/{builds,cache}/ for the runner's per-user
+#      builds_dir and cache_dir.
+#   2. Adds zopen-config sourcing to ~/.profile at column-0 (outside any
+#      interactive guard), so non-interactive runner shells get git/vim/etc.
+#   3. Tags ~/.profile as IBM-1047 so _BPXK_AUTOCVT can decode it.
+#   4. Smoke test — confirms .profile is tagged, source-able, and git resolves.
+#
+# Not in scope (do these elsewhere):
+#   - Installing the gitlab-runner binary or editing /etc/gitlab-runner/config.toml.
+#     See [[GitLab Ultimate for zOS]] in the Obsidian vault.
+#   - DBB-specific setup. See setup_dbb_user.yml.
+#
+# Connects as `ansible_user` from inventory and modifies *that* user's account.
+# To onboard a different user, override at the command line:
+#
+#   ansible-playbook -i inventories/inventory.yml setup_runner_user.yml \
+#       -e "ansible_user=cicsdev ansible_password=secret"
+#
+# Standard usage (onboard the inventory user):
+#   ansible-playbook -i inventories/inventory.yml setup_runner_user.yml
+#
+# Skip the smoke test (e.g. if zopen is not yet installed):
+#   ansible-playbook -i inventories/inventory.yml setup_runner_user.yml \
+#       --skip-tags smoketest
+#
+# Tags: dirs, profile, chtag, smoketest
+################################################################################
+
+---
+- name: Set up GitLab Runner per-user environment on z/OS
+  hosts: z32a
+  gather_facts: no
+  environment: "{{ zos_environment }}"
+
+  vars:
+    boolean_debug: false
+    target_home: "/u/{{ ansible_user }}"
+
+  tasks:
+
+    ############################################################################
+    # 1. Create per-user builds_dir and cache_dir
+    ############################################################################
+    - name: Create ~/gitlab-runner/builds and ~/gitlab-runner/cache
+      ansible.builtin.file:
+        path: "{{ target_home }}/{{ item }}"
+        state: directory
+        mode: "0755"
+      loop:
+        - "{{ gitlab_runner.user_builds_subdir }}"
+        - "{{ gitlab_runner.user_cache_subdir }}"
+      tags: [dirs]
+
+    ############################################################################
+    # 2. Patch ~/.profile — add zopen-config at column-0 (outside any
+    #    interactive guard). Marker block makes this idempotent.
+    #
+    #    We intentionally do NOT remove any existing zopen-config line that
+    #    may be inside an interactive `if [[ $- == *i* ]]` block — sourcing
+    #    twice is idempotent, and a regex-delete is fragile across edits.
+    ############################################################################
+    - name: Add zopen-config sourcing to ~/.profile (column-0)
+      ibm.ibm_zos_core.zos_blockinfile:
+        src: "{{ target_home }}/.profile"
+        marker: "# {mark} ANSIBLE MANAGED — ZOPEN CONFIG (setup_runner_user.yml)"
+        insertbefore: '^if \[\[ \$- == \*i\* \]\]; then'
+        block: |
+          # -----------------------------------------------------------------------------
+          # zopen - load for ALL shells (interactive AND non-interactive)
+          # Required so non-interactive shells (e.g. gitlab-runner job shells, BPXBATCH)
+          # get git, vim and other zopen tools on PATH.
+          # -----------------------------------------------------------------------------
+          if [ -f "{{ gitlab_runner.zopen_config }}" ]; then
+              . {{ gitlab_runner.zopen_config }} --override-zos-tools
+          fi
+        state: present
+        encoding: IBM-1047
+      tags: [profile]
+
+    ############################################################################
+    # 3. Tag .profile as IBM-1047 so _BPXK_AUTOCVT can decode it from
+    #    non-interactive shells. chtag is cheap and idempotent — always re-tag.
+    ############################################################################
+    - name: Tag ~/.profile as IBM-1047
+      ansible.builtin.command: chtag -tc IBM-1047 {{ target_home }}/.profile
+      changed_when: false
+      tags: [chtag]
+
+    ############################################################################
+    # 4. Smoke test — confirm tag, source-ability, and git resolution
+    ############################################################################
+    - name: Verify ~/.profile is tagged IBM-1047
+      ansible.builtin.command: ls -T {{ target_home }}/.profile
+      register: profile_tag
+      changed_when: false
+      tags: [smoketest]
+
+    - name: Source ~/.profile and check git is on PATH
+      ansible.builtin.shell: |
+        /bin/bash -c 'source {{ target_home }}/.profile >/dev/null 2>&1 && command -v git'
+      register: git_check
+      changed_when: false
+      failed_when: git_check.rc != 0
+      tags: [smoketest]
+
+    - name: Display debug info (boolean flag)
+      ansible.builtin.debug:
+        msg:
+          - "profile_tag.stdout: {{ profile_tag.stdout }}"
+          - "git_check.stdout:   {{ git_check.stdout }}"
+      when: boolean_debug | bool
+      tags: [smoketest]
+
+    - name: Assert smoke test results
+      ansible.builtin.assert:
+        that:
+          - "'IBM-1047' in profile_tag.stdout"
+          - "'git' in git_check.stdout"
+        fail_msg: |
+          Smoke test failed.
+          .profile tag: {{ profile_tag.stdout }}
+          git path:     {{ git_check.stdout | default('not found') }}
+        success_msg: |
+          Smoke test passed.
+          .profile is tagged IBM-1047 and git resolves from a sourced shell.
+      tags: [smoketest]
+
+    - name: Display summary
+      ansible.builtin.debug:
+        msg:
+          - "GitLab Runner user setup complete for {{ ansible_user }}:"
+          - "  builds_dir: {{ target_home }}/{{ gitlab_runner.user_builds_subdir }}"
+          - "  cache_dir:  {{ target_home }}/{{ gitlab_runner.user_cache_subdir }}"
+          - "  .profile:   {{ profile_tag.stdout }}"
+          - "  git:        {{ git_check.stdout }}"

@@ -24,3 +24,53 @@ zos_environment:
   _TAG_REDIR_IN: "txt"
   _TAG_REDIR_OUT: "txt"
   LANG: "C"
+
+################################################################################
+# GitLab Runner — per-user paths
+# Used by setup_runner_user.yml. Subdirs are relative to the target user's HOME
+# (i.e. /u/<ansible_user>). config.toml on the runner host references these
+# absolute paths; see "GitLab Ultimate for zOS" Obsidian note.
+################################################################################
+gitlab_runner:
+  user_builds_subdir: "gitlab-runner/builds"
+  user_cache_subdir:  "gitlab-runner/cache"
+  zopen_config:       "/usr/local/zopen/etc/zopen-config"
+
+################################################################################
+# IBM Dependency Based Build (DBB) — paths
+# Used by setup_dbb_user.yml. DBB v3.0.3 ships at /usr/lpp/IBM/dbb on the stock
+# ADCD z32a image; see "DBB Customisation" Obsidian note.
+################################################################################
+dbb:
+  home:                 "/usr/lpp/IBM/dbb"
+  build_template_dir:   "/usr/lpp/IBM/dbb/build"
+  samples_dir:          "/usr/lpp/IBM/dbb/samples/languages"
+  user_build_subdir:    "zBuilder/build"          # relative to user's HOME
+  user_workspace_subdir: "pipeline-workspace"      # relative to user's HOME
+
+################################################################################
+# DBB Languages.yaml — site-specific dataset values
+# Cumulative result of running cobol-pipeline-demo end-to-end on ADCD z32a.
+# On a different ADCD release, look up the actual values with:
+#   tsocmd "LISTC LVL(IGY)"     | grep SIGYCOMP
+#   tsocmd "LISTC LVL(CEE)"     | grep -E "SCEE(LKED|RUN|MAC|H)"
+#   tsocmd "LISTC LVL(CICSTS)"  | grep -E "SDFH(LOAD|COB|MAC)"
+#   tsocmd "LISTC LVL(ASMA)"    | grep SASMMOD1
+# Templated into Languages.yaml by setup_dbb_user.yml.
+################################################################################
+dbb_languages_datasets:
+  # Enterprise COBOL 6.5 compiler
+  SIGYCOMP:  "IGY650.SIGYCOMP"
+  # Language Environment (LE)
+  SCEELKED:  "CEE.SCEELKED"
+  SCEERUN:   "CEE.SCEERUN"
+  SCEERUN2:  "CEE.SCEERUN2"
+  SCEEMAC:   "CEE.SCEEMAC"
+  # System assembler macros
+  MACLIB:    "SYS1.MACLIB"
+  # HLASM
+  SASMMOD1:  "HLA.SASMMOD1"
+  # CICS TS 6.3 (harmless if unreferenced)
+  SDFHCOB:   "DFH630.CICS.SDFHCOB"
+  SDFHLOAD:  "DFH630.CICS.SDFHLOAD"
+  SDFHMAC:   "DFH630.CICS.SDFHMAC"
