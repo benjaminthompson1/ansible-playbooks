@@ -166,7 +166,9 @@
       tags: [smoketest]
 
     - name: Verify expected exports are present in copied .profile
-      ansible.builtin.command: grep -E '^(export DBB_HOME=|export DBB_BUILD=|zopen-config)' {{ target_profile }}
+      # ^ anchors only the DBB exports; zopen-config is typically dot-sourced
+      # (`. /usr/local/zopen/etc/zopen-config`) so we match it anywhere on a line.
+      ansible.builtin.command: grep -E '^(export DBB_HOME=|export DBB_BUILD=)|zopen-config' {{ target_profile }}
       register: profile_content
       changed_when: false
       failed_when: profile_content.rc != 0
