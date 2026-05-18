@@ -42,7 +42,7 @@ ansible-playbooks/
   - `ibm.ibm_zos_core`
   - `ibm.ibm_zosmf`
 - Python 3.14 at `/usr/lpp/IBM/cyp/v3r14/pyz` on the z/OS target
-- ZOAU (z/OS Ansible Utility) v1.4 at `/usr/lpp/IBM/zoau/v1r4`
+- ZOAU (z/OS Open Automation Utilities) v1.4 at `/usr/lpp/IBM/zoau/v1r4`
 - z/OSMF running on port 10443 (required by `post_uuid.yml`)
 
 Install required collections:
@@ -129,16 +129,16 @@ Tunes network settings on the zADE host for maximum throughput. Disables NIC off
 | Variable | Default | Description |
 |----------|---------|-------------|
 | `network_interface` | `enp86s0` | NIC to tune |
-| `make_persistent` | `false` | Persist settings across reboots |
+| `make_persistent` | `false` | Reserved — persistence not yet implemented |
+
+> **Note:** all tuning is ephemeral by default (lost on reboot). `make_persistent=true` is reserved for a future implementation that will write settings to network scripts.
 
 **Usage:**
 
 ```sh
 ansible-playbook -i inventories/inventory.yml optimize_zade_network.yml --ask-become-pass
 # Override interface:
-ansible-playbook -i inventories/inventory.yml optimize_zade_network.yml -e "network_interface=eth0"
-# Persist across reboots:
-ansible-playbook -i inventories/inventory.yml optimize_zade_network.yml -e "make_persistent=true"
+ansible-playbook -i inventories/inventory.yml optimize_zade_network.yml --ask-become-pass -e "network_interface=eth0"
 ```
 
 ---
@@ -201,6 +201,8 @@ POSTs z/OS UUID information to a z/OSMF endpoint using the `ibm.ibm_zosmf` colle
 
 ```sh
 ansible-playbook -i inventories/inventory.yml post_uuid.yml
+# Override credentials (recommended over editing the playbook directly):
+ansible-playbook -i inventories/inventory.yml post_uuid.yml -e "zmf_user=MYUSER zmf_password=MYPASS"
 ```
 
 ---

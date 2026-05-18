@@ -1,13 +1,16 @@
 ################################################################################
-# Tests connectivity to a z/OS system via ibm.ibm_zos_core.zos_ping
+# Tests connectivity to a z/OS system via the ibm.ibm_zos_core.zos_ping module
 #
 # Requirements:
 # - ibm.ibm_zos_core collection
-# - z/OS environment variables set in group_vars/all.yml (zos_environment)
+# - z/OS environment variables set via group_vars/all.yml (zos_environment)
 #
 # Usage:
 #   ansible-playbook -i inventories/inventory.yml zos_ping.yml
-#   Optional: -e "boolean_debug=true"
+#   # Enable verbose debug output:
+#   ansible-playbook -i inventories/inventory.yml zos_ping.yml -e "boolean_debug=true"
+#   # Increase Ansible verbosity for extra detail:
+#   ansible-playbook -i inventories/inventory.yml zos_ping.yml -v
 ################################################################################
 
 ---
@@ -23,26 +26,26 @@
       register: zos_ping_result
 
     - name: Display basic ping response
-      debug:
+      ansible.builtin.debug:
         msg: "Ping result: {{ zos_ping_result.ping }}"
 
     - name: Display detailed ping response (verbosity 1)
-      debug:
+      ansible.builtin.debug:
         msg: "Detailed ping result: {{ zos_ping_result }}"
         verbosity: 1
 
     - name: Display extra debug info (verbosity 2)
-      debug:
+      ansible.builtin.debug:
         msg: "Extra debug info: {{ zos_ping_result | to_nice_json }}"
         verbosity: 2
 
     - name: Display debug info (boolean flag)
-      debug:
+      ansible.builtin.debug:
         msg: "Debug info (boolean flag): {{ zos_ping_result }}"
       when: boolean_debug | bool
 
     - name: Display summary
-      debug:
+      ansible.builtin.debug:
         msg:
           - "z/OS Ping Summary:"
           - "- Ping status: {{ 'Successful' if zos_ping_result.ping == 'pong' else 'Failed' }}"
@@ -50,7 +53,7 @@
           - "- Boolean debug: {{ boolean_debug }}"
 
     - name: Check ping result
-      assert:
+      ansible.builtin.assert:
         that:
           - zos_ping_result.ping == "pong"
         fail_msg: "z/OS ping failed."

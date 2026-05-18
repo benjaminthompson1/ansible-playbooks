@@ -27,6 +27,10 @@
       - gso
       - gro
       - lro
+    # All tuning applied by this playbook is ephemeral (lost on reboot) by
+    # default. Set make_persistent=true to write settings to network scripts
+    # so they survive a reboot. NOTE: persistence logic is not yet implemented
+    # — this flag is reserved for a future task.
     make_persistent: false
 
   tasks:

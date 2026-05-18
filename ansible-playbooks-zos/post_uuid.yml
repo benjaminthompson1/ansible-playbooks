@@ -19,14 +19,17 @@
   vars:
     zmf_host: "{{ ansible_host | default('s0w1.dal-ebis.ihost.com') }}"
     zmf_port: 10443
+    # WARNING: credentials below are for lab/dev use only — do not commit
+    # production credentials. Override at runtime with -e "zmf_user=... zmf_password=..."
+    # or store in an Ansible Vault-encrypted vars file.
     zmf_user: IBMUSER
     zmf_password: spider
 
   pre_tasks:
     - name: Verify z/OSMF connectivity
-      uri:
+      ansible.builtin.uri:
         url: "https://{{ zmf_host }}:{{ zmf_port }}/zosmf/info"
-        method: POST
+        method: GET
         validate_certs: false
         user: "{{ zmf_user }}"
         password: "{{ zmf_password }}"
@@ -36,11 +39,11 @@
       ignore_errors: true
 
     - name: Display connectivity status
-      debug:
+      ansible.builtin.debug:
         msg: "z/OSMF connection check result: {{ zmf_check.status | default('Failed to connect') }}"
       when: zmf_check is defined
 
   tasks:
-    - include_role:
+    - ansible.builtin.include_role:
         name: zmf_swmgmt_zos_system_uuid
       when: zmf_check is succeeded
