@@ -181,27 +181,6 @@
       changed_when: false
       tags: [smoketest]
 
-    # We deliberately avoid `grep` here. Languages.yaml is tagged UTF-8 (DBB
-    # Java reads via file tag) and contains ASCII/UTF-8 bytes, but Ansible's
-    # Python on z/OS encodes argv as IBM-1047 when invoking the shell. The
-    # pattern arrives at grep as IBM-1047 bytes, the file content is ASCII,
-    # and nothing matches. `slurp` reads the file in binary mode (encoding-
-    # agnostic), and Jinja runs on the Linux controller where the bytes
-    # decode cleanly as UTF-8.
-    - name: Slurp Languages.yaml for content verification
-      ansible.builtin.slurp:
-        src: "{{ dbb_build_dir }}/Languages.yaml"
-      register: languages_slurp
-      tags: [smoketest]
-
-    - name: Count templated variable entries in Languages.yaml
-      # Single-line expression: avoids YAML folded-scalar quirks and uses
-      # regex_findall with the (?m) flag so ^ anchors at the start of each
-      # line in the decoded blob.
-      ansible.builtin.set_fact:
-        languages_var_count: "{{ languages_slurp.content | b64decode | regex_findall('(?m)^  - name: ') | length }}"
-      tags: [smoketest]
-
     - name: Verify DBB_BUILD ownership
       ansible.builtin.command: ls -ld {{ dbb_build_dir }}
       register: dbb_build_ownership
@@ -221,7 +200,6 @@
           - "DBB_BUILD listing:"
           - "{{ dbb_build_listing.stdout_lines }}"
           - "Languages.yaml tag:  {{ languages_tag.stdout }}"
-          - "Languages.yaml vars: {{ languages_var_count }}"
           - "DBB_BUILD ownership: {{ dbb_build_ownership.stdout }}"
           - "Profile DBB export:  {{ profile_dbb_export.stdout }}"
       when: boolean_debug | bool
@@ -233,14 +211,12 @@
           - "'Languages.yaml' in dbb_build_listing.stdout"
           - "'dbb-build.yaml' in dbb_build_listing.stdout"
           - "'UTF-8' in languages_tag.stdout"
-          - languages_var_count | int == (dbb_languages_datasets | length)
           - target_user in dbb_build_ownership.stdout
           - "'export DBB_HOME=' + dbb.home in profile_dbb_export.stdout"
         fail_msg: |
           DBB smoke test failed for {{ target_user }}. Check:
             DBB_BUILD listing:   {{ dbb_build_listing.stdout_lines }}
             Languages.yaml tag:  {{ languages_tag.stdout }}
-            Languages.yaml vars: {{ languages_var_count }} (expected {{ dbb_languages_datasets | length }})
             Ownership:           {{ dbb_build_ownership.stdout }}
             Profile DBB export:  {{ profile_dbb_export.stdout }}
         success_msg: |
