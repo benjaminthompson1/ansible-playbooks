@@ -181,12 +181,25 @@
       changed_when: false
       tags: [smoketest]
 
-    - name: Verify Languages.yaml content has expected variables
-      # YAML-quote the whole value: the inner `: ` (colon-space) inside the
-      # shell pattern would otherwise be parsed as a YAML mapping separator.
-      ansible.builtin.command: "grep -c '^  - name: ' {{ dbb_build_dir }}/Languages.yaml"
-      register: languages_var_count
-      changed_when: false
+    # We deliberately avoid `grep` here. Languages.yaml is tagged UTF-8 (DBB
+    # Java reads via file tag) and contains ASCII/UTF-8 bytes, but Ansible's
+    # Python on z/OS encodes argv as IBM-1047 when invoking the shell. The
+    # pattern arrives at grep as IBM-1047 bytes, the file content is ASCII,
+    # and nothing matches. `slurp` reads the file in binary mode (encoding-
+    # agnostic), and Jinja runs on the Linux controller where the bytes
+    # decode cleanly as UTF-8.
+    - name: Slurp Languages.yaml for content verification
+      ansible.builtin.slurp:
+        src: "{{ dbb_build_dir }}/Languages.yaml"
+      register: languages_slurp
+      tags: [smoketest]
+
+    - name: Count templated variable entries in Languages.yaml
+      ansible.builtin.set_fact:
+        languages_var_count: >-
+          {{ (languages_slurp.content | b64decode).split('\n')
+             | select('match', '^  - name: ')
+             | list | length }}
       tags: [smoketest]
 
     - name: Verify DBB_BUILD ownership
@@ -208,7 +221,7 @@
           - "DBB_BUILD listing:"
           - "{{ dbb_build_listing.stdout_lines }}"
           - "Languages.yaml tag:  {{ languages_tag.stdout }}"
-          - "Languages.yaml vars: {{ languages_var_count.stdout }}"
+          - "Languages.yaml vars: {{ languages_var_count }}"
           - "DBB_BUILD ownership: {{ dbb_build_ownership.stdout }}"
           - "Profile DBB export:  {{ profile_dbb_export.stdout }}"
       when: boolean_debug | bool
@@ -220,14 +233,14 @@
           - "'Languages.yaml' in dbb_build_listing.stdout"
           - "'dbb-build.yaml' in dbb_build_listing.stdout"
           - "'UTF-8' in languages_tag.stdout"
-          - languages_var_count.stdout | int == (dbb_languages_datasets | length)
+          - languages_var_count | int == (dbb_languages_datasets | length)
           - target_user in dbb_build_ownership.stdout
           - "'export DBB_HOME=' + dbb.home in profile_dbb_export.stdout"
         fail_msg: |
           DBB smoke test failed for {{ target_user }}. Check:
             DBB_BUILD listing:   {{ dbb_build_listing.stdout_lines }}
             Languages.yaml tag:  {{ languages_tag.stdout }}
-            Languages.yaml vars: {{ languages_var_count.stdout }} (expected {{ dbb_languages_datasets | length }})
+            Languages.yaml vars: {{ languages_var_count }} (expected {{ dbb_languages_datasets | length }})
             Ownership:           {{ dbb_build_ownership.stdout }}
             Profile DBB export:  {{ profile_dbb_export.stdout }}
         success_msg: |
