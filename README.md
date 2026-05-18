@@ -17,8 +17,12 @@ ansible-playbooks/
     │   ├── inventory.yml
     │   └── group_vars/
     │       └── all.yml
+    ├── templates/
+    │   └── Languages.yaml.j2
     ├── ansible.cfg
     ├── post_uuid.yml
+    ├── setup_dbb_user.yml
+    ├── setup_runner_user.yml
     └── zos_ping.yml
 ```
 
@@ -198,3 +202,95 @@ POSTs z/OS UUID information to a z/OSMF endpoint using the `ibm.ibm_zosmf` colle
 ```sh
 ansible-playbook -i inventories/inventory.yml post_uuid.yml
 ```
+
+---
+
+## z/OS User Onboarding (run in order)
+
+Onboarding a new z/OS USS user as a GitLab Runner + DBB workload account on ADCD z32a is a **two-step process**. Run the playbooks in this order:
+
+1. **`setup_runner_user.yml`** — runner-platform foundations (`.profile`, runner directories).
+2. **`setup_dbb_user.yml`** — DBB-specific working files on top.
+
+```sh
+# Step 1 — runner-side foundations
+ansible-playbook -i inventories/inventory.yml setup_runner_user.yml -e "target_user=seb"
+
+# Step 2 — DBB working files (requires Step 1)
+ansible-playbook -i inventories/inventory.yml setup_dbb_user.yml -e "target_user=seb"
+```
+
+### Shared prerequisites
+
+Before running either playbook:
+
+- The target user must already exist with an OMVS segment (HOME and shell), e.g. from RACF:
+  ```
+  ADDUSER SEB OMVS(HOME(/u/seb) PROGRAM(/bin/sh))
+  ```
+- `/u/<target_user>/` must exist and be owned by the target user.
+- `/u/ibmuser/.profile` is the canonical template — it must already have DBB env vars and the `zopen-config` sourcing block at column 0.
+- The connecting user (`IBMUSER` in `inventories/inventory.yml`) must have `BPX.SUPERUSER` access or UID 0 to chown files into another user's home.
+
+---
+
+### setup_runner_user.yml
+
+Onboards a new z/OS USS user as a GitLab Runner workload account by copying `IBMUSER`'s `.profile` as the canonical template, preserving the IBM-1047 file tag. Creates `~/gitlab-runner/{builds,cache}` directories owned by the target user.
+
+Idempotent — safe to re-run. The `.profile` copy is guarded with `creates:` and skipped if the target already has one.
+
+**Target host:** `z32a`
+**Run order:** First (before `setup_dbb_user.yml`).
+
+**Variables:**
+
+| Variable | Default | Description |
+|----------|---------|-------------|
+| `target_user` | _(required)_ | The new user to onboard. Must not be `ibmuser`. |
+| `target_group` | `SYS1` | Default group for chown |
+| `boolean_debug` | `false` | Verbose smoke-test output |
+
+**Usage:**
+
+```sh
+ansible-playbook -i inventories/inventory.yml setup_runner_user.yml -e "target_user=seb"
+```
+
+**Smoke test verifies:** `.profile` tagged `IBM-1047`, owned by the target user, contains expected exports (`DBB_HOME`, `DBB_BUILD`, `zopen-config`), and `~/gitlab-runner/{builds,cache}` exist.
+
+**Tags:** `validate`, `profile`, `dirs`, `smoketest`
+
+---
+
+### setup_dbb_user.yml
+
+Adds IBM DBB v3 working files on top of an already-onboarded runner user. Creates `~/zBuilder/build/`, copies `dbb-build.yaml` and the language YAML samples from `$DBB_HOME` (preserving UTF-8 tags via `cp -p`), and templates a site-specific `Languages.yaml` from `dbb_languages_datasets` in `group_vars/all.yml`. Tags `Languages.yaml` as UTF-8 so DBB's Java reader picks it up correctly.
+
+Does **not** modify `.profile` — the DBB env vars are already present in `/u/ibmuser/.profile` (the template copied by `setup_runner_user.yml`).
+
+**Target host:** `z32a`
+**Run order:** Second. Asserts the target user's `.profile` already exists and fails fast otherwise.
+
+**Variables:**
+
+| Variable | Default | Description |
+|----------|---------|-------------|
+| `target_user` | _(required)_ | The user to set up DBB for |
+| `target_group` | `SYS1` | Default group for chown |
+| `boolean_debug` | `false` | Verbose smoke-test output |
+
+**Usage:**
+
+```sh
+ansible-playbook -i inventories/inventory.yml setup_dbb_user.yml -e "target_user=seb"
+
+# Skip Languages.yaml templating (preserve hand-tuned values):
+ansible-playbook -i inventories/inventory.yml setup_dbb_user.yml -e "target_user=seb" --skip-tags languages
+```
+
+**Customising dataset names:** the COBOL / LE / CICS / HLASM dataset variables that DBB resolves at build time (`SIGYCOMP`, `SCEELKED`, `SDFHLOAD`, etc.) live in `inventories/group_vars/all.yml` under `dbb_languages_datasets`. Edit that dict and re-run the playbook to push changes — values are sorted alphabetically into `Languages.yaml` for stable templating diffs.
+
+**Smoke test verifies:** `DBB_BUILD` directory listing has expected files (`Languages.yaml`, `dbb-build.yaml`), `Languages.yaml` is tagged `UTF-8`, ownership is correct, target `.profile` has `DBB_HOME` exported.
+
+**Tags:** `validate`, `dirs`, `copy`, `languages`, `smoketest`
