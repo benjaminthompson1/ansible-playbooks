@@ -195,11 +195,11 @@
       tags: [smoketest]
 
     - name: Count templated variable entries in Languages.yaml
+      # Single-line expression: avoids YAML folded-scalar quirks and uses
+      # regex_findall with the (?m) flag so ^ anchors at the start of each
+      # line in the decoded blob.
       ansible.builtin.set_fact:
-        languages_var_count: >-
-          {{ (languages_slurp.content | b64decode).split('\n')
-             | select('match', '^  - name: ')
-             | list | length }}
+        languages_var_count: "{{ languages_slurp.content | b64decode | regex_findall('(?m)^  - name: ') | length }}"
       tags: [smoketest]
 
     - name: Verify DBB_BUILD ownership
