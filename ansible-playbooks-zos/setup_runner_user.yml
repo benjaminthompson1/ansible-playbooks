@@ -1,57 +1,149 @@
 ################################################################################
 # setup_runner_user.yml
 #
-# Prepares a z/OS USS user account to host GitLab Runner pipeline workloads.
-# Idempotent — safe to re-run.
+# Onboards a new z/OS USS user as a GitLab Runner workload account by copying
+# IBMUSER's `.profile` as the canonical template. Idempotent — safe to re-run.
 #
 # What it does:
-#   1. Creates ~/gitlab-runner/{builds,cache}/ for the runner's per-user
-#      builds_dir and cache_dir.
-#   2. Adds zopen-config sourcing to ~/.profile at column-0 (outside any
-#      interactive guard), so non-interactive runner shells get git/vim/etc.
-#   3. Tags ~/.profile as IBM-1047 so _BPXK_AUTOCVT can decode it.
-#   4. Smoke test — confirms .profile is tagged, source-able, and git resolves.
+#   1. Copies /u/ibmuser/.profile -> /u/<target_user>/.profile (preserving the
+#      IBM-1047 file tag via cp -p).
+#   2. chowns the copied .profile to target_user.
+#   3. Verifies and re-applies the IBM-1047 tag defensively.
+#   4. Creates ~/gitlab-runner/{builds,cache}/ owned by target_user.
+#   5. Smoke test — confirms .profile exists, tag, ownership, expected exports,
+#      and the runner directories.
 #
-# Not in scope (do these elsewhere):
-#   - Installing the gitlab-runner binary or editing /etc/gitlab-runner/config.toml.
-#     See [[GitLab Ultimate for zOS]] in the Obsidian vault.
-#   - DBB-specific setup. See setup_dbb_user.yml.
+# Why a template copy (rather than blockinfile patching):
+#   IBMUSER's .profile is the canonical template. It already has zopen-config
+#   loading at column-0 and the DBB env vars from the manual setup recorded in
+#   the Obsidian notes (GitLab Ultimate for zOS / DBB Customisation). Copying
+#   the file is simpler, more idempotent, and matches z/OS skeleton-home
+#   conventions.
 #
-# Connects as `ansible_user` from inventory and modifies *that* user's account.
-# To onboard a different user, override at the command line:
+# Prerequisites:
+#   - target_user has been created with an OMVS segment, e.g.:
+#       ADDUSER cicsdev OMVS(HOME(/u/cicsdev) PROGRAM(/bin/sh))
+#   - /u/<target_user>/ exists and is owned by target_user.
+#   - target_user has NO .profile yet (this playbook skips if one exists).
+#   - /u/ibmuser/.profile exists and is the customised template.
+#   - The connecting user (IBMUSER) has BPX.SUPERUSER access or UID 0 so it
+#     can chown files into another user's home.
 #
+# Usage:
 #   ansible-playbook -i inventories/inventory.yml setup_runner_user.yml \
-#       -e "ansible_user=cicsdev ansible_password=secret"
+#       -e "target_user=cicsdev"
 #
-# Standard usage (onboard the inventory user):
-#   ansible-playbook -i inventories/inventory.yml setup_runner_user.yml
+# Optional vars:
+#   -e "target_group=SYS1"      # default group for chown (default: SYS1)
+#   -e "boolean_debug=true"     # verbose smoke output
 #
-# Skip the smoke test (e.g. if zopen is not yet installed):
-#   ansible-playbook -i inventories/inventory.yml setup_runner_user.yml \
-#       --skip-tags smoketest
-#
-# Tags: dirs, profile, chtag, smoketest
+# Tags: validate, profile, dirs, smoketest
 ################################################################################
 
 ---
-- name: Set up GitLab Runner per-user environment on z/OS
+- name: Onboard a z/OS user with the GitLab Runner .profile template
   hosts: z32a
   gather_facts: no
   environment: "{{ zos_environment }}"
 
   vars:
     boolean_debug: false
-    target_home: "/u/{{ ansible_user }}"
+    target_group: "SYS1"
+    template_profile: "/u/ibmuser/.profile"
+    target_home: "/u/{{ target_user | default('') }}"
+    target_profile: "/u/{{ target_user | default('') }}/.profile"
 
   tasks:
 
     ############################################################################
-    # 1. Create per-user builds_dir and cache_dir
+    # 0. Validate required input and prerequisites
     ############################################################################
-    - name: Create ~/gitlab-runner/builds and ~/gitlab-runner/cache
+    - name: Assert target_user is provided
+      ansible.builtin.assert:
+        that:
+          - target_user is defined
+          - target_user | length > 0
+          - target_user != "ibmuser"
+        fail_msg: |
+          target_user is required and must not be 'ibmuser'.
+          Usage: -e "target_user=<userid>"
+        success_msg: "Onboarding user: {{ target_user }}"
+      tags: [validate]
+
+    - name: Verify /u/ibmuser/.profile template exists
+      ansible.builtin.stat:
+        path: "{{ template_profile }}"
+      register: template_stat
+      tags: [validate]
+
+    - name: Assert template .profile is present and tagged
+      ansible.builtin.assert:
+        that:
+          - template_stat.stat.exists
+        fail_msg: "Template .profile not found at {{ template_profile }}"
+      tags: [validate]
+
+    - name: Verify target user's home directory exists
+      ansible.builtin.stat:
+        path: "{{ target_home }}"
+      register: target_home_stat
+      tags: [validate]
+
+    - name: Assert target home directory exists
+      ansible.builtin.assert:
+        that:
+          - target_home_stat.stat.exists
+          - target_home_stat.stat.isdir
+        fail_msg: |
+          {{ target_home }} does not exist. Create the user with an OMVS
+          segment first:
+            ADDUSER {{ target_user | upper }} OMVS(HOME({{ target_home }}) PROGRAM(/bin/sh))
+      tags: [validate]
+
+    ############################################################################
+    # 1. Copy IBMUSER's .profile template to new user's home.
+    #    cp -p preserves attributes including the IBM-1047 file tag.
+    #    `creates:` makes this idempotent — skips if target .profile exists.
+    ############################################################################
+    - name: Check whether target .profile already exists
+      ansible.builtin.stat:
+        path: "{{ target_profile }}"
+      register: target_profile_stat
+      tags: [profile]
+
+    - name: Copy IBMUSER's .profile template to new user's home
+      ansible.builtin.command: cp -p {{ template_profile }} {{ target_profile }}
+      args:
+        creates: "{{ target_profile }}"
+      when: not target_profile_stat.stat.exists
+      tags: [profile]
+
+    - name: Set ownership of copied .profile to target user
+      ansible.builtin.file:
+        path: "{{ target_profile }}"
+        owner: "{{ target_user }}"
+        group: "{{ target_group }}"
+        mode: "0644"
+      tags: [profile]
+
+    ############################################################################
+    # 2. Defensively re-tag .profile as IBM-1047 (cp -p should preserve, but
+    #    chtag is idempotent and cheap).
+    ############################################################################
+    - name: Tag target .profile as IBM-1047
+      ansible.builtin.command: chtag -tc IBM-1047 {{ target_profile }}
+      changed_when: false
+      tags: [profile]
+
+    ############################################################################
+    # 3. Create ~/gitlab-runner/{builds,cache} owned by target_user
+    ############################################################################
+    - name: Create gitlab-runner workspace directories
       ansible.builtin.file:
         path: "{{ target_home }}/{{ item }}"
         state: directory
+        owner: "{{ target_user }}"
+        group: "{{ target_group }}"
         mode: "0755"
       loop:
         - "{{ gitlab_runner.user_builds_subdir }}"
@@ -59,62 +151,44 @@
       tags: [dirs]
 
     ############################################################################
-    # 2. Patch ~/.profile — add zopen-config at column-0 (outside any
-    #    interactive guard). Marker block makes this idempotent.
-    #
-    #    We intentionally do NOT remove any existing zopen-config line that
-    #    may be inside an interactive `if [[ $- == *i* ]]` block — sourcing
-    #    twice is idempotent, and a regex-delete is fragile across edits.
+    # 4. Smoke tests — static checks only (no `su` to target user)
     ############################################################################
-    - name: Add zopen-config sourcing to ~/.profile (column-0)
-      ibm.ibm_zos_core.zos_blockinfile:
-        src: "{{ target_home }}/.profile"
-        marker: "# {mark} ANSIBLE MANAGED — ZOPEN CONFIG (setup_runner_user.yml)"
-        insertbefore: '^if \[\[ \$- == \*i\* \]\]; then'
-        block: |
-          # -----------------------------------------------------------------------------
-          # zopen - load for ALL shells (interactive AND non-interactive)
-          # Required so non-interactive shells (e.g. gitlab-runner job shells, BPXBATCH)
-          # get git, vim and other zopen tools on PATH.
-          # -----------------------------------------------------------------------------
-          if [ -f "{{ gitlab_runner.zopen_config }}" ]; then
-              . {{ gitlab_runner.zopen_config }} --override-zos-tools
-          fi
-        state: present
-        encoding: IBM-1047
-      tags: [profile]
-
-    ############################################################################
-    # 3. Tag .profile as IBM-1047 so _BPXK_AUTOCVT can decode it from
-    #    non-interactive shells. chtag is cheap and idempotent — always re-tag.
-    ############################################################################
-    - name: Tag ~/.profile as IBM-1047
-      ansible.builtin.command: chtag -tc IBM-1047 {{ target_home }}/.profile
-      changed_when: false
-      tags: [chtag]
-
-    ############################################################################
-    # 4. Smoke test — confirm tag, source-ability, and git resolution
-    ############################################################################
-    - name: Verify ~/.profile is tagged IBM-1047
-      ansible.builtin.command: ls -T {{ target_home }}/.profile
+    - name: Verify target .profile tag
+      ansible.builtin.command: ls -T {{ target_profile }}
       register: profile_tag
       changed_when: false
       tags: [smoketest]
 
-    - name: Source ~/.profile and check git is on PATH
-      ansible.builtin.shell: |
-        /bin/bash -c 'source {{ target_home }}/.profile >/dev/null 2>&1 && command -v git'
-      register: git_check
+    - name: Verify target .profile ownership
+      ansible.builtin.command: ls -l {{ target_profile }}
+      register: profile_ownership
       changed_when: false
-      failed_when: git_check.rc != 0
+      tags: [smoketest]
+
+    - name: Verify expected exports are present in copied .profile
+      ansible.builtin.command: grep -E '^(export DBB_HOME=|export DBB_BUILD=|zopen-config)' {{ target_profile }}
+      register: profile_content
+      changed_when: false
+      failed_when: profile_content.rc != 0
+      tags: [smoketest]
+
+    - name: Verify runner directories exist with correct ownership
+      ansible.builtin.command: ls -ld {{ target_home }}/{{ item }}
+      loop:
+        - "{{ gitlab_runner.user_builds_subdir }}"
+        - "{{ gitlab_runner.user_cache_subdir }}"
+      register: dir_listings
+      changed_when: false
       tags: [smoketest]
 
     - name: Display debug info (boolean flag)
       ansible.builtin.debug:
         msg:
-          - "profile_tag.stdout: {{ profile_tag.stdout }}"
-          - "git_check.stdout:   {{ git_check.stdout }}"
+          - "Tag:        {{ profile_tag.stdout }}"
+          - "Ownership:  {{ profile_ownership.stdout }}"
+          - "Exports:    {{ profile_content.stdout_lines }}"
+          - "Directories:"
+          - "{{ dir_listings.results | map(attribute='stdout') | list }}"
       when: boolean_debug | bool
       tags: [smoketest]
 
@@ -122,21 +196,25 @@
       ansible.builtin.assert:
         that:
           - "'IBM-1047' in profile_tag.stdout"
-          - "'git' in git_check.stdout"
+          - target_user in profile_ownership.stdout
+          - "'DBB_HOME' in profile_content.stdout"
+          - "'zopen-config' in profile_content.stdout"
         fail_msg: |
-          Smoke test failed.
-          .profile tag: {{ profile_tag.stdout }}
-          git path:     {{ git_check.stdout | default('not found') }}
+          Smoke test failed for {{ target_user }}:
+            tag:        {{ profile_tag.stdout }}
+            ownership:  {{ profile_ownership.stdout }}
+            exports:    {{ profile_content.stdout_lines }}
+          Check that /u/ibmuser/.profile is the customised template.
         success_msg: |
-          Smoke test passed.
-          .profile is tagged IBM-1047 and git resolves from a sourced shell.
+          Onboarding complete for {{ target_user }}.
       tags: [smoketest]
 
     - name: Display summary
       ansible.builtin.debug:
         msg:
-          - "GitLab Runner user setup complete for {{ ansible_user }}:"
-          - "  builds_dir: {{ target_home }}/{{ gitlab_runner.user_builds_subdir }}"
-          - "  cache_dir:  {{ target_home }}/{{ gitlab_runner.user_cache_subdir }}"
-          - "  .profile:   {{ profile_tag.stdout }}"
-          - "  git:        {{ git_check.stdout }}"
+          - "User onboarded: {{ target_user }}"
+          - "  .profile:    {{ target_profile }} ({{ profile_tag.stdout.split()[0] }} {{ profile_tag.stdout.split()[1] }})"
+          - "  builds_dir:  {{ target_home }}/{{ gitlab_runner.user_builds_subdir }}"
+          - "  cache_dir:   {{ target_home }}/{{ gitlab_runner.user_cache_subdir }}"
+          - "  Next:        run setup_dbb_user.yml to add DBB workspace files,"
+          - "               or onboard a different user with -e 'target_user=<id>'"

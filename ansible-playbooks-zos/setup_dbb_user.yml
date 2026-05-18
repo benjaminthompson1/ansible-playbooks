@@ -1,138 +1,151 @@
 ################################################################################
 # setup_dbb_user.yml
 #
-# Adds IBM Dependency Based Build (DBB) v3 setup to a z/OS USS user account
-# that already has the GitLab Runner base set up (via setup_runner_user.yml).
+# Adds the IBM DBB v3 working files (writable DBB_BUILD directory and
+# site-customised Languages.yaml) to a z/OS USS user account.
 # Idempotent — safe to re-run.
 #
 # What it does:
-#   1. Adds DBB env vars (DBB_HOME, DBB_BUILD, PIPELINE_WORKSPACE) and a
-#      DBB-first PATH to ~/.profile via a marker block.
-#   2. Re-tags ~/.profile as IBM-1047 (in case the edit stripped the tag).
-#   3. Creates ~/zBuilder/build (the writable DBB_BUILD directory).
-#   4. Copies dbb-build.yaml and language sample YAMLs from $DBB_HOME into
-#      ~/zBuilder/build/.
-#   5. Templates Languages.yaml with site-specific dataset values from
-#      group_vars/all.yml (dbb_languages_datasets).
-#   6. Smoke test — confirms DBB_HOME resolves, dbb is on PATH, dbb --version
-#      returns a sane string, and Languages.yaml exists and is UTF-8 tagged.
+#   1. Creates ~/zBuilder/build/ owned by target_user.
+#   2. Copies dbb-build.yaml + language YAML samples from $DBB_HOME (preserving
+#      UTF-8 file tags via cp -p).
+#   3. Templates Languages.yaml from group_vars (dbb_languages_datasets).
+#   4. Tags Languages.yaml as UTF-8.
+#   5. chowns all DBB files to target_user.
+#   6. Smoke test — confirms file presence, tags, ownership, and that the
+#      target user's .profile has DBB_HOME exported.
+#
+# This playbook does NOT modify .profile — the DBB env vars are already
+# present in /u/ibmuser/.profile (the template copied by setup_runner_user.yml)
+# from the manual customisation recorded in the Obsidian DBB Customisation note.
 #
 # Prerequisites:
-#   - setup_runner_user.yml has been run for this user (.profile is tagged
-#     IBM-1047 and zopen-config loads for non-interactive shells).
-#   - DBB v3 is installed at /usr/lpp/IBM/dbb on the target host.
+#   - setup_runner_user.yml has been run for target_user (or .profile is
+#     otherwise present with DBB env vars).
+#   - DBB v3 is installed at /usr/lpp/IBM/dbb on z32a.
+#   - Connecting user (IBMUSER) has BPX.SUPERUSER access or UID 0 so it can
+#     chown files into another user's home.
 #
-# Standard usage (current inventory user):
-#   ansible-playbook -i inventories/inventory.yml setup_dbb_user.yml
-#
-# Onboard a different user:
+# Usage:
 #   ansible-playbook -i inventories/inventory.yml setup_dbb_user.yml \
-#       -e "ansible_user=cicsdev ansible_password=secret"
+#       -e "target_user=cicsdev"
+#
+# Optional vars:
+#   -e "target_group=SYS1"      # default group for chown (default: SYS1)
+#   -e "boolean_debug=true"     # verbose smoke output
 #
 # Skip Languages.yaml templating (e.g. to preserve hand-tuned values):
 #   ansible-playbook -i inventories/inventory.yml setup_dbb_user.yml \
-#       --skip-tags languages
+#       -e "target_user=cicsdev" --skip-tags languages
 #
-# Tags: profile, chtag, dirs, copy, languages, smoketest
+# Tags: validate, dirs, copy, languages, smoketest
 ################################################################################
 
 ---
-- name: Set up DBB v3 per-user environment on z/OS
+- name: Set up DBB v3 working files for a z/OS user
   hosts: z32a
   gather_facts: no
   environment: "{{ zos_environment }}"
 
   vars:
     boolean_debug: false
-    target_home: "/u/{{ ansible_user }}"
-    dbb_build_dir: "{{ target_home }}/{{ dbb.user_build_subdir }}"
+    target_group: "SYS1"
+    target_home: "/u/{{ target_user | default('') }}"
+    target_profile: "/u/{{ target_user | default('') }}/.profile"
+    dbb_build_dir: "/u/{{ target_user | default('') }}/{{ dbb.user_build_subdir }}"
 
   tasks:
 
     ############################################################################
-    # 1. Patch ~/.profile — add DBB exports + DBB-first PATH via marker block.
-    #    Banner block (interactive-only) is added at the same time so login
-    #    sessions show a DBB version line.
+    # 0. Validate required input and prerequisites
     ############################################################################
-    - name: Add DBB env vars and PATH update to ~/.profile
-      ibm.ibm_zos_core.zos_blockinfile:
-        src: "{{ target_home }}/.profile"
-        marker: "# {mark} ANSIBLE MANAGED — DBB ENV (setup_dbb_user.yml)"
-        block: |
-          # -----------------------------------------------------------------------------
-          # IBM Dependency Based Build (DBB) v3
-          # -----------------------------------------------------------------------------
-          export DBB_HOME={{ dbb.home }}
-          export DBB_BUILD=${HOME}/{{ dbb.user_build_subdir }}
-          export PIPELINE_WORKSPACE=${HOME}/{{ dbb.user_workspace_subdir }}
-          [ ! -d "${DBB_HOME}" ] && echo "Warning: DBB_HOME not found" >&2
+    - name: Assert target_user is provided
+      ansible.builtin.assert:
+        that:
+          - target_user is defined
+          - target_user | length > 0
+        fail_msg: |
+          target_user is required.
+          Usage: -e "target_user=<userid>"
+        success_msg: "Setting up DBB for user: {{ target_user }}"
+      tags: [validate]
 
-          # Prepend DBB and other tool bin dirs to PATH
-          export PATH=${DBB_HOME}/bin:${JAVA_HOME}/bin:${PYTHON_HOME}/bin:${ZOAU_HOME}/bin:${NODE_HOME}/bin:/usr/bin:${PATH}
+    - name: Verify target user's .profile exists (setup_runner_user.yml first?)
+      ansible.builtin.stat:
+        path: "{{ target_profile }}"
+      register: target_profile_stat
+      tags: [validate]
 
-          # DBB banner — interactive shells only
-          if [[ $- == *i* ]]; then
-            echo ""
-            echo "DBB:"
-            if command -v dbb >/dev/null 2>&1; then
-              dbb --version 2>&1 | head -1
-            else
-              echo "  Not installed"
-            fi
-          fi
-        state: present
-        encoding: IBM-1047
-      tags: [profile]
+    - name: Assert prerequisites
+      ansible.builtin.assert:
+        that:
+          - target_profile_stat.stat.exists
+        fail_msg: |
+          {{ target_profile }} does not exist.
+          Run setup_runner_user.yml first to copy IBMUSER's .profile template:
+            ansible-playbook -i inventories/inventory.yml setup_runner_user.yml \
+                -e "target_user={{ target_user }}"
+      tags: [validate]
+
+    - name: Verify DBB install root exists
+      ansible.builtin.stat:
+        path: "{{ dbb.home }}"
+      register: dbb_home_stat
+      tags: [validate]
+
+    - name: Assert DBB is installed
+      ansible.builtin.assert:
+        that:
+          - dbb_home_stat.stat.exists
+          - dbb_home_stat.stat.isdir
+        fail_msg: "DBB not found at {{ dbb.home }}. Confirm the install."
+      tags: [validate]
 
     ############################################################################
-    # 2. Re-tag ~/.profile (defensive — blockinfile preserves tag, but cheap
-    #    to assert)
-    ############################################################################
-    - name: Tag ~/.profile as IBM-1047
-      ansible.builtin.command: chtag -tc IBM-1047 {{ target_home }}/.profile
-      changed_when: false
-      tags: [chtag]
-
-    ############################################################################
-    # 3. Create ~/zBuilder/build (writable DBB_BUILD)
+    # 1. Create writable DBB_BUILD directory owned by target_user
     ############################################################################
     - name: Create DBB_BUILD directory
       ansible.builtin.file:
         path: "{{ dbb_build_dir }}"
         state: directory
+        owner: "{{ target_user }}"
+        group: "{{ target_group }}"
         mode: "0755"
       tags: [dirs]
 
     ############################################################################
-    # 4. Copy dbb-build.yaml + language YAML samples from $DBB_HOME.
-    #    Use shell `cp` (not ansible.builtin.copy) so USS file tags are
-    #    preserved on the copies. `creates:` makes this idempotent.
+    # 2. Copy dbb-build.yaml and language YAML samples (preserve UTF-8 tags
+    #    via cp -p; `creates:` makes the dbb-build.yaml copy idempotent).
     ############################################################################
     - name: Copy dbb-build.yaml into DBB_BUILD
-      ansible.builtin.command: cp {{ dbb.build_template_dir }}/dbb-build.yaml {{ dbb_build_dir }}/dbb-build.yaml
+      ansible.builtin.command: cp -p {{ dbb.build_template_dir }}/dbb-build.yaml {{ dbb_build_dir }}/dbb-build.yaml
       args:
         creates: "{{ dbb_build_dir }}/dbb-build.yaml"
       tags: [copy]
 
     - name: Copy language YAML samples into DBB_BUILD (excluding Languages.yaml)
       ansible.builtin.shell: |
+        set -e
         for f in {{ dbb.samples_dir }}/*.yaml; do
           base=$(basename "$f")
           if [ "$base" != "Languages.yaml" ] && [ ! -f "{{ dbb_build_dir }}/$base" ]; then
-            cp "$f" "{{ dbb_build_dir }}/$base"
+            cp -p "$f" "{{ dbb_build_dir }}/$base"
+            echo "copied $base"
           fi
         done
       register: copy_samples
-      changed_when: copy_samples.stdout != "" or copy_samples.stderr != ""
+      changed_when: copy_samples.stdout != ""
       tags: [copy]
 
     ############################################################################
-    # 5. Template Languages.yaml with site-specific dataset values
+    # 3. Template Languages.yaml with site-specific dataset values
     ############################################################################
     - name: Template Languages.yaml from group_vars
       ansible.builtin.template:
         src: Languages.yaml.j2
         dest: "{{ dbb_build_dir }}/Languages.yaml"
+        owner: "{{ target_user }}"
+        group: "{{ target_group }}"
         mode: "0644"
       tags: [languages]
 
@@ -142,30 +155,49 @@
       tags: [languages]
 
     ############################################################################
-    # 6. Smoke tests
+    # 4. Set ownership on all copied/templated DBB files to target_user
     ############################################################################
-    - name: Verify DBB_BUILD contains the expected files
+    - name: Set ownership on everything in DBB_BUILD
+      ansible.builtin.file:
+        path: "{{ dbb_build_dir }}"
+        state: directory
+        owner: "{{ target_user }}"
+        group: "{{ target_group }}"
+        recurse: true
+      tags: [copy, languages]
+
+    ############################################################################
+    # 5. Smoke tests — static checks only
+    ############################################################################
+    - name: List DBB_BUILD contents
       ansible.builtin.command: ls -1 {{ dbb_build_dir }}
       register: dbb_build_listing
       changed_when: false
       tags: [smoketest]
 
-    - name: Verify Languages.yaml is UTF-8 tagged
+    - name: Verify Languages.yaml tag
       ansible.builtin.command: ls -T {{ dbb_build_dir }}/Languages.yaml
       register: languages_tag
       changed_when: false
       tags: [smoketest]
 
-    - name: Source ~/.profile and check DBB_HOME + dbb binary
-      ansible.builtin.shell: |
-        /bin/bash -c 'source {{ target_home }}/.profile >/dev/null 2>&1 && \
-                      echo "DBB_HOME=$DBB_HOME" && \
-                      echo "DBB_BUILD=$DBB_BUILD" && \
-                      command -v dbb && \
-                      dbb --version 2>&1 | head -1'
-      register: dbb_check
+    - name: Verify Languages.yaml content has expected variables
+      ansible.builtin.command: grep -c '^  - name: ' {{ dbb_build_dir }}/Languages.yaml
+      register: languages_var_count
       changed_when: false
-      failed_when: dbb_check.rc != 0
+      tags: [smoketest]
+
+    - name: Verify DBB_BUILD ownership
+      ansible.builtin.command: ls -ld {{ dbb_build_dir }}
+      register: dbb_build_ownership
+      changed_when: false
+      tags: [smoketest]
+
+    - name: Verify target .profile has DBB_HOME exported
+      ansible.builtin.command: grep '^export DBB_HOME=' {{ target_profile }}
+      register: profile_dbb_export
+      changed_when: false
+      failed_when: profile_dbb_export.rc != 0
       tags: [smoketest]
 
     - name: Display debug info (boolean flag)
@@ -173,9 +205,10 @@
         msg:
           - "DBB_BUILD listing:"
           - "{{ dbb_build_listing.stdout_lines }}"
-          - "Languages.yaml tag: {{ languages_tag.stdout }}"
-          - "DBB shell check:"
-          - "{{ dbb_check.stdout_lines }}"
+          - "Languages.yaml tag:  {{ languages_tag.stdout }}"
+          - "Languages.yaml vars: {{ languages_var_count.stdout }}"
+          - "DBB_BUILD ownership: {{ dbb_build_ownership.stdout }}"
+          - "Profile DBB export:  {{ profile_dbb_export.stdout }}"
       when: boolean_debug | bool
       tags: [smoketest]
 
@@ -185,23 +218,27 @@
           - "'Languages.yaml' in dbb_build_listing.stdout"
           - "'dbb-build.yaml' in dbb_build_listing.stdout"
           - "'UTF-8' in languages_tag.stdout"
-          - "'DBB_HOME=' + dbb.home in dbb_check.stdout"
-          - "'Dependency Based Build version' in dbb_check.stdout"
+          - languages_var_count.stdout | int == (dbb_languages_datasets | length)
+          - target_user in dbb_build_ownership.stdout
+          - "'export DBB_HOME=' + dbb.home in profile_dbb_export.stdout"
         fail_msg: |
-          DBB smoke test failed. Check:
-            - {{ dbb_build_dir }}/ contents
-            - Languages.yaml tag (expected UTF-8)
-            - ~/.profile DBB block (sourceable, exports DBB_HOME)
-            - dbb binary on PATH
+          DBB smoke test failed for {{ target_user }}. Check:
+            DBB_BUILD listing:   {{ dbb_build_listing.stdout_lines }}
+            Languages.yaml tag:  {{ languages_tag.stdout }}
+            Languages.yaml vars: {{ languages_var_count.stdout }} (expected {{ dbb_languages_datasets | length }})
+            Ownership:           {{ dbb_build_ownership.stdout }}
+            Profile DBB export:  {{ profile_dbb_export.stdout }}
         success_msg: |
-          DBB user setup complete and verified.
+          DBB user setup complete for {{ target_user }} and verified.
       tags: [smoketest]
 
     - name: Display summary
       ansible.builtin.debug:
         msg:
-          - "DBB setup complete for {{ ansible_user }}:"
-          - "  DBB_HOME:  {{ dbb.home }}"
-          - "  DBB_BUILD: {{ dbb_build_dir }}"
-          - "  Datasets:  {{ dbb_languages_datasets | length }} variables in Languages.yaml"
-          - "  Next:      run a pipeline against this user to verify end-to-end."
+          - "DBB setup complete for {{ target_user }}:"
+          - "  DBB_HOME:    {{ dbb.home }}"
+          - "  DBB_BUILD:   {{ dbb_build_dir }}"
+          - "  Datasets:    {{ dbb_languages_datasets | length }} variables in Languages.yaml"
+          - "  Owner:       {{ target_user }}:{{ target_group }}"
+          - "  Next:        SSH in as {{ target_user }} and run 'dbb --version'"
+          - "               then point a pipeline at this user to verify end-to-end."
