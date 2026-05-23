@@ -1,0 +1,130 @@
+################################################################################
+# Backs up z32a volumes to a compressed archive with rotation
+#
+# Requirements:
+# - xz compression utility on target host
+# - ~2hr runtime for large volume sets
+#
+# Usage:
+#   ansible-playbook -i inventories/inventory.yml backup_z32a_volumes.yml
+#   Optional: -e "keep_backups=5"
+################################################################################
+
+---
+- name: z32a Volume Backup
+  hosts: nuc
+  gather_facts: yes
+  vars:
+    src_dir: "/home/ibmsys1/volumes-z32a"
+    dest_dir: "/home/ibmsys1/volumes-backup"
+    timestamp: "{{ ansible_date_time.iso8601 | regex_replace('[-:T]', '') | regex_replace('\\..*', '') }}"
+    archive_name: "volumes-z32a-{{ timestamp }}.tar.xz"
+    keep_backups: 4
+    backup_timeout: 7200 # 2 hours in seconds
+
+  tasks:
+    - name: Ensure source directory exists
+      ansible.builtin.stat:
+        path: "{{ src_dir }}"
+      register: src_dir_stat
+      failed_when: not src_dir_stat.stat.exists or not src_dir_stat.stat.isdir
+      tags: verify
+
+    - name: Verify xz is available
+      ansible.builtin.command: xz --version
+      register: xz_check
+      changed_when: false
+      failed_when: xz_check.rc != 0
+      tags: verify
+
+    - name: Create destination directory if needed
+      ansible.builtin.file:
+        path: "{{ dest_dir }}"
+        state: directory
+        mode: "0755"
+      tags: prepare
+
+    - name: Check if backup already exists for this timestamp
+      ansible.builtin.stat:
+        path: "{{ dest_dir }}/{{ archive_name }}"
+      register: existing_backup
+      tags: backup
+
+    - name: Create compressed archive of z32a volumes (async)
+      ansible.builtin.shell: >
+        tar -c -I 'xz -T0 -1'
+        --checkpoint=10000
+        -f "{{ dest_dir }}/{{ archive_name }}"
+        -C "{{ src_dir }}" .
+      async: "{{ backup_timeout }}"
+      poll: 0
+      register: tar_job
+      when: not existing_backup.stat.exists
+      tags: backup
+
+    - name: Wait for tar job to finish
+      ansible.builtin.async_status:
+        jid: "{{ tar_job.ansible_job_id }}"
+      register: tar_status
+      until: tar_status.finished
+      retries: "{{ (backup_timeout / 10) | int }}"
+      delay: 10
+      failed_when: tar_status.failed | default(false)
+      when: not existing_backup.stat.exists
+      tags: backup
+
+    - name: Verify archive integrity
+      ansible.builtin.shell: "xz -t {{ dest_dir }}/{{ archive_name }}"
+      register: verify_result
+      changed_when: false
+      when: not existing_backup.stat.exists
+      tags: backup
+
+    - name: Get archive size
+      ansible.builtin.stat:
+        path: "{{ dest_dir }}/{{ archive_name }}"
+      register: archive_stat
+      tags: backup
+
+    - name: Display backup information
+      ansible.builtin.debug:
+        msg: |
+          Backup completed successfully
+          Archive: {{ archive_name }}
+          Size: {{ (archive_stat.stat.size / 1024 / 1024) | round(2) }} MB
+      when: not existing_backup.stat.exists
+      tags: backup
+
+    - name: List existing backup files
+      ansible.builtin.find:
+        paths: "{{ dest_dir }}"
+        patterns: "volumes-z32a-*.tar.xz"
+        file_type: file
+        age_stamp: mtime
+      register: backup_files
+      tags: cleanup
+
+    - name: Sort and remove old backups
+      ansible.builtin.file:
+        path: "{{ item.path }}"
+        state: absent
+      loop: "{{ (backup_files.files | sort(attribute='mtime', reverse=true))[keep_backups:] }}"
+      when: backup_files.files | length > keep_backups
+      tags: cleanup
+
+    - name: List retained backup files
+      ansible.builtin.find:
+        paths: "{{ dest_dir }}"
+        patterns: "volumes-z32a-*.tar.xz"
+        file_type: file
+        age_stamp: mtime
+      register: retained_files
+      tags: report
+
+    - name: Display retained backup files
+      ansible.builtin.debug:
+        msg: "Retained: {{ item.path | basename }} ({{ (item.size / 1024 / 1024) | round(2) }} MB)"
+      loop: "{{ retained_files.files | sort(attribute='mtime', reverse=true) }}"
+      loop_control:
+        label: "{{ item.path | basename }}"
+      tags: report

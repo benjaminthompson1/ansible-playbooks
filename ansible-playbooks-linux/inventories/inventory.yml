@@ -1,0 +1,7 @@
+---
+linux_systems:
+  hosts:
+    nuc:
+      ansible_host: localhost
+      ansible_user: ibmsys1
+      ansible_ssh_private_key_file: ~/.ssh/nuc_ed25519

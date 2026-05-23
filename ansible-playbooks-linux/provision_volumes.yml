@@ -1,0 +1,60 @@
+################################################################################
+# Creates z32a CKD volumes for zADE systems
+#
+# Requirements:
+# - alcckd command available on target host
+#
+# Usage:
+#   ansible-playbook -i inventories/inventory.yml provision_volumes.yml
+#   Optional: -e "dest_dir=/custom/volume/path"
+################################################################################
+
+---
+- name: zADE Volume Provisioning
+  hosts: nuc
+  gather_facts: yes
+
+  vars:
+    dest_dir: "/home/ibmsys1/volumes-z32a"
+    volumes_3390_54:
+      - a3usr2
+      - a3usr3
+      - a3usr4
+      - a3usr5
+      - a3zcx2
+    volumes_3390_9:
+      - work0a
+      - work0b
+
+  tasks:
+    - name: Ensure destination directory exists
+      ansible.builtin.file:
+        path: "{{ dest_dir }}"
+        state: directory
+        mode: '0755'
+
+    - name: Create 3390-54 volumes
+      ansible.builtin.command: "alcckd {{ dest_dir }}/{{ item }} -d3390-54"
+      args:
+        creates: "{{ dest_dir }}/{{ item }}"
+      loop: "{{ volumes_3390_54 }}"
+
+    - name: Create 3390-9 volumes
+      ansible.builtin.command: "alcckd {{ dest_dir }}/{{ item }} -d3390-9"
+      args:
+        creates: "{{ dest_dir }}/{{ item }}"
+      loop: "{{ volumes_3390_9 }}"
+
+    - name: Verify volume creation
+      ansible.builtin.stat:
+        path: "{{ dest_dir }}/{{ item }}"
+      loop: "{{ volumes_3390_54 + volumes_3390_9 }}"
+      register: volume_check
+
+    - name: Assert all volumes exist
+      ansible.builtin.assert:
+        that: item.stat.exists
+        fail_msg: "Volume {{ item.item }} was not created at {{ dest_dir }}/{{ item.item }}"
+      loop: "{{ volume_check.results }}"
+      loop_control:
+        label: "{{ item.item }}"

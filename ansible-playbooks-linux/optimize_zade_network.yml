@@ -1,0 +1,138 @@
+################################################################################
+# Optimizes network settings for zADE systems
+#
+# Requirements:
+# - Root access (become)
+# - RHEL system with ethtool and tuned
+#
+# Usage:
+#   ansible-playbook -i inventories/inventory.yml optimize_zade_network.yml --ask-become-pass
+#   Optional: -e "network_interface=enp86s0 make_persistent=true"
+################################################################################
+
+---
+- name: Optimize network settings for zADE systems on ASUS NUC
+  hosts: nuc
+  become: yes
+  gather_facts: yes
+
+  vars:
+    network_interface: enp86s0
+    # rx disables RX checksum offload (not the RX path itself); this is
+    # intentional — zADE's emulated NIC does not handle hardware checksum
+    # offload correctly, so we force it to software.
+    offload_options:
+      - rx
+      - tso
+      - gso
+      - gro
+      - lro
+    # All tuning applied by this playbook is ephemeral (lost on reboot) by
+    # default. Set make_persistent=true to write settings to network scripts
+    # so they survive a reboot. NOTE: persistence logic is not yet implemented
+    # — this flag is reserved for a future task.
+    make_persistent: false
+
+  tasks:
+
+    - name: Ensure required packages are installed
+      ansible.builtin.package:
+        name:
+          - ethtool
+          - tuned
+        state: present
+
+    - name: Verify network interface exists
+      ansible.builtin.command: "ip link show {{ network_interface }}"
+      register: interface_check
+      failed_when: interface_check.rc != 0
+      changed_when: false
+
+    - name: Disable network offload options
+      ansible.builtin.command: "ethtool -K {{ network_interface }} {{ item }} off"
+      loop: "{{ offload_options }}"
+      register: ethtool_offload_result
+      changed_when: false
+      ignore_errors: true
+
+    - name: Log offload results
+      ansible.builtin.debug:
+        msg: "{{ item.item }}: {{ 'OK' if item.rc == 0 else 'SKIPPED (not supported) - ' + (item.stderr | default('')) }}"
+      loop: "{{ ethtool_offload_result.results }}"
+      loop_control:
+        label: "{{ item.item }}"
+
+    - name: Increase NIC ring buffer sizes
+      ansible.builtin.command: "ethtool -G {{ network_interface }} rx 4096 tx 4096"
+      register: ring_buffer_result
+      # ethtool exits 0 whether or not values changed; report honestly
+      changed_when: false
+      failed_when: false
+      ignore_errors: true
+
+    - name: Warn if ring buffer resize failed
+      ansible.builtin.debug:
+        msg: "WARNING: Could not set ring buffer sizes (rc={{ ring_buffer_result.rc }}): {{ ring_buffer_result.stderr | default('no error detail') }}"
+      when: ring_buffer_result.rc != 0
+
+    - name: Set RX interrupt coalescing
+      ansible.builtin.command: "ethtool -C {{ network_interface }} rx-usecs 32"
+      register: coalesce_result
+      changed_when: false
+      failed_when: false
+      ignore_errors: true
+
+    - name: Warn if coalescing config failed
+      ansible.builtin.debug:
+        msg: "WARNING: Could not set RX coalescing (rc={{ coalesce_result.rc }}): {{ coalesce_result.stderr | default('no error detail') }}"
+      when: coalesce_result.rc != 0
+
+    - name: Pin NIC IRQs to isolated CPUs
+      block:
+        - name: Get IRQ numbers for network interface
+          ansible.builtin.shell: |
+            grep "{{ network_interface }}" /proc/interrupts | awk -F: '{print $1}' | tr -d ' '
+          register: nic_irqs
+          changed_when: false
+
+        - name: Set IRQ affinity (CPU 2-3, away from zADE engine threads)
+          ansible.builtin.shell: |
+            echo {{ (idx % 2) + 2 }} > /proc/irq/{{ item }}/smp_affinity_list
+          loop: "{{ nic_irqs.stdout_lines }}"
+          loop_control:
+            index_var: idx
+          when: nic_irqs.stdout_lines | length > 0
+          changed_when: true
+          ignore_errors: true
+          # Uses smp_affinity_list (decimal CPU number) rather than the hex
+          # bitmask in smp_affinity. MSI-X IRQs on the IGC driver are
+          # single-CPU constrained, so a multi-CPU bitmask (e.g. 0xc) will
+          # be rejected with EINVAL. Queues are distributed round-robin
+          # across CPUs 2 and 3 — adjust the range to match your NUC's
+          # layout. Leave CPUs 0-1 free for zADE engine threads.
+
+    - name: Tune TCP/IP socket and backlog settings
+      ansible.builtin.sysctl:
+        name: "{{ item.key }}"
+        value: "{{ item.value }}"
+        state: present
+      loop:
+        - { key: 'net.core.rmem_max',            value: '16777216' }
+        - { key: 'net.core.wmem_max',            value: '16777216' }
+        - { key: 'net.core.optmem_max',          value: '40960' }
+        - { key: 'net.core.netdev_max_backlog',  value: '5000' }
+        - { key: 'net.ipv4.tcp_rmem',            value: '4096 87380 16777216' }
+        - { key: 'net.ipv4.tcp_wmem',            value: '4096 65536 16777216' }
+        - { key: 'net.ipv4.tcp_window_scaling',  value: '1' }
+
+    - name: Apply tuned profile for network throughput
+      block:
+        - name: Get current tuned profile
+          ansible.builtin.command: tuned-adm active
+          register: tuned_profile
+          changed_when: false
+
+        - name: Apply tuned profile if not already active
+          ansible.builtin.command: tuned-adm profile network-throughput
+          when: "'network-throughput' not in tuned_profile.stdout"
+          changed_when: "'network-throughput' not in tuned_profile.stdout"

@@ -1,0 +1,19 @@
+# Claude Code — agent worktrees, local settings, transcripts
+.claude/
+
+# Ansible
+*.retry
+.vault_pass*
+
+# Python
+__pycache__/
+*.pyc
+.venv/
+
+# OS metadata
+.DS_Store
+Thumbs.db
+
+# Editor swap files
+*.swp
+*~

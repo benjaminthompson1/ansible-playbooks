@@ -1,0 +1,52 @@
+---
+#
+# Site-customised Languages.yaml — MANAGED BY ANSIBLE
+# Playbook:      ansible-playbooks-zos/setup_dbb_user.yml
+# Source sample: /usr/lpp/IBM/dbb/samples/languages/Languages.yaml (DBB v3.0.3)
+#
+# Do not edit by hand — your changes will be overwritten on the next playbook run.
+# To change dataset values, edit `dbb_languages_datasets` in
+# inventories/group_vars/all.yml.
+#
+version: 1.0.0
+
+#########################################################
+# Import language task configurations
+#########################################################
+include:
+  - file: Transfer.yaml
+  - file: BMS.yaml
+  - file: Cobol.yaml
+  - file: CobolTestcase.yaml
+  - file: CPP.yaml
+  - file: Assembler.yaml
+  - file: PLI.yaml
+  - file: REXX.yaml
+  - file: LinkEdit.yaml
+
+############################################################################
+# stage: Languages — reusable list of language configurations
+############################################################################
+tasks:
+  - stage: Languages
+    tasks:
+     - Transfer
+     - BMS
+     - Cobol
+     - CobolTestcase
+     - CPP
+     - Assembler
+     - PLI
+     - LinkEdit
+     - REXX
+
+##############################################################################
+# Site-specific dataset values
+# Sourced from `dbb_languages_datasets` in inventories/group_vars/all.yml.
+# Sorted alphabetically by variable name for stable templating diffs.
+##############################################################################
+variables:
+{% for name, value in (dbb_languages_datasets | dictsort) %}
+  - name: {{ name }}
+    value: {{ value }}
+{% endfor %}
