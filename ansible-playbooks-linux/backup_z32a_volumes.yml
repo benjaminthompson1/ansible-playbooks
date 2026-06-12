@@ -21,6 +21,7 @@
     archive_name: "volumes-z32a-{{ timestamp }}.tar.xz"
     keep_backups: 4
     backup_timeout: 7200 # 2 hours in seconds
+    delay_seconds: 10
 
   tasks:
     - name: Ensure source directory exists
@@ -67,17 +68,16 @@
         jid: "{{ tar_job.ansible_job_id }}"
       register: tar_status
       until: tar_status.finished
-      retries: "{{ (backup_timeout / 10) | int }}"
-      delay: 10
+      retries: "{{ (backup_timeout / delay_seconds) | int }}"
+      delay: "{{ delay_seconds }}"
       failed_when: tar_status.failed | default(false)
-      when: not existing_backup.stat.exists
+      when: tar_job is defined and not existing_backup.stat.exists
       tags: backup
 
     - name: Verify archive integrity
       ansible.builtin.shell: "xz -t {{ dest_dir }}/{{ archive_name }}"
       register: verify_result
       changed_when: false
-      when: not existing_backup.stat.exists
       tags: backup
 
     - name: Get archive size
