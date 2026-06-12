@@ -69,7 +69,7 @@
     ############################################################################
     - name: Run operator DISPLAY commands
       block:
-        - name: "Issue: {{ item.label }}"
+        - name: Issue operator DISPLAY command
           ibm.ibm_zos_core.zos_operator:
             cmd: "{{ item.cmd }}"
           loop: "{{ operator_commands }}"
