@@ -5,6 +5,12 @@
 PYZ: "/usr/lpp/IBM/cyp/v3r14/pyz"
 ZOAU: "/usr/lpp/IBM/zoau/v1r4"
 
+# Python (major.minor) of the interpreter at PYZ. ZOAU ships per-version
+# bindings under $ZOAU/lib/<PY_VERSION>; this MUST match the only Python
+# actually installed (v3r14 = 3.14). The bare $ZOAU/lib has a zoautil_py
+# symlink defaulting to 3.12, which fails with "libpython3.12.so not found".
+PY_VERSION: "3.14"
+
 ZOAU_COLLECTIONS_VERSION: "1.4.0"
 
 ansible_python_interpreter: "{{ PYZ }}/bin/python3"
@@ -16,7 +22,7 @@ ansible_python_interpreter: "{{ PYZ }}/bin/python3"
 zos_environment:
   _BPXK_AUTOCVT: "ON"
   ZOAU_HOME: "{{ ZOAU }}"
-  PYTHONPATH: "{{ ZOAU }}/lib:{{ PYZ }}/lib"
+  PYTHONPATH: "{{ ZOAU }}/lib/{{ PY_VERSION }}:{{ PYZ }}/lib"
   LIBPATH: "{{ ZOAU }}/lib:{{ PYZ }}/lib:/lib:/usr/lib:."
   PATH: "{{ ZOAU }}/bin:{{ PYZ }}/bin:/usr/bin:/bin:/var/bin:/usr/sbin"
   _CEE_RUNOPTS: "FILETAG(AUTOCVT,AUTOTAG) POSIX(ON)"
