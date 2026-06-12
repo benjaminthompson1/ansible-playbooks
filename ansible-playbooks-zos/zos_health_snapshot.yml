@@ -58,10 +58,10 @@
     - name: Display key system facts
       ansible.builtin.debug:
         msg:
-          - "System name:   {{ ansible_facts.sys_info[0].systemname | default('n/a') }}"
-          - "z/OS release:  {{ ansible_facts.sys_info[0].release | default('n/a') }}"
-          - "Sysplex:       {{ ansible_facts.sys_info[0].sysplex_name | default('n/a') }}"
-          - "LPAR name:     {{ ansible_facts.sys_info[0].lpar_name | default('n/a') }}"
+          - "System name:   {{ ansible_facts.sys_name | default('n/a') }}"
+          - "z/OS release:  {{ ansible_facts.product_name | default('z/OS') }} {{ ansible_facts.product_version | default('?') }}.{{ ansible_facts.product_release | default('?') }}.{{ ansible_facts.product_mod_level | default('?') }}"
+          - "Sysplex:       {{ ansible_facts.sysplex_name | default('n/a') }}"
+          - "LPAR name:     {{ ansible_facts.lpar_name | default('n/a') }}"
       tags: [facts]
 
     ############################################################################
@@ -98,8 +98,7 @@
     - name: Assert facts were gathered
       ansible.builtin.assert:
         that:
-          - ansible_facts.sys_info is defined
-          - ansible_facts.sys_info | length > 0
+          - ansible_facts.sys_name is defined
         fail_msg: "zos_gather_facts returned no system info."
         success_msg: "System facts gathered successfully."
       tags: [facts]
@@ -120,8 +119,8 @@
         msg:
           - "================ z/OS Health Snapshot ================"
           - "Host:            {{ inventory_hostname }} ({{ ansible_host }})"
-          - "System:          {{ ansible_facts.sys_info[0].systemname | default('n/a') }}"
-          - "z/OS release:    {{ ansible_facts.sys_info[0].release | default('n/a') }}"
+          - "System:          {{ ansible_facts.sys_name | default('n/a') }}"
+          - "z/OS release:    {{ ansible_facts.product_name | default('z/OS') }} {{ ansible_facts.product_version | default('?') }}.{{ ansible_facts.product_release | default('?') }}.{{ ansible_facts.product_mod_level | default('?') }}"
           - "Commands run:    {{ operator_results.results | default([]) | length }}"
           - "Commands OK:     {{ operator_results.results | default([]) | selectattr('rc', 'defined') | selectattr('rc', 'eq', 0) | list | length }}"
           - "Captured:        {{ ansible_date_time.iso8601 | default(lookup('pipe', 'date -u +%Y-%m-%dT%H:%M:%SZ')) }}"
@@ -138,16 +137,16 @@
           # z/OS Health Snapshot — {{ inventory_hostname }}
 
           - **Host:** {{ ansible_host }}
-          - **System:** {{ ansible_facts.sys_info[0].systemname | default('n/a') }}
-          - **z/OS release:** {{ ansible_facts.sys_info[0].release | default('n/a') }}
-          - **Sysplex:** {{ ansible_facts.sys_info[0].sysplex_name | default('n/a') }}
+          - **System:** {{ ansible_facts.sys_name | default('n/a') }}
+          - **z/OS release:** {{ ansible_facts.product_name | default('z/OS') }} {{ ansible_facts.product_version | default('?') }}.{{ ansible_facts.product_release | default('?') }}.{{ ansible_facts.product_mod_level | default('?') }}
+          - **Sysplex:** {{ ansible_facts.sysplex_name | default('n/a') }}
           - **Captured (UTC):** {{ lookup('pipe', 'date -u +%Y-%m-%dT%H:%M:%SZ') }}
 
           ## Operator command results
           {% for r in operator_results.results | default([]) %}
           ### {{ r.item.label }} (`{{ r.item.cmd }}`) — rc {{ r.rc | default('?') }}
           ```
-          {{ r.content | default([]) | join('\n') }}
+          {{ r.stdout | default('') }}
           ```
           {% endfor %}
       delegate_to: localhost
