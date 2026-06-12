@@ -1,0 +1,155 @@
+################################################################################
+# Captures a read-only health snapshot of a z/OS system.
+#
+# Demonstrates Ansible patterns beyond a simple ping:
+#   - zos_gather_facts for structured system facts
+#   - loop: over a list of operator commands (no copy/paste tasks)
+#   - register + block/rescue for graceful failure handling
+#   - assert for pass/fail gating
+#   - tags so subsets can be run (facts | operator | report)
+#   - optional write-back of a dated Markdown report (-e write_report=true)
+#
+# Everything here is NON-DESTRUCTIVE: facts gathering and D (display)
+# operator commands only. Safe to run against z32a repeatedly.
+#
+# Requirements:
+# - ibm.ibm_zos_core collection
+# - z/OS environment variables via group_vars/all.yml (zos_environment)
+#
+# Usage:
+#   ansible-playbook -i inventories/inventory.yml zos_health_snapshot.yml
+#   # Run only the operator-command checks:
+#   ansible-playbook -i inventories/inventory.yml zos_health_snapshot.yml --tags operator
+#   # Write a dated Markdown report to ./reports/ on the control node:
+#   ansible-playbook -i inventories/inventory.yml zos_health_snapshot.yml -e write_report=true
+#   # Extra detail:
+#   ansible-playbook -i inventories/inventory.yml zos_health_snapshot.yml -v
+################################################################################
+
+---
+- name: z/OS Health Snapshot
+  hosts: z32a
+  gather_facts: no
+  environment: "{{ zos_environment }}"
+
+  vars:
+    # Operator DISPLAY commands to sweep. Add/remove freely — the loop and the
+    # report adapt automatically. All are read-only "D" commands.
+    operator_commands:
+      - { label: "Active address spaces", cmd: "D A,L" }
+      - { label: "Auxiliary storage (page datasets)", cmd: "D ASM" }
+      - { label: "Real/virtual storage", cmd: "D M=STOR" }
+      - { label: "IPL information", cmd: "D IPLINFO" }
+      - { label: "Active PARMLIB members", cmd: "D PARMLIB" }
+      - { label: "Sysplex status", cmd: "D XCF" }
+      - { label: "TCP/IP stacks", cmd: "D TCPIP" }
+    # Set true to write a dated Markdown report under ./reports on the controller.
+    write_report: false
+
+  tasks:
+    ############################################################################
+    # 1. System facts
+    ############################################################################
+    - name: Gather z/OS system facts
+      ibm.ibm_zos_core.zos_gather_facts:
+      register: zos_facts
+      tags: [facts, report]
+
+    - name: Display key system facts
+      ansible.builtin.debug:
+        msg:
+          - "System name:   {{ ansible_facts.sys_info[0].systemname | default('n/a') }}"
+          - "z/OS release:  {{ ansible_facts.sys_info[0].release | default('n/a') }}"
+          - "Sysplex:       {{ ansible_facts.sys_info[0].sysplex_name | default('n/a') }}"
+          - "LPAR name:     {{ ansible_facts.sys_info[0].lpar_name | default('n/a') }}"
+      tags: [facts]
+
+    ############################################################################
+    # 2. Operator DISPLAY command sweep (looped, fault-tolerant)
+    ############################################################################
+    - name: Run operator DISPLAY commands
+      block:
+        - name: "Issue: {{ item.label }}"
+          ibm.ibm_zos_core.zos_operator:
+            cmd: "{{ item.cmd }}"
+          loop: "{{ operator_commands }}"
+          loop_control:
+            label: "{{ item.label }} ({{ item.cmd }})"
+          register: operator_results
+      rescue:
+        - name: Note that one or more operator commands failed
+          ansible.builtin.debug:
+            msg: >-
+              One or more operator commands failed; continuing so the snapshot
+              still reports what it could gather. Re-run with -v for detail.
+      tags: [operator, report]
+
+    - name: Show operator command return codes
+      ansible.builtin.debug:
+        msg: "{{ item.item.label }} -> rc {{ item.rc | default('?') }}"
+      loop: "{{ operator_results.results | default([]) }}"
+      loop_control:
+        label: "{{ item.item.label }}"
+      tags: [operator]
+
+    ############################################################################
+    # 3. Assertions — gate the snapshot on basic health signals
+    ############################################################################
+    - name: Assert facts were gathered
+      ansible.builtin.assert:
+        that:
+          - ansible_facts.sys_info is defined
+          - ansible_facts.sys_info | length > 0
+        fail_msg: "zos_gather_facts returned no system info."
+        success_msg: "System facts gathered successfully."
+      tags: [facts]
+
+    - name: Assert every operator command returned cleanly
+      ansible.builtin.assert:
+        that:
+          - operator_results.results | default([]) | selectattr('rc', 'defined') | selectattr('rc', 'ne', 0) | list | length == 0
+        fail_msg: "At least one operator DISPLAY command returned a non-zero rc."
+        success_msg: "All operator DISPLAY commands returned rc 0."
+      tags: [operator]
+
+    ############################################################################
+    # 4. Consolidated summary
+    ############################################################################
+    - name: Display health snapshot summary
+      ansible.builtin.debug:
+        msg:
+          - "================ z/OS Health Snapshot ================"
+          - "Host:            {{ inventory_hostname }} ({{ ansible_host }})"
+          - "System:          {{ ansible_facts.sys_info[0].systemname | default('n/a') }}"
+          - "z/OS release:    {{ ansible_facts.sys_info[0].release | default('n/a') }}"
+          - "Commands run:    {{ operator_results.results | default([]) | length }}"
+          - "Commands OK:     {{ operator_results.results | default([]) | selectattr('rc', 'defined') | selectattr('rc', 'eq', 0) | list | length }}"
+          - "Captured:        {{ ansible_date_time.iso8601 | default(lookup('pipe', 'date -u +%Y-%m-%dT%H:%M:%SZ')) }}"
+          - "======================================================"
+      tags: [facts, operator, report]
+
+    ############################################################################
+    # 5. Optional: write a dated Markdown report to the control node
+    ############################################################################
+    - name: Write Markdown health report (control node)
+      ansible.builtin.copy:
+        dest: "reports/{{ inventory_hostname }}-health-{{ lookup('pipe', 'date -u +%Y%m%d-%H%M%S') }}.md"
+        content: |
+          # z/OS Health Snapshot — {{ inventory_hostname }}
+
+          - **Host:** {{ ansible_host }}
+          - **System:** {{ ansible_facts.sys_info[0].systemname | default('n/a') }}
+          - **z/OS release:** {{ ansible_facts.sys_info[0].release | default('n/a') }}
+          - **Sysplex:** {{ ansible_facts.sys_info[0].sysplex_name | default('n/a') }}
+          - **Captured (UTC):** {{ lookup('pipe', 'date -u +%Y-%m-%dT%H:%M:%SZ') }}
+
+          ## Operator command results
+          {% for r in operator_results.results | default([]) %}
+          ### {{ r.item.label }} (`{{ r.item.cmd }}`) — rc {{ r.rc | default('?') }}
+          ```
+          {{ r.content | default([]) | join('\n') }}
+          ```
+          {% endfor %}
+      delegate_to: localhost
+      when: write_report | bool
+      tags: [report]
