@@ -112,7 +112,7 @@
           # layout. Leave CPUs 0-1 free for zADE engine threads.
 
     - name: Tune TCP/IP socket and backlog settings
-      ansible.builtin.sysctl:
+      ansible.posix.sysctl:
         name: "{{ item.key }}"
         value: "{{ item.value }}"
         state: present
