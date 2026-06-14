@@ -67,7 +67,7 @@
       ansible.builtin.async_status:
         jid: "{{ tar_job.ansible_job_id }}"
       register: tar_status
-      until: tar_status.finished
+      until: tar_status.finished | bool
       retries: "{{ (backup_timeout / delay_seconds) | int }}"
       delay: "{{ delay_seconds }}"
       failed_when: tar_status.failed | default(false)
