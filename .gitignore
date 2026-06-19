@@ -4,11 +4,20 @@
 # Ansible
 *.retry
 .vault_pass*
+collections/
+roles/galaxy/
 
 # Python
 __pycache__/
 *.pyc
 .venv/
+
+# Logs
+*.log
+
+# IDE-specific
+.vscode/
+.idea/
 
 # OS metadata
 .DS_Store
@@ -17,3 +26,7 @@ Thumbs.db
 # Editor swap files
 *.swp
 *~
+
+# Temporary files
+*.tmp
+*.bak
